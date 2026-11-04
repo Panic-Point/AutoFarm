@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoFarm</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <h1>AutoFarm</h1>
+    <p class="tagline">Write Python. Run the farm.</p>
+  </header>
+
+  <main>
+    <section class="farm-panel">
+      <canvas id="farm" width="480" height="480" aria-label="The farm field"></canvas>
+      <div class="stats">
+        <div class="inventory" id="inventory"></div>
+        <div class="tick">Tick <span id="tick">0</span></div>
+      </div>
+    </section>
+
+    <section class="code-panel">
+      <div class="toolbar">
+        <button id="run" disabled>Loading Python…</button>
+        <button id="stop" disabled>Stop</button>
+        <label class="speed">Speed
+          <select id="speed">
+            <option value="2">Slow</option>
+            <option value="6" selected>Normal</option>
+            <option value="20">Fast</option>
+            <option value="60">Very fast</option>
+            <option value="0">Instant</option>
+          </select>
+        </label>
+        <button id="reset" class="secondary" title="Start the farm over">Reset farm</button>
+      </div>
+      <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Your program"></textarea>
+      <div class="console" id="console" aria-live="polite"></div>
+    </section>
+
+    <section class="reference">
+      <h2>Commands</h2>
+      <p>Each action takes one tick. Crops grow every tick. Looking around is free.</p>
+      <h3>Actions</h3>
+      <ul>
+        <li><code>move(NORTH)</code> <code>SOUTH</code> <code>EAST</code> <code>WEST</code>. Returns <code>False</code> at the edge.</li>
+        <li><code>harvest()</code> collects a ripe crop. An unripe crop is lost.</li>
+        <li><code>till()</code> turns grass into soil, or soil back into grass.</li>
+        <li><code>plant(Crop.WHEAT)</code> on soil. <code>Crop.CARROT</code> costs 2 wheat.</li>
+        <li><code>wait()</code> does nothing for one tick.</li>
+      </ul>
+      <h3>Looking</h3>
+      <ul>
+        <li><code>is_ripe()</code>, <code>crop_here()</code>, <code>ground_here()</code></li>
+        <li><code>position()</code> gives <code>(x, y)</code>, with <code>(0, 0)</code> in the south-west corner.</li>
+        <li><code>field_size()</code>, <code>count("wheat")</code>, <code>ticks()</code></li>
+        <li><code>print(...)</code> writes to the console below your code.</li>
+      </ul>
+      <h3>Crops</h3>
+      <ul>
+        <li>Grass: grows back by itself, ripe after 4 ticks, gives hay.</li>
+        <li>Wheat: ripe after 8 ticks, gives wheat.</li>
+        <li>Carrot: ripe after 14 ticks, gives a carrot.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
