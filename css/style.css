@@ -13,6 +13,8 @@
   --desk: #ece6d4;
   --window-bar: #2f3a2e;
   --window-edge: #2f3a2e;
+  --card: #f7f2e2;
+  --star: #c98a00;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -30,6 +32,8 @@
     --desk: #1b1f1a;
     --window-bar: #2b3529;
     --window-edge: #3a4637;
+    --card: #1b1f1a;
+    --star: #f2c14e;
   }
 }
 
@@ -271,3 +275,167 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
   .window-bar { cursor: default; }
   header { padding: 12px 16px 0; }
 }
+
+/* ---- Progress: header, quest card, map, shop, shelf ---- */
+
+header { align-items: center; }
+.title-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.top-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+.star-total { font-size: 18px; color: var(--star); font-weight: 700; }
+.star-total b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.barn { display: flex; gap: 10px; color: var(--muted); font-size: 14px; }
+.barn b { color: var(--ink); font-variant-numeric: tabular-nums; }
+button.small { padding: 3px 10px; font-size: 14px; white-space: nowrap; }
+
+.farm-panel { display: flex; flex-direction: column; gap: 10px; }
+.quest-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.quest-card h2 { margin: 0; font-size: 20px; }
+.quest-card p { margin: 0; }
+.quest-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.quest-place { color: var(--muted); font-size: 13px; }
+.speech { display: flex; gap: 8px; align-items: flex-start; }
+.who {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.bubble {
+  position: relative;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 16px;
+}
+.goal { font-weight: 600; font-size: 16px; }
+.targets { color: var(--star); font-size: 14px; }
+.hint { white-space: pre-line; color: var(--muted); font-size: 14px; }
+.quest-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.inv-label { color: var(--muted); margin-right: 10px; }
+.inventory { align-items: baseline; }
+#inventory { display: inline-flex; gap: 14px; }
+
+.reference li.locked { color: var(--muted); opacity: 0.6; }
+.lock-note { font-size: 12px; margin-right: 6px; white-space: nowrap; }
+
+dialog {
+  max-width: min(640px, calc(100vw - 32px));
+  width: 100%;
+  max-height: calc(100vh - 48px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--panel);
+  color: var(--ink);
+}
+dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+dialog h2 { margin: 0; font-size: 20px; }
+dialog h3 { margin: 14px 0 6px; font-size: 16px; }
+.dialog-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.dialog-note { margin: 0 0 4px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+#shop-barn { display: inline-flex; gap: 10px; }
+.dialog-message { margin: 0; min-height: 1.5em; color: var(--accent); font-weight: 600; }
+
+.map { display: flex; flex-direction: column; gap: 10px; }
+.chapter {
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--card);
+}
+.chapter.closed { border-left-color: var(--line); opacity: 0.75; }
+.chapter.done { border-left-color: var(--star); }
+.chapter h3 { margin: 0; }
+.chapter p { margin: 4px 0 0; }
+.chapter-head { display: flex; gap: 10px; align-items: flex-start; }
+.chapter-head > div { flex: 1; }
+.chapter-num {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.chapter.closed .chapter-num { background: var(--line); color: var(--muted); }
+.chapter-intro, .chapter-words, .lock-reason { color: var(--muted); font-size: 14px; }
+.chapter-stars { color: var(--star); font-weight: 700; white-space: nowrap; }
+.chapter-badge { font-weight: 600; }
+.quest-stops { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.quest-stop {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: var(--panel);
+  color: var(--ink);
+  border-color: var(--line);
+}
+.quest-stop.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.stop-id { color: var(--muted); font-size: 12px; }
+.stop-stars { color: var(--star); }
+.home-stop { align-self: flex-start; }
+
+.shop-list, .badge-shelf, .almanac { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.shop-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.shop-list li > div { display: flex; flex-direction: column; }
+.item-text { color: var(--muted); font-size: 14px; }
+.owned { color: var(--accent); font-weight: 600; white-space: nowrap; }
+.for-sale-later { color: var(--muted); font-size: 14px; white-space: nowrap; }
+
+.badge-shelf { flex-direction: row; flex-wrap: wrap; }
+.badge-shelf li {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.badge-shelf li.earned { border-style: solid; border-color: var(--star); color: var(--ink); }
+.badge-icon { font-size: 26px; }
+.almanac li { padding: 6px 10px; border: 1px dashed var(--line); border-radius: 8px; display: flex; flex-direction: column; color: var(--muted); }
+.almanac li.earned { border-style: solid; color: var(--ink); }
+.grown-ups { margin-top: 16px; color: var(--muted); font-size: 14px; }
+.grown-ups summary { cursor: pointer; }
+.grown-ups label { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+
+.reward { text-align: center; max-width: min(420px, calc(100vw - 32px)); }
+.reward-stars { font-size: 44px; color: var(--star); margin: 0; letter-spacing: 4px; }
+.reward ul { text-align: left; padding-left: 20px; }
+.reward-actions { display: flex; gap: 8px; justify-content: center; }

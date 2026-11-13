@@ -1,43 +1,10 @@
 // The player's code windows: names, the starter workspace, and saving.
 // No DOM code here, so it can be tested with Node.
 
-export const STARTER_MAIN = `# Sweep the field and harvest everything that is ripe.
-# The commands used here are written in the helper window.
-use helper
+export const STARTER_MAIN = `# Bolt does what you write, one line at a time.
+# Press Run to try it.
 
-set size to field_size()
-
-repeat 3 times:
-    repeat size times:
-        harvest_row(size)
-        move(NORTH)
-    go_home()
-
-print("Hay collected:", count("hay"))
-`;
-
-export const STARTER_HELPER = `# Commands you can use in any other window by writing: use helper
-
-define harvest_if_ripe:
-    if is_ripe():
-        harvest()
-
-define harvest_row(length):
-    # Harvest one row going east, then walk back west.
-    repeat length - 1 times:
-        harvest_if_ripe()
-        move(EAST)
-    harvest_if_ripe()
-    repeat length - 1 times:
-        move(WEST)
-
-define go_home:
-    # Walk back to the south-west corner.
-    repeat until position() == (0, 0):
-        if position()[0] > 0:
-            move(WEST)
-        else:
-            move(SOUTH)
+harvest()
 `;
 
 // Names a window can't have: Python words, plain words, and game commands.
@@ -47,7 +14,7 @@ const RESERVED = new Set(
     "global if import in is lambda nonlocal not or pass raise return try while with yield " +
     "None True False true false repeat forever until times each define set change use to by " +
     "move till plant harvest wait is_ripe crop_here ground_here position field_size count ticks " +
-    "print NORTH SOUTH EAST WEST Crop farm_api plain_words"
+    "can_move print NORTH SOUTH EAST WEST Crop farm_api plain_words words"
   ).split(" "),
 );
 
@@ -84,10 +51,9 @@ export function newWindow(name, code, i = 0) {
   return { name, code, x: 16 + i * 28, y: 16 + i * 28, w: 420, h: 300, hidden: false };
 }
 
+// A new player starts with one window. Using other windows is taught in chapter 7.
 export function starterWorkspace() {
-  const main = newWindow("main", STARTER_MAIN);
-  const helper = { ...newWindow("helper", STARTER_HELPER, 1), x: 300, y: 150 };
-  return { windows: [main, helper], active: "main" };
+  return { windows: [newWindow("main", STARTER_MAIN)], active: "main" };
 }
 
 // Check a saved workspace and fill in anything missing. `oldCode` is the
