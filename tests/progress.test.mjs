@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { CHAPTERS } from "../js/chapters.js";
 import { emptyInventory } from "../js/game.js";
 import {
-  buy, fieldSize, isChapterOpen, isQuestOpen, loadProgress, locked, newProgress, nextQuest,
+  buy, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, newProgress, nextQuest,
   noteHarvest, recordResult, seeds, titles, totalStars,
 } from "../js/progress.js";
 
@@ -100,4 +100,33 @@ test("damaged saved progress keeps what's valid", () => {
   assert.equal(p.hat, "straw_hat");
   assert.deepEqual(p.almanac, ["wheat"]);
   assert.deepEqual(loadProgress(null), newProgress());
+});
+
+test("bonus quests give stars but aren't needed to finish a chapter", () => {
+  const p = newProgress();
+  for (const ch of CHAPTERS.slice(0, 3)) {
+    for (const q of ch.quests) if (!q.bonus) recordResult(p, q.id, 3, 1);
+  }
+  assert.ok(isChapterDone(p, 3));
+  assert.ok(isQuestOpen(p, "3-5"));
+  // The next real quest comes before the bonus quest.
+  assert.equal(nextQuest(p), "4-1");
+  recordResult(p, "3-5", 2, 30);
+  assert.equal(p.stars["3-5"], 2);
+});
+
+test("the new seeds are sold after the chapter that fits them", () => {
+  const p = newProgress();
+  const barn = emptyInventory({ hay: 50, wheat: 50, carrot: 50 });
+  for (const n of [1, 2]) finishChapter(p, n);
+  assert.match(buy(p, barn, "strawberry_seeds"), /after chapter 3/);
+  finishChapter(p, 3);
+  assert.equal(buy(p, barn, "strawberry_seeds"), null);
+  assert.match(buy(p, barn, "lettuce_seeds"), /after chapter 4/);
+  finishChapter(p, 4);
+  assert.equal(buy(p, barn, "lettuce_seeds"), null);
+  finishChapter(p, 5);
+  assert.equal(buy(p, barn, "blueberry_seeds"), null);
+  assert.deepEqual(seeds(p), ["grass", "strawberry", "lettuce", "blueberry"]);
+  assert.deepEqual(noteHarvest(p, { strawberry: 3 }).map((a) => a.item), ["strawberry"]);
 });

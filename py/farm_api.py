@@ -27,10 +27,21 @@ class Crop:
     GRASS = "grass"
     WHEAT = "wheat"
     CARROT = "carrot"
+    LETTUCE = "lettuce"
+    STRAWBERRY = "strawberry"
+    BLUEBERRY = "blueberry"
 
 
-_CROPS = (Crop.GRASS, Crop.WHEAT, Crop.CARROT)
-_ITEMS = ("hay", "wheat", "carrot")
+_CROPS = (Crop.GRASS, Crop.WHEAT, Crop.CARROT, Crop.LETTUCE, Crop.STRAWBERRY, Crop.BLUEBERRY)
+_ITEMS = ("hay", "wheat", "carrot", "lettuce", "strawberry", "blueberry")
+
+
+def _or_list(words):
+    return ", ".join(words[:-1]) + " or " + words[-1]
+
+
+_CROP_NAMES = _or_list(["Crop." + c.upper() for c in _CROPS])
+_ITEM_NAMES = _or_list([repr(i) for i in _ITEMS])
 
 # Safety limits so a runaway program cannot freeze the game.
 LINE_LIMIT = 300_000
@@ -72,14 +83,15 @@ def till():
 def plant(crop):
     """Plant a crop on this tile. Returns False if it cannot be planted here."""
     if crop not in _CROPS:
-        raise ValueError("plant() needs Crop.GRASS, Crop.WHEAT or Crop.CARROT, got " + repr(crop))
+        raise ValueError("plant() needs " + _CROP_NAMES + ", got " + repr(crop))
     if not _farm.has_seed(crop):
         raise FarmError(f"Bolt has no {crop} seeds yet. You can buy them in the shop.")
     return _act(_farm.plant(crop))
 
 
 def harvest():
-    """Harvest this tile. Returns True if the crop was ripe and collected."""
+    """Harvest this tile. Returns True if the crop was ripe and collected.
+    A blueberry bush stays and grows back; any other crop is gone."""
     return _act(_farm.harvest())
 
 
@@ -91,7 +103,8 @@ def wait():
 # ---- Sensing: free ----
 
 def is_ripe():
-    """True if this tile has a crop that is ready to harvest."""
+    """True if this tile has a crop that is ready to harvest. Wilted lettuce
+    isn't ripe."""
     return bool(_farm.is_ripe())
 
 
@@ -124,9 +137,10 @@ def field_size():
 
 
 def count(item):
-    """How many of an item you have: 'hay', 'wheat' or 'carrot'."""
+    """How many of an item you have: 'hay', 'wheat', 'carrot', 'lettuce',
+    'strawberry' or 'blueberry'."""
     if item not in _ITEMS:
-        raise ValueError("count() needs 'hay', 'wheat' or 'carrot', got " + repr(item))
+        raise ValueError("count() needs " + _ITEM_NAMES + ", got " + repr(item))
     return _farm.count(item)
 
 

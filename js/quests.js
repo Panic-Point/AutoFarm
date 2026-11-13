@@ -1,5 +1,5 @@
 // Quest fields and goal checks. No DOM code here, so it can be tested with Node.
-import { CROPS, ITEMS, emptyInventory } from "./game.js";
+import { CROPS, ITEMS, emptyInventory, strawberryFriends } from "./game.js";
 import { WORDS } from "./words.js";
 
 const TILE_CODES = {
@@ -10,9 +10,15 @@ const TILE_CODES = {
   w: { ground: "soil", crop: "wheat", ripe: false },
   C: { ground: "soil", crop: "carrot", ripe: true },
   c: { ground: "soil", crop: "carrot", ripe: false },
+  L: { ground: "soil", crop: "lettuce", ripe: true },
+  l: { ground: "soil", crop: "lettuce", ripe: false },
+  R: { ground: "soil", crop: "strawberry", ripe: true },
+  r: { ground: "soil", crop: "strawberry", ripe: false },
+  B: { ground: "soil", crop: "blueberry", ripe: true },
+  b: { ground: "soil", crop: "blueberry", ripe: false },
 };
 
-const CROP_CODES = { G: "grass", W: "wheat", C: "carrot" };
+const CROP_CODES = { G: "grass", W: "wheat", C: "carrot", L: "lettuce", R: "strawberry", B: "blueberry" };
 
 // The map's rows are north first, but tiles are stored south row first.
 function mapCell(map, x, y) {
@@ -32,7 +38,7 @@ export function questField(quest) {
       tiles.push({ ground: code.ground, crop: code.crop, age });
     }
   }
-  return {
+  const state = {
     size,
     x: start[0],
     y: start[1],
@@ -41,7 +47,13 @@ export function questField(quest) {
     inventory: emptyInventory(inventory),
     seeds: null,
     lost: 0,
+    wilted: 0,
   };
+  // Strawberries that start ripe have already counted their friends.
+  tiles.forEach((t, i) => {
+    if (t.crop === "strawberry" && t.age > 0) t.friends = strawberryFriends(state, i % size, Math.floor(i / size));
+  });
+  return state;
 }
 
 // What a run harvested: { item: amount gained } (never negative).
@@ -72,7 +84,11 @@ export function patternMisses(pattern, state) {
   return misses;
 }
 
-const plural = (n, word) => `${n} ${word}${n === 1 || word === "hay" || word === "wheat" ? "" : "s"}`;
+export function plural(n, word) {
+  if (n === 1 || word === "hay" || word === "wheat") return `${n} ${word}`;
+  if (word.endsWith("berry")) return `${n} ${word.slice(0, -1)}ies`;
+  return `${n} ${word}s`;
+}
 
 // Judge a finished run. run: { status, ticks, words }.
 // Returns { met, stars, problems: [text], gained }.
@@ -104,6 +120,9 @@ export function checkQuest(quest, start, end, run) {
   }
   if (goal.noLoss && end.lost > 0) {
     problems.push(`Bolt picked ${plural(end.lost, "crop")} before ${end.lost === 1 ? "it was" : "they were"} ripe.`);
+  }
+  if (goal.fresh && end.wilted > 0) {
+    problems.push(`${plural(end.wilted, "lettuce")} wilted before Bolt picked ${end.wilted === 1 ? "it" : "them"}.`);
   }
   for (const group of goal.needs ?? []) {
     if (!group.some((w) => run.words.includes(w))) {

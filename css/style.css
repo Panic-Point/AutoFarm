@@ -396,6 +396,15 @@ dialog h3 { margin: 14px 0 6px; font-size: 16px; }
 .quest-stop.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .stop-id { color: var(--muted); font-size: 12px; }
 .stop-stars { color: var(--star); }
+.stop-bonus {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--star);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0 6px;
+}
 .home-stop { align-self: flex-start; }
 
 .shop-list, .badge-shelf, .almanac { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
