@@ -119,6 +119,20 @@ export const MIGRATIONS = [
       if ((saved.finished ?? []).includes(8)) saved.festivalSeen = true;
     },
   },
+  {
+    // Version 4 makes room for new core quests (Pip's Pumpkin Patch, Mushroom
+    // in the Fog, Thirsty Corn) by giving the bonus quests after them new IDs.
+    version: 4,
+    run(saved) {
+      const moved = { "4-5": "4-6", "5-6": "5-7", "6-5": "6-6" };
+      for (const key of ["stars", "best"]) {
+        const old = saved[key] ?? {};
+        const out = {};
+        for (const [id, n] of Object.entries(old)) out[moved[id] ?? id] = n;
+        saved[key] = out;
+      }
+    },
+  },
 ];
 
 export const SAVE_VERSION = MIGRATIONS.reduce((v, m) => Math.max(v, m.version), 1);

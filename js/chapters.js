@@ -5,8 +5,12 @@
 //   W ripe wheat   w young wheat   C ripe carrot   c young carrot
 //   L ripe lettuce   l young lettuce   R ripe strawberry   r young strawberry
 //   B ripe blueberry bush   b young blueberry bush
+//   P ripe pumpkin   p young pumpkin   x rotten pumpkin   M mushroom
+//   K ripe corn   k young corn   q young corn on wet soil   O the well
+//   F ripe sunflower   f young sunflower
 // Bolt starts at `start` ([x, y], with [0, 0] in the south-west corner).
 // `fog: true` hides every tile more than one step away from Bolt.
+// `can` is how much water is in the watering can at the start (5 if not given).
 //
 // Test plots: `field` can be a list of 2 or 3 fields instead of one. The
 // same program runs on each plot in turn, the run stops at the first plot
@@ -28,6 +32,8 @@
 //   plants:  { crop: n }  exactly n tiles growing that crop at the end
 //   noLoss:  true         never harvest an unripe crop
 //   fresh:   true         never let a lettuce wilt
+//   thirsty: true         water every young corn that starts on dry soil
+//   noWaste: true         never pour water where nothing needs it
 //   needs:   [[...]]      use one word from each inner list (see js/words.js)
 //
 // A quest with `bonus: true` gives stars, but isn't needed to finish its
@@ -121,6 +127,23 @@ export const CHAPTERS = [
           "Go east 2 times, harvest, then go west 2 times.",
         ],
       },
+      {
+        id: "1-6",
+        bonus: true,
+        title: "Bolt's Wobbly Steps",
+        who: "Bolt",
+        story: "Bzzt! I wrote my own program, but I got mixed up. Can you fix it?",
+        goalText: "Fix Bolt's code so it harvests both grass tiles. Two lines are wrong.",
+        field: { map: ["....", "....", "....", ".G.G"] },
+        starter: "move(NORTH)\nharvest()\nmove(EAST)\nharvest()\nmove(EAST)\n",
+        goal: { gain: { hay: 2 } },
+        stars: { two: 7, three: 5 },
+        hints: [
+          "Press Run and watch where Bolt goes. Where does it go wrong first?",
+          "The grass is east of Bolt, not north.",
+          "The second grass is 2 steps away. Bolt harvests after only 1 step. Swap the last two lines.",
+        ],
+      },
     ],
   },
   {
@@ -204,6 +227,23 @@ export const CHAPTERS = [
           "Harvest the first row going east, then the second row going west.",
           "After the first row, take one step north.",
           "Two repeats: one going EAST, one going WEST, with move(NORTH) between.",
+        ],
+      },
+      {
+        id: "2-6",
+        bonus: true,
+        title: "One Step Too Many",
+        who: "Daisy",
+        story: "Bolt brings me my snack, but it always bumps the fence on the way. Ouch!",
+        goalText: "Fix the number in Bolt's code so it stops at the fence instead of bumping it.",
+        field: { map: ["......", "......", "......", "......", "......", ".....G"] },
+        starter: "repeat 6 times:\n    move(EAST)\nharvest()\n",
+        goal: { gain: { hay: 1 }, needs: [["repeat"]] },
+        stars: { two: 7, three: 6 },
+        hints: [
+          "Run it and count the steps. Bumping the fence still takes a tick.",
+          "The grass is in the 6th tile. How many steps does it take to get from the 1st tile to the 6th?",
+          "6 tiles have only 5 gaps between them. Change 6 to 5.",
         ],
       },
     ],
@@ -292,6 +332,23 @@ export const CHAPTERS = [
           "Plant the square, wait until all 4 are ripe, then pick them. Picking one too soon leaves the others with fewer friends.",
         ],
       },
+      {
+        id: "3-6",
+        bonus: true,
+        title: "The Tangled Sweep",
+        who: "Hazel",
+        story: "Bolt tried to sweep my 2 rows of grass, but it only got some of it. The loops are all tangled!",
+        goalText: "Fix Bolt's code so it harvests all 8 grass tiles.",
+        field: { map: ["....", "....", "GGGG", "GGGG"] },
+        starter: "repeat 3 times:\n    repeat 2 times:\n        harvest()\n        move(EAST)\n    harvest()\n    repeat 2 times:\n        move(WEST)\n    move(NORTH)\n    print(\"row done\")\n",
+        goal: { gain: { hay: 8 }, needs: [["nested"]] },
+        stars: { two: 26, three: 22 },
+        hints: [
+          "Run it and look at the console. How many times does it say \"row done\"? How many rows are there?",
+          "The outside loop goes once for each row. The inside loop goes once for each step along a row.",
+          "There are 2 rows, and each row takes 3 steps. The two numbers are swapped!",
+        ],
+      },
     ],
   },
   {
@@ -364,6 +421,21 @@ export const CHAPTERS = [
       },
       {
         id: "4-5",
+        title: "Pip's Pumpkin Patch",
+        who: "Pip",
+        story: "My pumpkins! Some are ripe, some are still growing, and some went rotten. Yuck!",
+        goalText: "Pick the ripe pumpkins, till away the rotten ones, and leave the young ones alone.",
+        field: { map: [".....", ".....", ".....", ".....", "PpxPx"] },
+        goal: { gain: { pumpkin: 2 }, pattern: ["?????", "?????", "?????", "?????", ".P..."], noLoss: true, needs: [["elif"]] },
+        stars: { two: 11, three: 8 },
+        hints: [
+          "is_rotten() is True when the pumpkin under Bolt has gone rotten. Rotten pumpkins can't be picked, but till() clears them away.",
+          "else if asks a second question when the first answer was no: if is_ripe(): harvest(), else if is_rotten(): till()",
+          "Do that on every tile of the row, stepping east between them. Young pumpkins need nothing at all.",
+        ],
+      },
+      {
+        id: "4-6",
         bonus: true,
         title: "Crunchy Lettuce",
         who: "Pip",
@@ -378,6 +450,31 @@ export const CHAPTERS = [
           "Plant going east, walk back west, then go east again with if is_ripe(): harvest(), else: wait().",
         ],
       },
+      {
+        id: "4-7",
+        bonus: true,
+        title: "Pumpkin Patrol",
+        who: "Pip",
+        story: "I have two pumpkin patches, and they're all mixed up. Your program has to work on both!",
+        goalText: "On both test plots: pick every ripe pumpkin, till every rotten one, and lose none.",
+        field: [
+          {
+            map: ["PpxP", "xPpP", "pPxp", "PxPp"],
+            goal: { gain: { pumpkin: 7 }, pattern: ["??.?", ".???", "??.?", "?.??"] },
+          },
+          {
+            map: ["xPPp", "PpxP", "PxPp", "pPPx"],
+            goal: { gain: { pumpkin: 8 }, pattern: [".???", "??.?", "?.??", "???."] },
+          },
+        ],
+        goal: { noLoss: true, needs: [["elif"], ["nested"]] },
+        stars: { two: 72, three: 59 },
+        hints: [
+          "The same program runs on both plots, so it has to look at every tile instead of knowing where things are.",
+          "On each tile: if is_ripe(): harvest(), else if is_rotten(): till().",
+          "Zig-zag: check and step east along one row, step north, then check and step west along the next.",
+        ],
+      },
     ],
   },
   {
@@ -386,7 +483,7 @@ export const CHAPTERS = [
     who: "Wren",
     intro: "Fog rolls in and Bolt can't see the edge. Bolt learns to repeat until something is true.",
     badge: "Fog Badge",
-    starsToOpen: 22,
+    starsToOpen: 24,
     quests: [
       {
         id: "5-1",
@@ -465,6 +562,25 @@ export const CHAPTERS = [
       },
       {
         id: "5-6",
+        title: "Mushroom in the Fog",
+        who: "Wren",
+        story: "A mushroom pops up somewhere along this row on foggy days. Find it, then bring it home!",
+        goalText: "On all 3 plots: walk east until you find the mushroom, pick it, then go home to the corner.",
+        field: [
+          { map: [".......", ".......", ".......", ".......", ".......", ".......", "...M..."], fog: true },
+          { map: [".......", ".......", ".......", ".......", ".......", ".......", ".....M."], fog: true },
+          { map: [".......", ".......", ".......", ".......", ".......", ".......", "..M...."], fog: true },
+        ],
+        goal: { gain: { mushroom: 1 }, at: [0, 0], needs: [["repeat_forever"], ["stop"]] },
+        stars: { two: 30, three: 23 },
+        hints: [
+          "repeat forever: never stops by itself. break jumps out of the loop right away.",
+          "Inside repeat forever: if crop_here() == Crop.MUSHROOM: harvest() and break. Otherwise move(EAST).",
+          "After the loop, walk west until position() == (0, 0). Walking to the fence first wastes ticks!",
+        ],
+      },
+      {
+        id: "5-7",
         bonus: true,
         title: "Wheat Then Carrots",
         who: "Wren",
@@ -479,6 +595,26 @@ export const CHAPTERS = [
           "The first carrot you planted is ripe first. Walk back to it, then repeat until is_ripe(): wait() before each harvest.",
         ],
       },
+      {
+        id: "5-8",
+        bonus: true,
+        title: "Wren's Basket",
+        who: "Wren",
+        story: "Now the mushroom could be on any row! Search the field row by row and stop the moment you find it.",
+        goalText: "On all 3 plots: find the mushroom and pick it. Stop as soon as you have it.",
+        field: [
+          { map: [".....", ".....", ".....", ".....", "...M."], fog: true },
+          { map: [".....", ".....", ".M...", ".....", "....."], fog: true },
+          { map: [".....", "....M", ".....", ".....", "....."], fog: true },
+        ],
+        goal: { gain: { mushroom: 1 }, needs: [["stop"]] },
+        stars: { two: 70, three: 56 },
+        hints: [
+          "One repeat forever: loop can do the whole search. Check for the mushroom first, every step.",
+          "If you can move east, step east. If you can't, walk back west and step north to the next row.",
+          "When crop_here() == Crop.MUSHROOM, harvest() and break.",
+        ],
+      },
     ],
   },
   {
@@ -487,7 +623,7 @@ export const CHAPTERS = [
     who: "Mayor Maple",
     intro: "It's market day, and the mayor orders exact amounts. Bolt learns to keep count.",
     badge: "Counter Badge",
-    starsToOpen: 28,
+    starsToOpen: 32,
     quests: [
       {
         id: "6-1",
@@ -551,6 +687,21 @@ export const CHAPTERS = [
       },
       {
         id: "6-5",
+        title: "Thirsty Corn",
+        who: "Mayor Maple",
+        story: "Corn only grows on wet soil. Water the thirsty ones, but don't waste a drop! The ripe ones are done drinking.",
+        goalText: "Harvest the ripe corn, and water only the young corn on dry soil.",
+        field: { map: [".....", ".....", ".....", ".....", "KkqKk"] },
+        goal: { gain: { corn: 4 }, thirsty: true, noWaste: true, noLoss: true, needs: [["logic"]] },
+        stars: { two: 11, three: 8 },
+        hints: [
+          "is_dry() is True when the soil under Bolt is dry. Water on wet soil or on ripe corn is wasted.",
+          "and joins two questions, and not flips an answer: if is_dry() and not is_ripe(): water()",
+          "On each tile: water if it's dry and not ripe, then harvest if it's ripe, then step east.",
+        ],
+      },
+      {
+        id: "6-6",
         bonus: true,
         title: "Two Old Bushes",
         who: "Mayor Maple",
@@ -565,6 +716,22 @@ export const CHAPTERS = [
           "repeat until count(\"blueberry\") >= 14: then harvest if ripe, or walk to the other bush.",
         ],
       },
+      {
+        id: "6-7",
+        bonus: true,
+        title: "Trips to the Well",
+        who: "Mayor Maple",
+        story: "Two rows of thirsty corn, and the watering can only holds 5. You'll need a trip to the well!",
+        goalText: "Water every young corn on dry soil without wasting any. Refill the can at the well.",
+        field: { map: ["......", "......", "......", ".kkKkk", ".kKkkk", "O....."], can: 0 },
+        goal: { thirsty: true, noWaste: true, needs: [["logic"]] },
+        stars: { two: 36, three: 29 },
+        hints: [
+          "The can starts empty. Bolt is on the well, so refill() first. water_left() says how much is in the can.",
+          "Water only the corn that is dry and not ripe: if is_dry() and not is_ripe(): water()",
+          "After the first row, go back to the well and refill before you start the next row.",
+        ],
+      },
     ],
   },
   {
@@ -573,7 +740,7 @@ export const CHAPTERS = [
     who: "Bolt",
     intro: "Bolt gets tired of long instructions. Teach Bolt new commands with define.",
     badge: "Teacher Badge",
-    starsToOpen: 32,
+    starsToOpen: 38,
     quests: [
       {
         id: "7-1",
@@ -620,6 +787,37 @@ export const CHAPTERS = [
           "go_east(3), harvest, go north 4, harvest, go_east(3), harvest.",
         ],
       },
+      {
+        id: "7-4",
+        title: "Sunflower Rows",
+        who: "Bolt",
+        story: "Sunflowers are so tall I can see them from anywhere! Only some rows are worth the walk.",
+        goalText: "Teach Bolt ripe_in_row(y) that gives back how many sunflowers are ripe in a row. Only harvest rows with 3 or more.",
+        field: { map: ["fFfFf", "FFfFF", "ffFff", "FfFFf", "....."] },
+        goal: { gain: { sunflower: 7 }, noLoss: true, needs: [["define"], ["give_back"]] },
+        stars: { two: 23, three: 18 },
+        hints: [
+          "ripe_at(x, y) is True if there's a ripe sunflower at (x, y), even far away.",
+          "define ripe_in_row(y): count with set and change for x from 0 to 4, then give back the count.",
+          "Walk north row by row. if ripe_in_row(y) >= 3: harvest that row. Otherwise keep walking.",
+        ],
+      },
+      {
+        id: "7-5",
+        bonus: true,
+        title: "The Best Row First",
+        who: "Bolt",
+        story: "I only need 5 sunflowers today. Which row has the most? Let's go straight there!",
+        goalText: "Find the row with the most ripe sunflowers, walk there, and harvest 5.",
+        field: { map: ["FfFFF", "FFFFF", "fFfFF", "FffFf", "....."] },
+        goal: { gain: { sunflower: 5 }, noLoss: true, needs: [["give_back"], ["variables"]] },
+        stars: { two: 16, three: 12 },
+        hints: [
+          "Use your ripe_in_row(y) command from Sunflower Rows.",
+          "set best to 1, then for each other row: if ripe_in_row(y) > ripe_in_row(best): set best to y.",
+          "Then repeat best times: move(NORTH), and harvest that whole row going east.",
+        ],
+      },
     ],
   },
   {
@@ -628,7 +826,7 @@ export const CHAPTERS = [
     who: "Aunt Juniper",
     intro: "The Harvest Festival is coming! Bolt learns to follow a plan written as a list.",
     badge: "Festival Ribbon",
-    starsToOpen: 36,
+    starsToOpen: 44,
     quests: [
       {
         id: "8-1",

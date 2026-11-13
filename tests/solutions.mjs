@@ -9,6 +9,7 @@ export const SOLUTIONS = {
   "1-4": `move(NORTH)\nmove(NORTH)\nharvest()\nmove(EAST)\nmove(EAST)\nharvest()`,
   "1-5": `move(EAST)\nmove(EAST)\nharvest()\nmove(WEST)\nmove(WEST)`,
 
+  "1-6": `move(EAST)\nharvest()\nmove(EAST)\nmove(EAST)\nharvest()`,
   "2-1": `
 repeat 4 times:
     harvest()
@@ -45,6 +46,10 @@ repeat 4 times:
     move(WEST)
 harvest()`,
 
+  "2-6": `
+repeat 5 times:
+    move(EAST)
+harvest()`,
   "3-1": `
 repeat 2 times:
     repeat 3 times:
@@ -120,6 +125,16 @@ harvest()
 move(NORTH)
 harvest()`,
 
+  "3-6": `
+repeat 2 times:
+    repeat 3 times:
+        harvest()
+        move(EAST)
+    harvest()
+    repeat 3 times:
+        move(WEST)
+    move(NORTH)
+    print("row done")`,
   "4-1": `
 repeat 4 times:
     if is_ripe():
@@ -170,6 +185,17 @@ plant(Crop.WHEAT)`,
 
   "4-5": `
 repeat 4 times:
+    if is_ripe():
+        harvest()
+    else if is_rotten():
+        till()
+    move(EAST)
+if is_ripe():
+    harvest()
+else if is_rotten():
+    till()`,
+  "4-6": `
+repeat 4 times:
     plant(Crop.LETTUCE)
     move(EAST)
 plant(Crop.LETTUCE)
@@ -184,6 +210,30 @@ repeat 4 times:
     move(EAST)
 harvest()`,
 
+  "4-7": `
+repeat 2 times:
+    repeat 3 times:
+        if is_ripe():
+            harvest()
+        else if is_rotten():
+            till()
+        move(EAST)
+    if is_ripe():
+        harvest()
+    else if is_rotten():
+        till()
+    move(NORTH)
+    repeat 3 times:
+        if is_ripe():
+            harvest()
+        else if is_rotten():
+            till()
+        move(WEST)
+    if is_ripe():
+        harvest()
+    else if is_rotten():
+        till()
+    move(NORTH)`,
   "5-1": `
 repeat while can_move(EAST):
     move(EAST)`,
@@ -207,6 +257,14 @@ repeat while can_move(SOUTH):
     move(SOUTH)`,
 
   "5-6": `
+repeat forever:
+    if crop_here() == Crop.MUSHROOM:
+        harvest()
+        break
+    move(EAST)
+repeat until position() == (0, 0):
+    move(WEST)`,
+  "5-7": `
 repeat 3 times:
     harvest()
     plant(Crop.CARROT)
@@ -224,6 +282,17 @@ repeat until is_ripe():
     wait()
 harvest()`,
 
+  "5-8": `
+repeat forever:
+    if crop_here() == Crop.MUSHROOM:
+        harvest()
+        break
+    if can_move(EAST):
+        move(EAST)
+    else:
+        repeat while can_move(WEST):
+            move(WEST)
+        move(NORTH)`,
   "6-1": `
 harvest()
 repeat until count("hay") == 7:
@@ -258,6 +327,14 @@ repeat until count("wheat") == 4:
     harvest()`,
 
   "6-5": `
+repeat 5 times:
+    if is_dry() and not is_ripe():
+        water()
+    else if is_ripe():
+        harvest()
+    if can_move(EAST):
+        move(EAST)`,
+  "6-6": `
 set way to EAST
 repeat until count("blueberry") >= 14:
     if is_ripe():
@@ -269,6 +346,23 @@ repeat until count("blueberry") >= 14:
     else:
         set way to EAST`,
 
+  "6-7": `
+refill()
+move(NORTH)
+repeat 5 times:
+    move(EAST)
+    if is_dry() and not is_ripe():
+        water()
+repeat 5 times:
+    move(WEST)
+move(SOUTH)
+refill()
+move(NORTH)
+move(NORTH)
+repeat 5 times:
+    move(EAST)
+    if is_dry() and not is_ripe():
+        water()`,
   "7-1": `
 define row_east:
     repeat 4 times:
@@ -312,6 +406,49 @@ harvest()
 go(EAST, 3)
 harvest()`,
 
+  "7-4": `
+define ripe_in_row(y):
+    set n to 0
+    for x from 0 to 4:
+        if ripe_at(x, y):
+            change n by 1
+    give back n
+
+define pick_row(way):
+    repeat 4 times:
+        if is_ripe():
+            harvest()
+        move(way)
+    if is_ripe():
+        harvest()
+
+for y from 1 to 3:
+    move(NORTH)
+    if ripe_in_row(y) >= 3:
+        if can_move(EAST):
+            pick_row(EAST)
+        else:
+            pick_row(WEST)`,
+  "7-5": `
+define ripe_in_row(y):
+    set n to 0
+    for x from 0 to 4:
+        if ripe_at(x, y):
+            change n by 1
+    give back n
+
+set best to 1
+for y from 2 to 4:
+    if ripe_in_row(y) > ripe_in_row(best):
+        set best to y
+repeat best times:
+    move(NORTH)
+repeat 4 times:
+    if is_ripe():
+        harvest()
+    move(EAST)
+if is_ripe():
+    harvest()`,
   "8-1": `
 set plan to [Crop.WHEAT, Crop.CARROT, Crop.WHEAT, Crop.CARROT, Crop.WHEAT]
 for each crop in plan:
