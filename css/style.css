@@ -169,6 +169,21 @@ select { font: inherit; padding: 4px; border-radius: 6px; }
 .code-window.running { box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(0, 0, 0, 0.18); }
 .code-window.dragging { opacity: 0.92; }
 
+/* The line Bolt is running right now, or the line a problem stopped on. */
+.line-mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  border-left: 4px solid var(--accent);
+}
+.line-mark.error {
+  background: rgba(220, 70, 60, 0.28);
+  border-left-color: #e0574c;
+}
+.chip.has-mark:not(.running)::before { content: "\25B6  "; color: var(--accent); opacity: 0.6; }
+
 .window-bar {
   display: flex;
   align-items: center;
@@ -266,7 +281,9 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
   /* No dragging on small screens: windows stack, each full width. */
   .desk { height: auto !important; resize: none; overflow: visible; padding: 8px; display: flex; flex-direction: column; gap: 10px; }
   .code-window {
-    position: static;
+    position: relative;
+    left: auto !important;
+    top: auto !important;
     width: 100% !important;
     height: 280px !important;
     resize: none;

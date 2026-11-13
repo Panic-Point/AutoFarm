@@ -47,6 +47,66 @@ export class Desk {
     this.onChange(this.workspace);
   }
 
+  // ---- Marking a line ----
+
+  // Light up one line of code: the line Bolt is running (kind "run"), or the
+  // line a problem stopped on (kind "error"). `at` is { name, line }, or null
+  // to clear the mark. The window holding the line comes to the front while
+  // it's marked, and scrolls so the line can be seen.
+  showLine(at, kind = "run") {
+    const prev = this.marked;
+    const view = at && this.views.get(at.name);
+    this.marked = view ? { name: at.name, line: at.line, kind } : null;
+    if (prev && (!view || prev.name !== at.name)) {
+      const old = this.views.get(prev.name);
+      if (old) {
+        old.mark.hidden = true;
+        old.el.classList.remove("has-mark");
+      }
+      this.focusOrder(); // put back the stacking order the player chose
+      for (const chip of this.bar.querySelectorAll(".chip.has-mark")) chip.classList.remove("has-mark");
+    }
+    if (!view) return;
+    if (!prev || prev.name !== at.name) {
+      view.el.classList.add("has-mark");
+      view.el.style.zIndex = String(this.views.size + 1);
+      this.bar.querySelector(`.chip[data-name="${CSS.escape(at.name)}"]`)?.classList.add("has-mark");
+    }
+    view.mark.classList.toggle("error", kind === "error");
+    this.scrollToLine(view, at.line);
+    this.placeMark(view);
+  }
+
+  lineBox(view) {
+    const style = getComputedStyle(view.textarea);
+    const height = parseFloat(style.lineHeight) || 21;
+    return { height, pad: parseFloat(style.paddingTop) || 0 };
+  }
+
+  scrollToLine(view, line) {
+    const ta = view.textarea;
+    const { height, pad } = this.lineBox(view);
+    const top = pad + (line - 1) * height;
+    if (top < ta.scrollTop || top + height > ta.scrollTop + ta.clientHeight - pad) {
+      ta.scrollTop = Math.max(0, top - ta.clientHeight / 2 + height / 2);
+    }
+  }
+
+  placeMark(view) {
+    const m = this.marked;
+    if (!m || m.name !== view.data.name || view.data.hidden) {
+      view.mark.hidden = true;
+      return;
+    }
+    const ta = view.textarea;
+    const { height, pad } = this.lineBox(view);
+    const y = pad + (m.line - 1) * height - ta.scrollTop;
+    // Hide the mark when its line is scrolled out of sight.
+    view.mark.hidden = y < 0 || y + height > ta.clientHeight;
+    view.mark.style.top = `${ta.offsetTop + y}px`;
+    view.mark.style.height = `${height}px`;
+  }
+
   // ---- Building windows ----
 
   addView(data) {
@@ -60,6 +120,7 @@ export class Desk {
         <button class="win-delete icon" type="button" title="Delete this window">&#215;</button>
       </div>
       <textarea spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
+      <div class="line-mark" hidden aria-hidden="true"></div>
       <div class="win-confirm" hidden>
         <span></span>
         <button class="danger" type="button">Delete</button>
@@ -71,6 +132,7 @@ export class Desk {
       textarea: el.querySelector("textarea"),
       nameEl: el.querySelector(".win-name"),
       confirm: el.querySelector(".win-confirm"),
+      mark: el.querySelector(".line-mark"),
     };
     view.textarea.value = data.code;
     this.views.set(data.name, view);
@@ -91,13 +153,17 @@ export class Desk {
     el.style.width = `${data.w}px`;
     el.style.height = `${data.h}px`;
     el.classList.toggle("active", data.name === this.active);
+    if (this.marked?.name === data.name) this.placeMark(view);
   }
 
   wire(view) {
     const { el, textarea } = view;
     el.addEventListener("pointerdown", () => this.focus(view.data.name, false));
     textarea.addEventListener("focus", () => this.focus(view.data.name, false));
+    textarea.addEventListener("scroll", () => this.placeMark(view));
     textarea.addEventListener("input", () => {
+      // The code changed, so a line marked as a problem may not be the problem any more.
+      if (this.marked?.kind === "error" && this.marked.name === view.data.name) this.showLine(null);
       view.data.code = textarea.value;
       this.save();
     });
@@ -236,9 +302,11 @@ export class Desk {
   }
 
   focusOrder() {
-    this.workspace.windows.forEach((w, i) => {
+    const list = this.workspace.windows;
+    list.forEach((w, i) => {
       const view = this.views.get(w.name);
-      view.el.style.zIndex = String(i + 1);
+      // A window with a marked line stays on top until the mark goes.
+      view.el.style.zIndex = String(this.marked?.name === w.name ? list.length + 1 : i + 1);
       this.updateView(view);
     });
   }
@@ -338,6 +406,7 @@ export class Desk {
     this.views.set(name, view);
     if (this.workspace.active === old) this.workspace.active = name;
     if (this.runningName === old) this.runningName = name;
+    if (this.marked?.name === old) this.marked.name = name;
     this.updateView(view);
     this.renderBar();
     this.save();
@@ -364,6 +433,7 @@ export class Desk {
       chip.classList.toggle("is-hidden", w.hidden);
       chip.classList.toggle("active", w.name === this.active && !w.hidden);
       chip.classList.toggle("running", w.name === this.runningName);
+      chip.classList.toggle("has-mark", w.name === this.marked?.name);
       chip.addEventListener("click", () => this.focus(w.name));
       this.bar.append(chip);
     }

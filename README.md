@@ -20,6 +20,8 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
 - **Quests** run on their own field, which starts over on every try. Finishing a quest gives 1 star; finishing within a tick (cycle) limit gives 2, and within a tighter one 3. Quests in a chapter open one after another.
 - **Chapters** open when the one before is finished and you have enough stars.
 - **Locked words:** a coding word stays locked until its chapter opens. Using it early stops the run with a note like "Bolt doesn't know repeat yet. You'll learn it in chapter 2!", and the command list greys it out. Anything no chapter teaches (classes, lambdas, try...) opens after the festival.
+- **Missing brackets:** a command written without its brackets, like `harvest` on its own, `if is_ripe:` (always yes, so Bolt picks unripe crops) or `move EAST`, stops the run before it starts with a hint like "`is_ripe` needs brackets to check. Write `is_ripe()`." Commands you `define` count too, in any window.
+- **Following along:** while Bolt runs, the line doing each action lights up, in whichever code window it's in, and that window comes to the front. When a run stops on a problem, its line turns red until you change the code.
 - **The home farm** is free play. Everything harvested, in quests too, goes to the barn, and the shop sells field upgrades, seeds, hats for Bolt and farm decorations for produce. Each finished chapter puts new things in the shop and a badge on the shelf. The shelf also has the almanac (a page per crop) and titles.
 - **For grown-ups:** the shelf has a practice mode that opens every chapter and word, and a button to start progress over.
 

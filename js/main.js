@@ -279,6 +279,7 @@ function startRun(name = desk.active) {
   const maxTicks = quest ? tickLimit(quest) : undefined;
   worker.postMessage({ type: "run", runId, ...program, state: farm, locked: locked(progress), maxTicks });
   desk.setRunning(name);
+  desk.showLine(null);
   updateRunButton();
   stopBtn.disabled = false;
   accumulator = 0;
@@ -288,6 +289,7 @@ function finishRun(message, cls) {
   if (message) log(message, cls);
   run = null;
   desk.setRunning(null);
+  desk.showLine(null);
   updateRunButton();
   stopBtn.disabled = true;
   if (!mode.quest) home = farm;
@@ -312,6 +314,8 @@ function completeRun(done) {
   const { status, message, ticks } = done;
   const cls = status === "ok" ? "status" : "error";
   finishRun(`${message} (${ticks} ${ticks === 1 ? "tick" : "ticks"})`, cls);
+  // Point at the line the problem is on, in whichever window it is.
+  if (status !== "ok" && done.errorAt) desk.showLine(done.errorAt, "error");
   const gained = gains(start, farm);
   if (questId) {
     // Produce harvested in a quest still goes to the barn.
@@ -349,6 +353,7 @@ function pump(maxFrames) {
     if (ev.kind === "frame") {
       if (frames >= maxFrames) break;
       farm = ev.state;
+      run.at = ev.at;
       frames += 1;
     } else {
       log(ev.text);
@@ -377,7 +382,10 @@ function loop(now) {
       accumulator -= budget;
     }
     const used = pump(budget);
-    if (used > 0) render();
+    if (used > 0) {
+      render();
+      desk.showLine(run.at, "run");
+    }
     if (run && run.done && run.pos >= run.queue.length) {
       completeRun(run.done);
     } else if (run && !run.done && now - run.lastActivity > WATCHDOG_MS) {

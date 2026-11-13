@@ -34,6 +34,8 @@ state["seeds"] = None
 fake.has_seed = lambda c: state["seeds"] is None or c in state["seeds"]
 logs = []
 fake.log = logs.append
+at = []
+fake.at = lambda name, line: at.append((name, line))
 sys.modules["_farm"] = fake
 
 import farm_api  # noqa: E402
@@ -43,6 +45,7 @@ class FarmApiTest(unittest.TestCase):
     def setUp(self):
         calls.clear()
         logs.clear()
+        at.clear()
         state["budget"] = 10**9
 
     def test_loops_and_ifs(self):
@@ -342,6 +345,61 @@ class WordsTest(unittest.TestCase):
         self.assertIn("'lettuce', 'strawberry' or 'blueberry'", msg)
         status, msg = farm_api.run("plant('apple')\n")
         self.assertIn("Crop.LETTUCE, Crop.STRAWBERRY or Crop.BLUEBERRY", msg)
+
+    def test_missing_brackets(self):
+        cases = {
+            "move(EAST)\nharvest\n": "Line 2: `harvest` needs brackets to work. Write `harvest()` so Bolt knows to do it.",
+            "if is_ripe:\n    harvest()\n": "Line 1: `is_ripe` needs brackets to check. Write `is_ripe()`. "
+                "Without them Bolt doesn't look, and always thinks the answer is yes!",
+            "repeat until is_ripe:\n    wait()\n": "Line 1: `is_ripe` needs brackets. Write `is_ripe()`. "
+                "Without them Bolt doesn't look, and gets the wrong answer.",
+            "while can_move:\n    move(EAST)\n": "Line 1: `can_move` needs brackets to check. Write `can_move(EAST)`. "
+                "Without them Bolt doesn't look, and always thinks the answer is yes!",
+            "repeat field_size times:\n    move(EAST)\n": "Line 1: `field_size` needs brackets. Write `field_size()`. "
+                "Without them Bolt doesn't look, and gets the wrong answer.",
+            "define go:\n    move(EAST)\ngo\n": "Line 3: `go` needs brackets to work. Write `go()` so Bolt knows to do it.",
+            "move EAST\n": "Line 1: `move` needs brackets around what goes in it. Write `move(EAST)`.",
+            "plant Crop.WHEAT\n": "Line 1: `plant` needs brackets around what goes in it. Write `plant(Crop.WHEAT)`.",
+        }
+        for code, expected in cases.items():
+            status, msg = farm_api.run(code)
+            self.assertEqual((status, msg), ("error", expected), code)
+        self.assertEqual(calls, [])  # nothing ran
+        # A command from another window, used without brackets.
+        status, msg = farm_api.run("use helper\nsweep\n", {"helper": "define sweep:\n    move(EAST)\n"})
+        self.assertIn("`sweep` needs brackets", msg)
+        self.assertEqual(farm_api.error_line(), ["main", 2])
+        status, msg = farm_api.run("use helper\n", {"helper": "\nharvest\n"})
+        self.assertTrue(msg.startswith("In helper, line 2: `harvest` needs brackets"), msg)
+        self.assertEqual(farm_api.error_line(), ["helper", 2])
+
+    def test_brackets_check_leaves_good_code_alone(self):
+        ok = [
+            "if is_ripe():\n    harvest()\n",
+            "set move to 3\nprint(move)\n",  # a variable that happens to be called move
+            "define go(harvest):\n    print(harvest)\ngo(1)\n",
+            "jobs = [harvest, wait]\nfor each job in jobs:\n    job()\n",
+            "repeat field_size() times:\n    move(EAST)\n",
+        ]
+        for code in ok:
+            self.assertEqual(farm_api.run(code)[0], "ok", code)
+
+    def test_reports_running_line(self):
+        code = "define go:\n    move(EAST)\n\ngo()\nharvest()\n"
+        at.clear()
+        farm_api.run(code)
+        self.assertEqual(at, [("main", 2), ("main", 5)])
+        at.clear()
+        farm_api.run("use helper\ngo()\nwait()\n", {"helper": "define go:\n    till()\n"})
+        self.assertEqual(at, [("helper", 2), ("main", 3)])
+
+    def test_error_line(self):
+        farm_api.run("move(EAST)\nplant('potato')\n")
+        self.assertEqual(farm_api.error_line(), ["main", 2])
+        farm_api.run("move(EAST)\n")
+        self.assertEqual(farm_api.error_line(), [])
+        farm_api.run("repeat 3:\n    move(EAST)\n")
+        self.assertEqual(farm_api.error_line(), ["main", 1])
 
 
 if __name__ == "__main__":

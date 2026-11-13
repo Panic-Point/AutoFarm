@@ -119,6 +119,33 @@ test("losing an unripe crop fails a careful quest", () => {
   assert.match(result.problems.join(" "), /picked 2 crops before they were ripe/);
 });
 
+test("frames say which line of which window Bolt is running", () => {
+  const events = [];
+  const onEvents = bridge.onEvents;
+  bridge.onEvents = (evs) => events.push(...evs);
+  bridge.start(questField(QUESTS[0]));
+  const run = bridge.run(api, {
+    code: "use helper\ngo()\nwait()\n",
+    files: { helper: "define go:\n    move(EAST)\n" },
+    name: "main",
+    locked: {},
+  });
+  bridge.onEvents = onEvents;
+  assert.equal(run.status, "ok");
+  assert.equal(run.errorAt, null);
+  const at = events.filter((e) => e.kind === "frame").map((e) => e.at);
+  assert.deepEqual(at, [{ name: "helper", line: 2 }, { name: "main", line: 3 }]);
+});
+
+test("a command without brackets stops the run and points at its line", () => {
+  bridge.start(questField(QUESTS[0]));
+  const run = bridge.run(api, { code: "move(EAST)\nif is_ripe:\n    harvest()\n", files: {}, name: "main", locked: {} });
+  assert.equal(run.status, "error");
+  assert.match(run.message, /^Line 2: `is_ripe` needs brackets/);
+  assert.deepEqual(run.errorAt, { name: "main", line: 2 });
+  assert.equal(run.ticks, 0);
+});
+
 test("a loop that never ends is a loss, even if Bolt ends up in the right place", () => {
   const quest = QUESTS.find((q) => q.id === "5-1");
   const { run, result } = play(quest, "repeat forever:\n    move(EAST)\n");
