@@ -52,8 +52,10 @@ const farm = {
 async function init() {
   const pyodide = await loadPyodide();
   pyodide.registerJsModule("_farm", farm);
-  const source = await (await fetch(new URL("../py/farm_api.py", import.meta.url))).text();
-  pyodide.FS.writeFile("/home/pyodide/farm_api.py", source);
+  for (const file of ["plain_words.py", "farm_api.py"]) {
+    const source = await (await fetch(new URL(`../py/${file}`, import.meta.url))).text();
+    pyodide.FS.writeFile(`/home/pyodide/${file}`, source);
+  }
   return pyodide.pyimport("farm_api");
 }
 

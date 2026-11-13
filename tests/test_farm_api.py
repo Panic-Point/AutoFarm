@@ -101,5 +101,76 @@ class FarmApiTest(unittest.TestCase):
         self.assertIn("NameError", msg)
 
 
+class PlainWordsTest(unittest.TestCase):
+    def setUp(self):
+        calls.clear()
+        logs.clear()
+        state["budget"] = 10**9
+
+    def run_ok(self, code):
+        result = farm_api.run(code)
+        self.assertEqual(result, ["ok", "Program finished."], code)
+
+    def test_repeat_times(self):
+        self.run_ok("repeat 3 times:\n    move(EAST)\n")
+        self.assertEqual(len(calls), 3)
+
+    def test_for_amount_times(self):
+        self.run_ok("amount = 2\nfor amount times:\n    wait()\nfor field_size() times:  # whole row\n    wait()\n")
+        self.assertEqual(len(calls), 6)
+
+    def test_nested_repeat(self):
+        self.run_ok("repeat 2 times:\n    repeat 3 times:\n        wait()\n")
+        self.assertEqual(len(calls), 6)
+
+    def test_repeat_forever_and_until(self):
+        state["budget"] = 4
+        self.assertEqual(farm_api.run("repeat forever:\n    wait()\n")[0], "out_of_ticks")
+        self.run_ok("set n to 0\nrepeat until n == 5:\n    change n by 1\nprint(n)\n")
+        self.assertEqual(logs, ["5"])
+
+    def test_repeat_while(self):
+        self.run_ok("set n to 3\nrepeat while n > 0:\n    change n by -1\n    wait()\n")
+        self.assertEqual(len(calls), 3)
+
+    def test_count_from_to(self):
+        self.run_ok("for x from 1 to 3:\n    print(x)\nfor x from 2 to 0:\n    print(x)\n")
+        self.assertEqual(logs, ["1", "2", "3", "2", "1", "0"])
+
+    def test_for_each(self):
+        self.run_ok("for each crop in ['a', 'b']:\n    print(crop)\n")
+        self.assertEqual(logs, ["a", "b"])
+
+    def test_else_if_and_true_false(self):
+        self.run_ok("set n to 2\nif n == 1:\n    print('one')\nelse if n == 2:\n    print('two')\nelse:\n    print('many')\nprint(true, false)\n")
+        self.assertEqual(logs, ["two", "True False"])
+
+    def test_define(self):
+        self.run_ok("define step:\n    move(EAST)\ndefine go(n):\n    repeat n times:\n        step()\ngo(4)\n")
+        self.assertEqual(len(calls), 4)
+
+    def test_python_still_works_and_words_in_strings_untouched(self):
+        self.run_ok('for i in range(2):\n    wait()\nnote = """\nrepeat 5 times:\n"""\nprint(note.strip())\nset_x = 1\n')
+        self.assertEqual(logs, ["repeat 5 times:"])
+        self.assertEqual(len(calls), 2)
+
+    def test_line_numbers_point_at_player_code(self):
+        status, msg = farm_api.run("repeat 2 times:\n    wait()\nplant('potato')\n")
+        self.assertTrue(msg.startswith("Line 3: ValueError"), msg)
+
+    def test_friendly_errors(self):
+        cases = {
+            "repeat 5 times\n    wait()\n": "Line 1: add a colon",
+            "wait()\nrepeat:\n    wait()\n": "Line 2: I don't understand",
+            "set x = 5\n": "Try `set total to 0`",
+            "repeat 2.5 times:\n    wait()\n": "whole number",
+            "repeat 'lots' times:\n    wait()\n": "needs a number",
+        }
+        for code, expected in cases.items():
+            status, msg = farm_api.run(code)
+            self.assertEqual(status, "error", code)
+            self.assertIn(expected, msg, code)
+
+
 if __name__ == "__main__":
     unittest.main()

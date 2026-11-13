@@ -3,23 +3,25 @@ import { ITEMS, newFarmState } from "./game.js";
 import { drawFarm } from "./render.js";
 
 const STARTER_CODE = `# Sweep the field row by row and harvest everything that is ripe.
-size = field_size()
+set size to field_size()
 
-for sweep in range(3):
-    for row in range(size):
-        for step in range(size - 1):
-            if is_ripe():
-                harvest()
+define harvest_if_ripe:
+    if is_ripe():
+        harvest()
+
+repeat 3 times:
+    repeat size times:
+        repeat size - 1 times:
+            harvest_if_ripe()
             move(EAST)
-        if is_ripe():
-            harvest()
+        harvest_if_ripe()
         # Walk back to the west edge, then go up a row.
-        while move(WEST):
-            pass
+        repeat size - 1 times:
+            move(WEST)
         move(NORTH)
     # Back to the south-west corner for the next sweep.
-    while move(SOUTH):
-        pass
+    repeat until position() == (0, 0):
+        move(SOUTH)
 
 print("Hay collected:", count("hay"))
 `;
