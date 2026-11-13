@@ -205,7 +205,7 @@ test("an old save that finished the old 8-4 keeps the festival and its crown", (
 
 test("after the festival, what's next never sends the player back to 1-1", () => {
   const p = newProgress();
-  for (const ch of CHAPTERS) finishChapter(p, ch.n, 3);
+  for (const q of QUESTS) recordResult(p, q.id, 3, 1);
   p.stars["4-2"] = 1;
   p.stars["6-1"] = 2;
   assert.deepEqual(nextStep(p), { id: "4-2", why: "Pip's Garden has 1 star. Can you get 3?" });
