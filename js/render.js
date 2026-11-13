@@ -1,5 +1,5 @@
 // Draws a farm snapshot onto a canvas.
-import { CROPS } from "./game.js";
+import { CROPS, harvestYield, isTileRipe } from "./game.js";
 
 const COLORS = {
   grass: "#7fb069",
@@ -19,6 +19,15 @@ const COLORS = {
   fog: "rgba(232, 236, 240, 0.93)",
   target: "#d93b3b",
   wood: "#a0703f",
+  lettuce: "#7cc05a",
+  lettuceVein: "#4f8a3a",
+  wiltedLeaf: "#a08a4a",
+  berryRed: "#d7263d",
+  berrySeed: "#f2d16b",
+  berryLeaf: "#4f9a43",
+  bush: "#3f7d4a",
+  blueberry: "#4a5fc1",
+  blueberryYoung: "#a7b0d8",
 };
 
 // Hats Bolt can wear: [brim color, crown color, style].
@@ -28,6 +37,7 @@ const HATS = {
   cowboy_hat: ["#7a4b26", "#8f5a2f", "brim"],
   flower_crown: ["#5f9e4a", "#f2d0e4", "flowers"],
   gold_crown: ["#e6b422", "#f6cf3a", "crown"],
+  berry_hat: ["#e9c98a", "#f3dca8", "berries"],
 };
 
 // opts: { looks: { hat, scarecrow, fence, dog }, fog, goal: { at, pattern } }
@@ -45,7 +55,7 @@ export function drawFarm(ctx, state, opts = {}) {
       const px = x * cell;
       const py = (size - 1 - y) * cell;
       drawGround(ctx, tile, px, py, cell);
-      if (tile.crop) drawCrop(ctx, tile, px, py, cell);
+      if (tile.crop) drawCrop(ctx, state, x, y, px, py, cell);
     }
   }
   if (opts.goal) drawGoal(ctx, state, opts.goal, cell);
@@ -176,13 +186,26 @@ function drawGround(ctx, tile, px, py, cell) {
       ctx.lineTo(px + cell * 0.9, fy);
       ctx.stroke();
     }
+    // Stubble left behind where wheat was just picked: carrots love it here.
+    if (tile.last === "wheat" && !tile.crop) {
+      ctx.strokeStyle = COLORS.wheatStem;
+      ctx.lineWidth = Math.max(1.5, cell / 40);
+      for (const [dx, dy] of [[0.25, 0.3], [0.5, 0.55], [0.72, 0.3], [0.35, 0.8], [0.68, 0.78]]) {
+        ctx.beginPath();
+        ctx.moveTo(px + dx * cell, py + dy * cell);
+        ctx.lineTo(px + dx * cell + cell * 0.02, py + dy * cell - cell * 0.08);
+        ctx.stroke();
+      }
+    }
   }
 }
 
-function drawCrop(ctx, tile, px, py, cell) {
+// tx, ty: the tile's place on the field, so berries can count their friends.
+function drawCrop(ctx, state, tx, ty, px, py, cell) {
+  const tile = state.tiles[ty * state.size + tx];
   const info = CROPS[tile.crop];
   const growth = Math.min(1, tile.age / info.growTicks);
-  const ripe = growth >= 1;
+  const ripe = isTileRipe(tile);
   const cx = px + cell / 2;
   const base = py + cell * 0.82;
   const h = cell * (0.15 + 0.5 * growth);
@@ -229,14 +252,95 @@ function drawCrop(ctx, tile, px, py, cell) {
       ctx.fill();
     }
     if (growth > 0.5) {
+      // A carrot planted after wheat grows two roots.
       ctx.fillStyle = COLORS.carrot;
-      ctx.beginPath();
-      ctx.moveTo(cx - cell * 0.1, base - cell * 0.05);
-      ctx.lineTo(cx + cell * 0.1, base - cell * 0.05);
-      ctx.lineTo(cx, base + cell * 0.12 * growth);
-      ctx.closePath();
-      ctx.fill();
+      for (const dx of tile.rotated ? [-0.12, 0.12] : [0]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx * cell - cell * 0.1, base - cell * 0.05);
+        ctx.lineTo(cx + dx * cell + cell * 0.1, base - cell * 0.05);
+        ctx.lineTo(cx + dx * cell, base + cell * 0.12 * growth);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
+  } else if (tile.crop === "lettuce") {
+    drawLettuce(ctx, cx, base, cell, growth, tile.wilted);
+  } else if (tile.crop === "strawberry") {
+    // A ripe plant shows one berry for each strawberry it will give.
+    const berries = ripe ? harvestYield(state, tx, ty).strawberry : growth > 0.5 ? 1 : 0;
+    drawStrawberry(ctx, cx, base, cell, growth, ripe, berries);
+  } else if (tile.crop === "blueberry") {
+    // The bush grows a little bigger each time it's picked.
+    const berries = ripe ? harvestYield(state, tx, ty).blueberry : growth > 0.4 ? 3 : 0;
+    drawBlueberry(ctx, cx, base, cell, growth, ripe, berries, tile.picks ?? 0);
+  }
+}
+
+// A low rosette of round leaves that widens as it grows. Wilted lettuce
+// flops over and turns brown.
+function drawLettuce(ctx, cx, base, cell, growth, wilted) {
+  const r = cell * (0.06 + 0.1 * growth);
+  const cy = base - r * (wilted ? 0.5 : 0.9);
+  const leaves = [[-0.9, 0.2], [0.9, 0.2], [-0.45, -0.4], [0.45, -0.4], [0, 0]];
+  for (const [dx, dy] of leaves) {
+    ctx.fillStyle = wilted ? COLORS.wiltedLeaf : COLORS.lettuce;
+    ctx.beginPath();
+    ctx.ellipse(cx + dx * r, cy + dy * r, r * 0.75, r * (wilted ? 0.45 : 0.7), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = wilted ? "#7a6a38" : COLORS.lettuceVein;
+    ctx.lineWidth = Math.max(1, cell / 70);
+    ctx.stroke();
+  }
+}
+
+function heart(ctx, x, y, s) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + s);
+  ctx.bezierCurveTo(x - s * 1.4, y + s * 0.1, x - s * 0.9, y - s * 1.1, x, y - s * 0.35);
+  ctx.bezierCurveTo(x + s * 0.9, y - s * 1.1, x + s * 1.4, y + s * 0.1, x, y + s);
+  ctx.fill();
+}
+
+function drawStrawberry(ctx, cx, base, cell, growth, ripe, berries) {
+  ctx.fillStyle = COLORS.berryLeaf;
+  const lr = cell * (0.05 + 0.08 * growth);
+  for (const dx of [-1, 0, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(cx + dx * lr * 1.2, base - lr * 1.3, lr * 0.8, lr * 0.6, dx * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const spots = [[0, 0], [-0.2, -0.05], [0.2, -0.05], [-0.1, -0.22], [0.1, -0.22]];
+  const s = cell * 0.07;
+  for (let i = 0; i < Math.min(berries, spots.length); i++) {
+    const [dx, dy] = spots[i];
+    const x = cx + dx * cell;
+    const y = base - cell * 0.02 + dy * cell;
+    ctx.fillStyle = ripe ? COLORS.berryRed : "#e6f0d8";
+    heart(ctx, x, y, s);
+    if (ripe) {
+      ctx.fillStyle = COLORS.berrySeed;
+      ctx.fillRect(x - s * 0.3, y, 1.5, 1.5);
+      ctx.fillRect(x + s * 0.2, y + s * 0.2, 1.5, 1.5);
+    }
+  }
+}
+
+function drawBlueberry(ctx, cx, base, cell, growth, ripe, berries, picks) {
+  const r = cell * (0.1 + 0.18 * growth + 0.02 * Math.min(picks, 3));
+  const cy = base - r * 0.9;
+  ctx.fillStyle = COLORS.bush;
+  for (const [dx, dy] of [[-0.5, 0.2], [0.5, 0.2], [0, -0.3]]) {
+    ctx.beginPath();
+    ctx.arc(cx + dx * r, cy + dy * r, r * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const spots = [[-0.45, 0.1], [0.4, 0.15], [0, -0.35], [-0.15, 0.35], [0.25, -0.1]];
+  ctx.fillStyle = ripe ? COLORS.blueberry : COLORS.blueberryYoung;
+  for (let i = 0; i < Math.min(berries, spots.length); i++) {
+    const [dx, dy] = spots[i];
+    ctx.beginPath();
+    ctx.arc(cx + dx * r, cy + dy * r, cell * 0.035, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -286,6 +390,24 @@ function drawHat(ctx, cx, top, w, cell, hat) {
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(cx + dx * w, top - cell * 0.02, cell * 0.045, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+  if (style === "berries") {
+    ctx.fillStyle = brim;
+    ctx.beginPath();
+    ctx.ellipse(cx, top, w * 0.75, cell * 0.045, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = crown;
+    roundRect(ctx, cx - w * 0.3, top - cell * 0.1, w * 0.6, cell * 0.1, cell * 0.03);
+    ctx.fill();
+    ctx.fillStyle = COLORS.berryRed;
+    heart(ctx, cx - w * 0.15, top - cell * 0.06, cell * 0.03);
+    ctx.fillStyle = COLORS.blueberry;
+    for (const dx of [0.08, 0.2]) {
+      ctx.beginPath();
+      ctx.arc(cx + dx * w, top - cell * 0.06, cell * 0.022, 0, Math.PI * 2);
       ctx.fill();
     }
     return;

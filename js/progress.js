@@ -9,11 +9,15 @@ import { AFTER_FESTIVAL, WORDS, lockedWords } from "./words.js";
 export const SHOP = [
   { id: "wheat_seeds", kind: "seeds", name: "Wheat seeds", text: "Plant wheat on your home farm.", cost: { hay: 3 }, after: 1, crop: "wheat" },
   { id: "field_5", kind: "growth", name: "Bigger field", text: "Your home farm grows to 5 by 5.", cost: { hay: 15 }, after: 2, size: 5 },
-  { id: "carrot_seeds", kind: "seeds", name: "Carrot seeds", text: "Plant carrots on your home farm.", cost: { wheat: 10 }, after: 3, crop: "carrot" },
+  { id: "carrot_seeds", kind: "seeds", name: "Carrot seeds", text: "Plant carrots. Plant them where wheat was just picked and they give 2!", cost: { wheat: 10 }, after: 3, crop: "carrot" },
+  { id: "strawberry_seeds", kind: "seeds", name: "Strawberry seeds", text: "Plant strawberries. Each one gives more for every strawberry next to it.", cost: { wheat: 12 }, after: 3, crop: "strawberry" },
   { id: "scarecrow", kind: "looks", name: "Scarecrow", text: "A friendly scarecrow for your farm.", cost: { wheat: 8 }, after: 3 },
+  { id: "lettuce_seeds", kind: "seeds", name: "Lettuce seeds", text: "Plant lettuce. It's quick, but pick it before it wilts!", cost: { hay: 12 }, after: 4, crop: "lettuce" },
   { id: "red_cap", kind: "hat", name: "Red cap", text: "A bright red cap for Bolt.", cost: { hay: 10 }, after: 4 },
   { id: "cowboy_hat", kind: "hat", name: "Cowboy hat", text: "Yee-haw! A wide brown hat.", cost: { wheat: 12 }, after: 4 },
   { id: "field_7", kind: "growth", name: "Even bigger field", text: "Your home farm grows to 7 by 7.", cost: { hay: 20, wheat: 20 }, after: 5, size: 7 },
+  { id: "blueberry_seeds", kind: "seeds", name: "Blueberry seeds", text: "Plant blueberry bushes. They grow back and give more each time.", cost: { carrot: 6 }, after: 5, crop: "blueberry" },
+  { id: "berry_hat", kind: "hat", name: "Berry hat", text: "A sun hat with strawberries and blueberries on it.", cost: { strawberry: 10, blueberry: 10 }, after: 6 },
   { id: "fence", kind: "looks", name: "Fence", text: "A wooden fence around your farm.", cost: { hay: 25 }, after: 6 },
   { id: "flower_crown", kind: "hat", name: "Flower crown", text: "Daisies and buttercups for Bolt.", cost: { carrot: 5 }, after: 6 },
   { id: "dog", kind: "looks", name: "Farm dog", text: "A puppy that follows Bolt around.", cost: { carrot: 8 }, after: 7 },
@@ -35,6 +39,9 @@ export const ALMANAC = [
   { item: "hay", name: "Hay", fact: "Hay is grass that has been cut and dried. Cows, horses and rabbits eat it all winter." },
   { item: "wheat", name: "Wheat", fact: "Wheat seeds are ground into flour, and flour makes bread, pasta and cake." },
   { item: "carrot", name: "Carrot", fact: "The carrot is a root. The orange part grows under the ground, and the leaves stick out the top." },
+  { item: "lettuce", name: "Lettuce", fact: "Lettuce grows fast, but in hot weather it 'bolts': it shoots up a tall stalk and turns bitter. Farmers pick it while it's crisp." },
+  { item: "strawberry", name: "Strawberry", fact: "Strawberries wear their seeds on the outside, about 200 on each berry. The plants send out runners to start new plants nearby." },
+  { item: "blueberry", name: "Blueberry", fact: "A blueberry bush can keep giving berries for more than 50 years, and it gives more as it grows bigger." },
 ];
 
 // ---- Saving ----
@@ -74,9 +81,10 @@ export function chapterStars(p, n) {
   return CHAPTERS[n - 1].quests.reduce((sum, q) => sum + (p.stars[q.id] ?? 0), 0);
 }
 
+// Bonus quests give stars but aren't needed to finish a chapter.
 export function isChapterDone(p, n) {
   const ch = CHAPTERS[n - 1];
-  return Boolean(ch) && ch.quests.every((q) => p.stars[q.id] >= 1);
+  return Boolean(ch) && ch.quests.every((q) => q.bonus || p.stars[q.id] >= 1);
 }
 
 // A chapter opens once the one before it is finished and the player has
@@ -109,11 +117,13 @@ export function isQuestOpen(p, id) {
   return i === 0 || p.stars[list[i - 1].id] >= 1;
 }
 
-// The quest to play next: the first open one not yet finished, then the
-// first open one without 3 stars. Null when every quest has 3 stars.
+// The quest to play next: the first open one not yet finished (bonus quests
+// last), then the first open one without 3 stars. Null when every quest has
+// 3 stars.
 export function nextQuest(p) {
   const open = QUESTS.filter((q) => isQuestOpen(p, q.id));
-  return (open.find((q) => !p.stars[q.id]) ?? open.find((q) => p.stars[q.id] < 3) ?? null)?.id ?? null;
+  return (open.find((q) => !p.stars[q.id] && !q.bonus) ?? open.find((q) => !p.stars[q.id])
+    ?? open.find((q) => p.stars[q.id] < 3) ?? null)?.id ?? null;
 }
 
 export function locked(p) {

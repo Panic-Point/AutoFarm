@@ -102,6 +102,24 @@ repeat 4 times:
     move(EAST)
 plant(Crop.WHEAT)`,
 
+  "3-5": `
+plant(Crop.STRAWBERRY)
+move(EAST)
+plant(Crop.STRAWBERRY)
+move(NORTH)
+plant(Crop.STRAWBERRY)
+move(WEST)
+plant(Crop.STRAWBERRY)
+repeat 11 times:
+    wait()
+harvest()
+move(SOUTH)
+harvest()
+move(EAST)
+harvest()
+move(NORTH)
+harvest()`,
+
   "4-1": `
 repeat 4 times:
     if is_ripe():
@@ -150,6 +168,22 @@ repeat 3 times:
     move(EAST)
 plant(Crop.WHEAT)`,
 
+  "4-5": `
+repeat 4 times:
+    plant(Crop.LETTUCE)
+    move(EAST)
+plant(Crop.LETTUCE)
+repeat 4 times:
+    move(WEST)
+repeat 4 times:
+    if is_ripe():
+        harvest()
+    else:
+        wait()
+        harvest()
+    move(EAST)
+harvest()`,
+
   "5-1": `
 repeat while can_move(EAST):
     move(EAST)`,
@@ -171,6 +205,24 @@ repeat while can_move(WEST):
     move(WEST)
 repeat while can_move(SOUTH):
     move(SOUTH)`,
+
+  "5-6": `
+repeat 3 times:
+    harvest()
+    plant(Crop.CARROT)
+    move(EAST)
+harvest()
+plant(Crop.CARROT)
+repeat 3 times:
+    move(WEST)
+repeat 3 times:
+    repeat until is_ripe():
+        wait()
+    harvest()
+    move(EAST)
+repeat until is_ripe():
+    wait()
+harvest()`,
 
   "6-1": `
 harvest()
@@ -204,6 +256,18 @@ harvest()
 repeat until count("wheat") == 4:
     move(EAST)
     harvest()`,
+
+  "6-5": `
+set way to EAST
+repeat until count("blueberry") >= 14:
+    if is_ripe():
+        harvest()
+    else if can_move(way):
+        move(way)
+    else if way == EAST:
+        set way to WEST
+    else:
+        set way to EAST`,
 
   "7-1": `
 define row_east:

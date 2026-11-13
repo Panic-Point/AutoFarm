@@ -23,6 +23,19 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
 - **The home farm** is free play. Everything harvested, in quests too, goes to the barn, and the shop sells field upgrades, seeds, hats for Bolt and farm decorations for produce. Each finished chapter puts new things in the shop and a badge on the shelf. The shelf also has the almanac (a page per crop) and titles.
 - **For grown-ups:** the shelf has a practice mode that opens every chapter and word, and a button to start progress over.
 
+## Crops
+
+| Crop | Costs | Ripe after | Gives | Special rule |
+| --- | --- | --- | --- | --- |
+| Grass | free | 4 ticks | 1 hay | Grows back by itself. |
+| Wheat | free | 8 ticks | 1 wheat | |
+| Carrot | 2 wheat | 14 ticks | 1, or 2 after wheat | **Crop swap:** planted on soil where wheat was just picked, it gives 2. A *take-turns puzzle*: a field has to swap between wheat and carrots, so the program has to know what comes next. |
+| Strawberry | 3 wheat | 12 ticks | 1 + 1 per friend | **Friends:** when it ripens it counts the strawberries right next to it, and gives 1 more for each. A *layout puzzle*: 4 in a row make 10, a 2 by 2 square makes 12, and picking one before its neighbours ripen leaves them fewer friends. |
+| Lettuce | 2 hay | 6 ticks | 1 lettuce | **Wilts:** it stays crisp for 8 ticks, then wilts and gives nothing. A *scheduling puzzle*: first planted, first picked, so the order Bolt walks matters (a queue). |
+| Blueberry | 2 carrots | 24 ticks | 2, 3, 4, 5, 5... | **Bush:** stays after a ripe harvest and is ripe again 10 ticks later, giving 1 more each time up to 5. Picking it early loses the whole bush. A *keep-it-running puzzle*: a patrol loop with `repeat until count(...)` beats replanting. |
+
+Each special rule has a bonus quest built around it (3-5 Berry Friends, 4-5 Crunchy Lettuce, 5-6 Wheat Then Carrots, 6-5 Two Old Bushes), and the new seeds go in the shop after the chapter that fits them. Bonus quests give stars but aren't needed to finish a chapter.
+
 Quests are plain data in `js/chapters.js`, so adding one needs no new code. `tests/solutions.mjs` holds a 3-star program for every quest, and the tests run them all with the real game and Python, so the star targets always stay within reach.
 
 Your program runs in the browser with [Pyodide](https://pyodide.org). The farm is a grid of tiles. Every farmer action (`move`, `till`, `plant`, `harvest`, `wait`) takes one tick, crops grow every tick, and looking around (`is_ripe()`, `position()` and so on) is free. The full command list is on the game page.

@@ -1,6 +1,6 @@
 // Page controller: quests and the home farm, run/stop, playback of the
 // worker's snapshots, and the map, shop and shelf.
-import { ITEMS, newFarmState } from "./game.js";
+import { ITEMS, emptyInventory, newFarmState } from "./game.js";
 import { drawFarm } from "./render.js";
 import { loadWorkspace } from "./files.js";
 import { Desk } from "./windows.js";
@@ -74,8 +74,11 @@ function loadHome(saved) {
   if (!state || state.size !== size || !Array.isArray(state.tiles)) {
     state = newFarmState(size, saved?.inventory ?? {});
   }
+  // Older saves don't have the newer crops in the barn yet.
+  state.inventory = emptyInventory(state.inventory);
   state.seeds = seeds(progress);
   state.lost = 0;
+  state.wilted = 0;
   return state;
 }
 
@@ -134,7 +137,7 @@ function renderQuestCard(bubble) {
   if (quest) {
     const ch = chapterOf(quest.id);
     const best = progress.stars[quest.id] ?? 0;
-    $("quest-place").textContent = `Chapter ${ch.n}: ${ch.title} · Quest ${quest.id}`;
+    $("quest-place").textContent = `Chapter ${ch.n}: ${ch.title} · ${quest.bonus ? "Bonus quest" : "Quest"} ${quest.id}`;
     $("quest-title").textContent = `${quest.title} ${best ? starText(best) : ""}`.trim();
     $("quest-who").textContent = quest.who;
     $("quest-bubble").textContent = bubble ?? quest.story;
@@ -454,7 +457,9 @@ function renderMap() {
           $("map-dialog").close();
           playQuest(q.id);
         },
-      }, el("span", { class: "stop-id" }, q.id), el("span", {}, q.title), el("span", { class: "stop-stars" }, starText(stars)));
+      }, el("span", { class: "stop-id" }, q.id), el("span", {}, q.title),
+      q.bonus ? el("span", { class: "stop-bonus", title: "A bonus quest. You don't need it to finish the chapter." }, "Bonus") : null,
+      el("span", { class: "stop-stars" }, starText(stars)));
     });
     body.append(el("article", { class: `chapter${open ? "" : " closed"}${done ? " done" : ""}` },
       el("div", { class: "chapter-head" },

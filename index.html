@@ -76,7 +76,7 @@
         <li data-word="move"><code>move(NORTH)</code> <code>SOUTH</code> <code>EAST</code> <code>WEST</code>. Returns <code>False</code> at the edge.</li>
         <li data-word="harvest"><code>harvest()</code> collects a ripe crop. An unripe crop is lost.</li>
         <li data-word="till"><code>till()</code> turns grass into soil, or soil back into grass.</li>
-        <li data-word="plant"><code>plant(Crop.WHEAT)</code> on soil. <code>Crop.CARROT</code> costs 2 wheat.</li>
+        <li data-word="plant"><code>plant(Crop.WHEAT)</code> on soil. <code>Crop.CARROT</code> costs 2 wheat, <code>Crop.LETTUCE</code> 2 hay, <code>Crop.STRAWBERRY</code> 3 wheat and <code>Crop.BLUEBERRY</code> 2 carrots.</li>
         <li data-word="wait"><code>wait()</code> does nothing for one tick.</li>
       </ul>
       <h3>Looking</h3>
@@ -110,7 +110,10 @@
       <ul>
         <li>Grass: grows back by itself, ripe after 4 ticks, gives hay.</li>
         <li>Wheat: ripe after 8 ticks, gives wheat.</li>
-        <li>Carrot: ripe after 14 ticks, gives a carrot.</li>
+        <li>Carrot: costs 2 wheat, ripe after 14 ticks, gives a carrot. Plant it where wheat was just picked and it gives 2!</li>
+        <li>Lettuce: costs 2 hay, ripe after 6 ticks, gives a lettuce. It wilts 8 ticks after it's ripe, so pick the first one you planted first!</li>
+        <li>Strawberry: costs 3 wheat, ripe after 12 ticks. Gives 1 strawberry, plus 1 more for each strawberry right next to it when it gets ripe.</li>
+        <li>Blueberry: costs 2 carrots, ripe after 24 ticks. The bush stays when you pick it and is ripe again 10 ticks later. It gives 2 blueberries, then 1 more each time, up to 5. Picking it early loses the whole bush.</li>
       </ul>
     </section>
   </main>

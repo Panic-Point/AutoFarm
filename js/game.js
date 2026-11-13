@@ -16,23 +16,72 @@ export const DIRECTIONS = {
 // ground: which ground the crop can be planted on.
 // cost: items spent to plant it.
 // yield: items gained when a ripe crop is harvested.
+//
+// Each of the newer crops has one special rule:
+// crispTicks (lettuce): it stays crisp this many ticks after it's ripe, then
+//   wilts. A wilted crop isn't ripe, and harvesting it gives nothing.
+// friendBonus (strawberry): when it ripens, it counts the strawberries right
+//   next to it (north, south, east and west), and gives this much more for
+//   each one.
+// after (carrot): planted on soil where this crop was just picked, it gives
+//   afterBonus more. Soil remembers the last crop picked ripe on it until
+//   something is planted there or it's tilled.
+// regrowTicks (blueberry): the bush stays after a ripe harvest and is ripe
+//   again this many ticks later. Each ripe harvest gives pickBonus more than
+//   the one before, up to maxYield.
 export const CROPS = {
   grass: { growTicks: 4, ground: "grass", cost: {}, yield: { hay: 1 } },
   wheat: { growTicks: 8, ground: "soil", cost: {}, yield: { wheat: 1 } },
-  carrot: { growTicks: 14, ground: "soil", cost: { wheat: 2 }, yield: { carrot: 1 } },
+  carrot: { growTicks: 14, ground: "soil", cost: { wheat: 2 }, yield: { carrot: 1 }, after: "wheat", afterBonus: 1 },
+  lettuce: { growTicks: 6, ground: "soil", cost: { hay: 2 }, yield: { lettuce: 1 }, crispTicks: 8 },
+  strawberry: { growTicks: 12, ground: "soil", cost: { wheat: 3 }, yield: { strawberry: 1 }, friendBonus: 1 },
+  blueberry: {
+    growTicks: 24, ground: "soil", cost: { carrot: 2 }, yield: { blueberry: 2 },
+    regrowTicks: 10, pickBonus: 1, maxYield: 5,
+  },
 };
 
-export const ITEMS = ["hay", "wheat", "carrot"];
+export const ITEMS = ["hay", "wheat", "carrot", "lettuce", "strawberry", "blueberry"];
+
+// How many strawberries are right next to tile (x, y): north, south, east and
+// west. Works on a Game or a snapshot.
+export function strawberryFriends(state, x, y) {
+  let n = 0;
+  for (const [dx, dy] of Object.values(DIRECTIONS)) {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= state.size || ny >= state.size) continue;
+    if (state.tiles[ny * state.size + nx].crop === "strawberry") n += 1;
+  }
+  return n;
+}
+
+export function isTileRipe(tile) {
+  return Boolean(tile.crop) && !tile.wilted && tile.age >= CROPS[tile.crop].growTicks;
+}
+
+// What harvesting the ripe crop on tile (x, y) gives: { item: amount }.
+export function harvestYield(state, x, y) {
+  const tile = state.tiles[y * state.size + x];
+  const info = CROPS[tile.crop];
+  const [[item, base]] = Object.entries(info.yield);
+  let n = base;
+  if (tile.rotated) n += info.afterBonus;
+  if (info.friendBonus) n += info.friendBonus * (tile.friends ?? strawberryFriends(state, x, y));
+  if (info.pickBonus) n = Math.min(info.maxYield, n + info.pickBonus * (tile.picks ?? 0));
+  return { [item]: n };
+}
 
 // seeds: the crops that can be planted, or null for every crop.
 // lost: how many unripe crops were harvested (and so lost).
+// wilted: how many crops wilted before they were picked.
 export function newFarmState(size = 3, inventory = {}) {
   const tiles = [];
   for (let i = 0; i < size * size; i++) {
     // Start with a field of ripe grass so the first harvest pays off at once.
     tiles.push({ ground: "grass", crop: "grass", age: CROPS.grass.growTicks });
   }
-  return { size, x: 0, y: 0, tick: 0, tiles, inventory: emptyInventory(inventory), seeds: null, lost: 0 };
+  return { size, x: 0, y: 0, tick: 0, tiles, inventory: emptyInventory(inventory), seeds: null, lost: 0, wilted: 0 };
 }
 
 export function emptyInventory(from = {}) {
@@ -50,6 +99,7 @@ export class Game {
     this.inventory = s.inventory;
     this.seeds = s.seeds ?? null;
     this.lost = s.lost ?? 0;
+    this.wilted = s.wilted ?? 0;
   }
 
   snapshot() {
@@ -62,6 +112,7 @@ export class Game {
       inventory: { ...this.inventory },
       seeds: this.seeds,
       lost: this.lost,
+      wilted: this.wilted,
     };
   }
 
@@ -73,11 +124,25 @@ export class Game {
     return this.tileAt(this.x, this.y);
   }
 
-  // One tick of time: every crop grows.
+  // One tick of time: every crop grows. A strawberry counts its friends the
+  // moment it ripens, and lettuce that's been ripe too long wilts.
   advance() {
     this.tick += 1;
-    for (const t of this.tiles) {
-      if (t.crop && t.age < CROPS[t.crop].growTicks) t.age += 1;
+    const ripened = [];
+    this.tiles.forEach((t, i) => {
+      if (!t.crop || t.wilted) return;
+      const info = CROPS[t.crop];
+      const last = info.growTicks + (info.crispTicks ?? 0);
+      if (t.age >= last) return;
+      t.age += 1;
+      if (t.age === info.growTicks && info.friendBonus) ripened.push(i);
+      if (info.crispTicks && t.age === last) {
+        t.wilted = true;
+        this.wilted += 1;
+      }
+    });
+    for (const i of ripened) {
+      this.tiles[i].friends = strawberryFriends(this, i % this.size, Math.floor(i / this.size));
     }
   }
 
@@ -96,6 +161,8 @@ export class Game {
   // Turns grass into soil, or soil back into grass. Clears any crop.
   till() {
     const t = this.here;
+    clearExtras(t);
+    delete t.last;
     if (t.ground === "grass") {
       t.ground = "soil";
       t.crop = null;
@@ -116,6 +183,9 @@ export class Game {
     const ok = this.hasSeed(crop) && t.crop === null && t.ground === info.ground && this.canAfford(info.cost);
     if (ok) {
       for (const [item, n] of Object.entries(info.cost)) this.inventory[item] -= n;
+      clearExtras(t);
+      if (info.after && t.last === info.after) t.rotated = true;
+      delete t.last;
       t.crop = crop;
       t.age = 0;
     }
@@ -124,20 +194,30 @@ export class Game {
   }
 
   // Harvesting a ripe crop collects its yield. Harvesting an unripe crop
-  // destroys it and collects nothing. Grass grows back on its own.
+  // destroys it and collects nothing, and so does harvesting a wilted one.
+  // Grass grows back on its own, and a ripe blueberry bush stays to regrow.
   harvest() {
     const t = this.here;
     let ok = false;
     if (t.crop) {
       const info = CROPS[t.crop];
-      ok = t.age >= info.growTicks;
+      ok = isTileRipe(t);
       if (ok) {
-        for (const [item, n] of Object.entries(info.yield)) this.inventory[item] += n;
-      } else {
+        for (const [item, n] of Object.entries(harvestYield(this, this.x, this.y))) this.inventory[item] += n;
+      } else if (!t.wilted) {
         this.lost += 1;
       }
-      t.crop = t.ground === "grass" ? "grass" : null;
-      t.age = 0;
+      if (ok && info.regrowTicks) {
+        t.age = info.growTicks - info.regrowTicks;
+        t.picks = (t.picks ?? 0) + 1;
+      } else {
+        const picked = t.crop;
+        clearExtras(t);
+        t.crop = t.ground === "grass" ? "grass" : null;
+        t.age = 0;
+        // Soil remembers what was just picked, for crops that like to follow it.
+        if (ok && t.ground === "soil") t.last = picked;
+      }
     }
     this.advance();
     return ok;
@@ -167,7 +247,19 @@ export class Game {
   }
 
   isRipe() {
-    const t = this.here;
-    return t.crop !== null && t.age >= CROPS[t.crop].growTicks;
+    return isTileRipe(this.here);
   }
+
+  isWilted() {
+    return Boolean(this.here.wilted);
+  }
+}
+
+// Forget what a tile's last crop remembered (friends, picks, wilting,
+// planted after the right crop).
+function clearExtras(t) {
+  delete t.rotated;
+  delete t.friends;
+  delete t.picks;
+  delete t.wilted;
 }

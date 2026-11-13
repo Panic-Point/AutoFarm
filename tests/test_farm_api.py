@@ -332,5 +332,17 @@ class WordsTest(unittest.TestCase):
         self.assertEqual(logs, ["True"])
 
 
+    def test_new_crops(self):
+        self.assertEqual(farm_api.run("plant(Crop.LETTUCE)\nplant(Crop.STRAWBERRY)\nplant(Crop.BLUEBERRY)\n"),
+                         ["ok", "Program finished."])
+        self.assertEqual([c for c in calls if c[0] == "plant"],
+                         [("plant", ("lettuce",)), ("plant", ("strawberry",)), ("plant", ("blueberry",))])
+        status, msg = farm_api.run("print(count('blueberry'))\ncount('apple')\n")
+        self.assertEqual(logs, ["0"])
+        self.assertIn("'lettuce', 'strawberry' or 'blueberry'", msg)
+        status, msg = farm_api.run("plant('apple')\n")
+        self.assertIn("Crop.LETTUCE, Crop.STRAWBERRY or Crop.BLUEBERRY", msg)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -3,6 +3,8 @@
 // A quest's field is a map, one string per row, north (top) row first:
 //   G ripe grass   g young grass   . empty soil
 //   W ripe wheat   w young wheat   C ripe carrot   c young carrot
+//   L ripe lettuce   l young lettuce   R ripe strawberry   r young strawberry
+//   B ripe blueberry bush   b young blueberry bush
 // Bolt starts at `start` ([x, y], with [0, 0] in the south-west corner).
 // `fog: true` hides every tile more than one step away from Bolt.
 //
@@ -15,7 +17,11 @@
 //                         s any soil, ? anything
 //   plants:  { crop: n }  exactly n tiles growing that crop at the end
 //   noLoss:  true         never harvest an unripe crop
+//   fresh:   true         never let a lettuce wilt
 //   needs:   [[...]]      use one word from each inner list (see js/words.js)
+//
+// A quest with `bonus: true` gives stars, but isn't needed to finish its
+// chapter. Each new crop has a bonus quest built around its special rule.
 //
 // Stars: finishing the goal gives 1 star. Finishing within `stars.two` ticks
 // (cycles) gives 2, and within `stars.three` gives 3. tests/solutions.mjs
@@ -260,6 +266,22 @@ export const CHAPTERS = [
           "Zig-zag 2 times, then plant one more row going east.",
         ],
       },
+      {
+        id: "3-5",
+        bonus: true,
+        title: "Berry Friends",
+        who: "Hazel",
+        story: "Strawberries love company! Each one gives an extra berry for every strawberry right next to it.",
+        goalText: "You have wheat for 4 strawberries. Grow 12 strawberries with them.",
+        field: { map: ["....", "....", "....", "...."], inventory: { wheat: 12 } },
+        goal: { gain: { strawberry: 12 }, noLoss: true },
+        stars: { two: 32, three: 25 },
+        hints: [
+          "A strawberry counts its friends (north, south, east and west) when it gets ripe. A row of 4 only makes 10. Try another shape!",
+          "In a 2 by 2 square, every strawberry has 2 friends, so each one gives 3.",
+          "Plant the square, wait until all 4 are ripe, then pick them. Picking one too soon leaves the others with fewer friends.",
+        ],
+      },
     ],
   },
   {
@@ -328,6 +350,22 @@ export const CHAPTERS = [
           "else: runs when the if was not true.",
           "if is_ripe(): harvest(), else: plant(Crop.WHEAT)",
           "Do that on each tile of the first row, stepping east between them.",
+        ],
+      },
+      {
+        id: "4-5",
+        bonus: true,
+        title: "Crunchy Lettuce",
+        who: "Pip",
+        story: "Lettuce is quick, but it wilts if it waits too long! Plant me a row and pick it while it's crunchy.",
+        goalText: "Plant 5 lettuce in the row, then pick all 5 before any of them wilt.",
+        field: { map: [".....", ".....", ".....", ".....", "....."], inventory: { hay: 10 } },
+        goal: { gain: { lettuce: 5 }, fresh: true, noLoss: true },
+        stars: { two: 28, three: 22 },
+        hints: [
+          "Lettuce is ripe 6 ticks after it's planted, and wilts 8 ticks after that.",
+          "The first lettuce you planted will wilt first. Pick it first too!",
+          "Plant going east, walk back west, then go east again with if is_ripe(): harvest(), else: wait().",
         ],
       },
     ],
@@ -415,6 +453,22 @@ export const CHAPTERS = [
           "Two loops: repeat while can_move(WEST), then repeat while can_move(SOUTH).",
         ],
       },
+      {
+        id: "5-6",
+        bonus: true,
+        title: "Wheat Then Carrots",
+        who: "Wren",
+        story: "Carrots grow best where wheat just grew. Plant one where you picked wheat and it gives 2 carrots!",
+        goalText: "Pick the wheat, plant carrots in the same spots, and harvest 8 carrots.",
+        field: { map: ["....", "....", "....", "WWWW"], inventory: { wheat: 4 } },
+        goal: { gain: { carrot: 8 }, noLoss: true, needs: [["repeat_until", "repeat_while"]] },
+        stars: { two: 32, three: 25 },
+        hints: [
+          "After you pick wheat, the soil remembers. A carrot planted there right away gives 2.",
+          "On each tile: harvest() the wheat, then plant(Crop.CARROT) in the same spot.",
+          "The first carrot you planted is ripe first. Walk back to it, then repeat until is_ripe(): wait() before each harvest.",
+        ],
+      },
     ],
   },
   {
@@ -483,6 +537,22 @@ export const CHAPTERS = [
           "Do the hay first, then the wheat.",
           "repeat until count(\"hay\") == 3: harvest and step.",
           "Then step north and do the same for wheat, still going east.",
+        ],
+      },
+      {
+        id: "6-5",
+        bonus: true,
+        title: "Two Old Bushes",
+        who: "Mayor Maple",
+        story: "These blueberry bushes grow back after you pick them, and give more berries every time. Just never pick one early!",
+        goalText: "Pick at least 14 blueberries from the two bushes without losing a bush.",
+        field: { map: ["...", "...", "B.B"] },
+        goal: { gain: { blueberry: 14 }, noLoss: true, needs: [["count", "variables"]] },
+        stars: { two: 28, three: 21 },
+        hints: [
+          "A bush is ripe again 10 ticks after you pick it. Picking it early loses the whole bush.",
+          "Walk back and forth between the bushes. Only harvest when is_ripe() says yes.",
+          "repeat until count(\"blueberry\") >= 14: then harvest if ripe, or walk to the other bush.",
         ],
       },
     ],
