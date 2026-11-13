@@ -14,6 +14,7 @@ import types
 
 import _farm
 from plain_words import HELPERS, PlainWordsError, translate
+from words import find_words
 
 NORTH = "north"
 SOUTH = "south"
@@ -44,6 +45,10 @@ class TooManySteps(BaseException):
     """The program ran too many lines without the farmer doing anything."""
 
 
+class FarmError(Exception):
+    """A mistake with a friendly message that needs no error name in front."""
+
+
 def _act(result):
     if result < 0:
         raise OutOfTicks()
@@ -68,6 +73,8 @@ def plant(crop):
     """Plant a crop on this tile. Returns False if it cannot be planted here."""
     if crop not in _CROPS:
         raise ValueError("plant() needs Crop.GRASS, Crop.WHEAT or Crop.CARROT, got " + repr(crop))
+    if not _farm.has_seed(crop):
+        raise FarmError(f"Bolt has no {crop} seeds yet. You can buy them in the shop.")
     return _act(_farm.plant(crop))
 
 
@@ -99,6 +106,13 @@ def ground_here():
     return _farm.ground_here()
 
 
+def can_move(direction):
+    """True if Bolt can step that way, False at the edge of the field."""
+    if direction not in _DIRECTIONS:
+        raise ValueError("can_move() needs NORTH, SOUTH, EAST or WEST, got " + repr(direction))
+    return bool(_farm.can_move(direction))
+
+
 def position():
     """Your (x, y) position. (0, 0) is the south-west corner."""
     return (_farm.pos_x(), _farm.pos_y())
@@ -127,7 +141,7 @@ def _print(*args, sep=" ", end=""):
 
 API = {
     "move": move, "till": till, "plant": plant, "harvest": harvest, "wait": wait,
-    "is_ripe": is_ripe, "crop_here": crop_here, "ground_here": ground_here,
+    "is_ripe": is_ripe, "crop_here": crop_here, "ground_here": ground_here, "can_move": can_move,
     "position": position, "field_size": field_size, "count": count, "ticks": ticks,
     "NORTH": NORTH, "SOUTH": SOUTH, "EAST": EAST, "WEST": WEST, "Crop": Crop,
     "print": _print,
@@ -230,17 +244,20 @@ class _Loader:
     """Compiles and runs the player's code windows, and imports one window
     into another. Each window runs once per run, the first time it's used."""
 
-    def __init__(self, files, main):
+    def __init__(self, files, main, locked=None):
         self.files = files
         self.main = main
+        self.locked = locked or {}
+        self.used = set()
         self.modules = {}
         self.loading = []
         self.builtins = dict(_SAFE_BUILTINS)
         self.builtins["__import__"] = self.import_
 
     def compile(self, name):
+        tags = {}
         try:
-            code = translate(self.files[name])
+            code = translate(self.files[name], tags)
         except PlainWordsError as e:
             if name == self.main:
                 raise PlayerError(e.message) from None
@@ -250,7 +267,16 @@ class _Loader:
         except SyntaxError as e:
             raise PlayerError(f"{_where(name, self.main, e.lineno)}: SyntaxError: {e.msg}") from None
         _check_sandbox(tree, name, self.main, self.files)
+        self._check_words(tree, tags, name)
         return compile(tree, _filename(name), "exec")
+
+    def _check_words(self, tree, tags, name):
+        """Note the coding words this window uses, and stop at the first one
+        Bolt hasn't learned yet."""
+        for word, line in find_words(tree, tags):
+            if word in self.locked:
+                raise PlayerError(f"{_where(name, self.main, line)}: {self.locked[word]}")
+            self.used.add(word)
 
     def run(self, name, env):
         env["__builtins__"] = self.builtins
@@ -282,26 +308,41 @@ class _Loader:
         return self.modules[name]
 
 
-def _parse_files(files):
-    if files is None:
+def _parse_json(value):
+    if value is None:
         return {}
-    if isinstance(files, str):
-        files = json.loads(files)
-    return {str(k): str(v) for k, v in dict(files).items()}
+    if isinstance(value, str):
+        return json.loads(value)
+    return dict(value)
 
 
-def run(code, files=None, name="main"):
+def _parse_files(files):
+    return {str(k): str(v) for k, v in _parse_json(files).items()}
+
+
+_used = []
+
+
+def used_words():
+    """The coding words the last run used (see py/words.py), sorted."""
+    return list(_used)
+
+
+def run(code, files=None, name="main", locked=None):
     """Run a player's program. `code` is the code window being run and `name`
     is its name. `files` maps the names of the other code windows to their code
-    (a dict or a JSON string), so the program can use them.
+    (a dict or a JSON string), so the program can use them. `locked` maps each
+    coding word Bolt doesn't know yet to what Bolt says about it (a dict or a
+    JSON string); using one stops the program before it starts.
 
     Returns [status, message] where status is 'ok', 'out_of_ticks',
     'too_many_steps' or 'error'."""
-    global _lines
+    global _lines, _used
     _lines = 0
     files = _parse_files(files)
     files[name] = code
-    loader = _Loader(files, name)
+    loader = _Loader(files, name, {str(k): str(v) for k, v in _parse_json(locked).items()})
+    _used = []
     env = {"__name__": "__main__"}
     sys.settrace(_global_trace)
     try:
@@ -320,8 +361,9 @@ def run(code, files=None, name="main"):
                 "Is there a loop that never ends without the farmer doing anything?"]
     except BaseException as e:  # noqa: BLE001 - report every player error
         found = _user_frame(e)
-        msg = f"{type(e).__name__}: {e}"
+        msg = str(e) if isinstance(e, FarmError) else f"{type(e).__name__}: {e}"
         return ["error", f"{_where(found[0], name, found[1])}: {msg}" if found else msg]
     finally:
         sys.settrace(None)
+        _used = sorted(loader.used)
     return ["ok", "Program finished."]

@@ -5,54 +5,15 @@
 // to the page in order, which replays them at the speed the player picks.
 
 import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.mjs";
-import { Game } from "./game.js";
+import { FarmBridge, MAX_TICKS, PY_FILES } from "./bridge.js";
 
-const MAX_TICKS = 5000;
-const BATCH = 100;
-
-let game = null;
 let runId = 0;
-let startTick = 0;
-let events = [];
-
-function flush() {
-  if (events.length) {
-    postMessage({ type: "events", runId, events });
-    events = [];
-  }
-}
-
-function act(fn) {
-  if (game.tick - startTick >= MAX_TICKS) return -1;
-  const ok = fn();
-  events.push({ kind: "frame", state: game.snapshot() });
-  if (events.length >= BATCH) flush();
-  return ok ? 1 : 0;
-}
-
-const farm = {
-  move: (d) => act(() => game.move(d)),
-  till: () => act(() => game.till()),
-  plant: (c) => act(() => game.plant(c)),
-  harvest: () => act(() => game.harvest()),
-  wait: () => act(() => game.wait()),
-  is_ripe: () => game.isRipe(),
-  crop_here: () => game.here.crop || "",
-  ground_here: () => game.here.ground,
-  pos_x: () => game.x,
-  pos_y: () => game.y,
-  field_size: () => game.size,
-  count: (item) => game.inventory[item] ?? 0,
-  ticks: () => game.tick - startTick,
-  log: (text) => {
-    events.push({ kind: "log", text: String(text) });
-  },
-};
+const bridge = new FarmBridge((events) => postMessage({ type: "events", runId, events }));
 
 async function init() {
   const pyodide = await loadPyodide();
-  pyodide.registerJsModule("_farm", farm);
-  for (const file of ["plain_words.py", "farm_api.py"]) {
+  pyodide.registerJsModule("_farm", bridge.module);
+  for (const file of PY_FILES) {
     const source = await (await fetch(new URL(`../py/${file}`, import.meta.url))).text();
     pyodide.FS.writeFile(`/home/pyodide/${file}`, source);
   }
@@ -75,19 +36,8 @@ onmessage = async (e) => {
   if (msg.type !== "run") return;
   const api = await ready;
   runId = msg.runId;
-  game = new Game(msg.state);
-  startTick = game.tick;
-  events = [];
-  let status = "error";
-  let message = "";
-  try {
-    // The window being run, plus every other window it can `use`.
-    const result = api.run(msg.code, JSON.stringify(msg.files ?? {}), msg.name ?? "main");
-    [status, message] = result.toJs();
-    result.destroy();
-  } catch (err) {
-    message = `Internal error: ${err}`;
-  }
-  flush();
-  postMessage({ type: "done", runId, status, message, ticks: game.tick - startTick });
+  bridge.start(msg.state);
+  // The window being run, plus every other window it can `use`.
+  const result = bridge.run(api, msg);
+  postMessage({ type: "done", runId, ...result });
 };

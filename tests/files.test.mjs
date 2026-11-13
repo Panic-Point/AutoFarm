@@ -22,10 +22,10 @@ test("new windows get a free name", () => {
   assert.equal(nextName(["my_code", "my_code2"]), "my_code3");
 });
 
-test("a new player gets main and helper windows", () => {
+test("a new player gets one simple main window", () => {
   const ws = loadWorkspace(null, null);
-  assert.deepEqual(ws.windows.map((w) => w.name), ["main", "helper"]);
-  assert.match(ws.windows[0].code, /^use helper$/m);
+  assert.deepEqual(ws.windows.map((w) => w.name), ["main"]);
+  assert.match(ws.windows[0].code, /^harvest\(\)$/m);
   assert.equal(ws.active, "main");
 });
 
