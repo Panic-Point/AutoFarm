@@ -1,11 +1,14 @@
 // The player's progress: stars, open chapters, the shop, badges, the almanac
 // and titles. No DOM code here, so it can be tested with Node.
 import { CHAPTERS, QUESTS, findQuest } from "./chapters.js";
+import { CONTRACTS, GOLDEN, findContract } from "./postgame.js";
 import { ITEMS } from "./game.js";
+import { plural } from "./quests.js";
 import { AFTER_FESTIVAL, WORDS, lockedWords } from "./words.js";
 
 // ---- The shop ----
 // `after`: the chapter that has to be finished before it can be bought.
+// `contract`: the contract that has to be finished instead.
 
 export const SHOP = [
   { id: "wheat_seeds", kind: "seeds", name: "Wheat seeds", text: "Plant wheat on your home farm.", cost: { hay: 3 }, after: 1, crop: "wheat" },
@@ -30,6 +33,23 @@ export const SHOP = [
   { id: "sunflower_seeds", kind: "seeds", name: "Sunflower seeds", text: "Plant sunflowers. They're so tall Bolt can see them from anywhere with ripe_at(x, y).", cost: { pumpkin: 4 }, after: 7, crop: "sunflower" },
   { id: "sunflower_hat", kind: "hat", name: "Sunflower hat", text: "A big sunny flower for Bolt's head.", cost: { sunflower: 5 }, after: 7 },
   { id: "field_10", kind: "growth", name: "Giant field", text: "Your home farm grows to 10 by 10.", cost: { carrot: 20 }, after: 8, size: 10 },
+  // Rewards from the contract board.
+  { id: "blue_cap", kind: "hat", name: "Blue cap", text: "Daisy's thank-you: a sky blue cap.", cost: { hay: 10 }, contract: "c-1" },
+  { id: "baker_hat", kind: "hat", name: "Baker's hat", text: "Hazel's thank-you: a tall white hat for bread days.", cost: { wheat: 10 }, contract: "c-2" },
+  { id: "orange_cap", kind: "hat", name: "Orange cap", text: "Pip's thank-you: a carrot orange cap.", cost: { carrot: 5 }, contract: "c-3" },
+  { id: "green_beanie", kind: "hat", name: "Green beanie", text: "Wren's thank-you: a warm hat for foggy days.", cost: { lettuce: 5 }, contract: "c-4" },
+  { id: "dinner_bell", kind: "looks", name: "Dinner bell", text: "A bell by the barn to call Daisy for dinner.", cost: { hay: 15 }, contract: "c-5" },
+  { id: "top_hat", kind: "hat", name: "Top hat", text: "The Mayor's thank-you: very fancy.", cost: { strawberry: 5 }, contract: "c-6" },
+  {
+    id: "bee_hive", kind: "looks", name: "Bee hive",
+    text: "A hive in the middle of your farm. Strawberries and blueberries within 1 tile of it give 1 more.",
+    cost: { strawberry: 10 }, contract: "c-7",
+  },
+  { id: "honey_hat", kind: "hat", name: "Honey hat", text: "A golden hat that smells of honey.", cost: { strawberry: 10 }, contract: "c-8" },
+  { id: "purple_cap", kind: "hat", name: "Purple cap", text: "Pip's other thank-you: a blueberry purple cap.", cost: { blueberry: 5 }, contract: "c-9" },
+  { id: "sun_hat", kind: "hat", name: "Sun hat", text: "Wren's other thank-you: a wide hat for sunny days.", cost: { wheat: 15 }, contract: "c-10" },
+  { id: "ribbon_hat", kind: "hat", name: "Ribbon hat", text: "A hat covered in the Mayor's prize ribbons.", cost: { blueberry: 5, strawberry: 5 }, contract: "c-11" },
+  { id: "farmer_hat", kind: "hat", name: "Master farmer's hat", text: "Aunt Juniper's own old farm hat. She says it's yours now.", cost: { carrot: 10 }, contract: "c-12" },
 ];
 
 // ---- Golden crowns: a free gift for each finished chapter ----
@@ -140,12 +160,13 @@ export const SAVE_VERSION = MIGRATIONS.reduce((v, m) => Math.max(v, m.version), 
 // finished: chapters the player has finished. Once finished, a chapter stays
 // finished, even if a new quest is added to it later.
 // harvested: everything ever harvested, for the season's total at the festival.
+// contracts: contracts finished on the contract board (each gives a ribbon).
 // festivalSeen: the festival scene has played once.
 // refund: produce to give back to the barn once (see version 3).
 export function newProgress() {
   return {
     version: SAVE_VERSION, stars: {}, best: {}, owned: [STARTING_HAT], hat: STARTING_HAT,
-    almanac: [], practice: false, finished: [], harvested: {}, festivalSeen: false, refund: null,
+    almanac: [], practice: false, finished: [], harvested: {}, festivalSeen: false, refund: null, contracts: [],
   };
 }
 
@@ -185,6 +206,7 @@ export function loadProgress(raw) {
     if (ITEMS.includes(item) && Number.isFinite(n) && n > 0) p.harvested[item] = n;
   }
   p.festivalSeen = saved.festivalSeen === true;
+  if (Array.isArray(saved.contracts)) p.contracts = CONTRACTS.map((c) => c.id).filter((id) => saved.contracts.includes(id));
   if (saved.refund && typeof saved.refund === "object") p.refund = saved.refund;
   noteFinished(p);
   if (p.owned.includes(saved.hat) && HAT_NAMES[saved.hat]) p.hat = saved.hat;
@@ -215,8 +237,14 @@ function noteFinished(p) {
 
 // ---- Stars and chapters ----
 
+// Stars from chapter quests. Golden quests give golden stars instead, which
+// don't count toward opening chapters.
 export function totalStars(p) {
-  return Object.values(p.stars).reduce((a, b) => a + b, 0);
+  return Object.entries(p.stars).reduce((sum, [id, n]) => sum + (findQuest(id)?.golden ? 0 : n), 0);
+}
+
+export function goldenStars(p) {
+  return GOLDEN.filter((q) => p.stars[q.id] >= 1).length;
 }
 
 export function chapterStars(p, n) {
@@ -259,6 +287,8 @@ export function isQuestOpen(p, id) {
   const quest = findQuest(id);
   if (!quest || !isChapterOpen(p, quest.chapter)) return false;
   if (p.practice) return true;
+  // Golden quests are all open once the festival is over.
+  if (quest.golden) return true;
   const list = CHAPTERS[quest.chapter - 1].quests;
   const i = list.findIndex((q) => q.id === id);
   // A quest that already has stars stays open, even if a new quest is added
@@ -266,13 +296,16 @@ export function isQuestOpen(p, id) {
   return i === 0 || p.stars[id] >= 1 || p.stars[list[i - 1].id] >= 1 || isChapterDone(p, quest.chapter);
 }
 
-// What to play next, and why: { id, why }, or null when every quest has 3
-// stars. Before the festival it's the first open quest not yet finished
-// (bonus quests last), then the first open one without 3 stars. After the
-// festival it never sends the player back to the start: a new quest, then
-// a bonus quest not tried yet, then the quest with the fewest stars.
+// What to play next, and why: { id, why } for a quest or { contract, why }
+// for a contract, or null when everything is done. Before the festival it's
+// the first open quest not yet finished (bonus quests last), then the first
+// open one without 3 stars. After the festival it never sends the player back
+// to the start: a new quest, then a bonus quest not tried yet, then a
+// contract on the board, then a golden quest, then the quest with the
+// fewest stars.
 export function nextStep(p) {
-  const open = QUESTS.filter((q) => isQuestOpen(p, q.id));
+  const all = QUESTS.filter((q) => isQuestOpen(p, q.id));
+  const open = all.filter((q) => !q.golden);
   if (!isChapterDone(p, CHAPTERS.length)) {
     const q = open.find((x) => !p.stars[x.id] && !x.bonus) ?? open.find((x) => !p.stars[x.id])
       ?? open.find((x) => p.stars[x.id] < 3);
@@ -282,8 +315,12 @@ export function nextStep(p) {
   if (fresh) return { id: fresh.id, why: `${fresh.title} is a new quest from ${fresh.who}!` };
   const bonus = open.find((q) => !p.stars[q.id]);
   if (bonus) return { id: bonus.id, why: `${bonus.title} is a bonus quest you haven't tried yet.` };
+  const [contract] = contractBoard(p);
+  if (contract) return { contract: contract.id, why: `${contract.who} has an order on the contract board: ${contractText(contract)}.` };
+  const golden = all.find((q) => q.golden && !p.stars[q.id]);
+  if (golden) return { id: golden.id, why: `${golden.title} is a golden quest: chapter ${golden.from}'s idea on new fields.` };
   let fewest = null;
-  for (const q of open) if (p.stars[q.id] < 3 && (!fewest || p.stars[q.id] < p.stars[fewest.id])) fewest = q;
+  for (const q of all) if (p.stars[q.id] < 3 && (!fewest || p.stars[q.id] < p.stars[fewest.id])) fewest = q;
   if (!fewest) return null;
   const n = p.stars[fewest.id];
   return { id: fewest.id, why: `${fewest.title} has ${n} ${n === 1 ? "star" : "stars"}. Can you get 3?` };
@@ -314,13 +351,71 @@ export function looks(p) {
     fence: p.owned.includes("fence"),
     dog: p.owned.includes("dog"),
     jackOLantern: p.owned.includes("jack_o_lantern"),
+    dinnerBell: p.owned.includes("dinner_bell"),
   };
 }
 
 // ---- Shop ----
 
 export function isForSale(p, item) {
-  return p.practice || isChapterDone(p, item.after);
+  if (p.practice) return true;
+  if (item.contract) return p.contracts.includes(item.contract);
+  return isChapterDone(p, item.after);
+}
+
+// Why an item isn't for sale yet, for the shop.
+export function saleLockText(item) {
+  if (item.contract) {
+    const c = findContract(item.contract);
+    return `🔒 A thank-you from ${c.who}'s contract`;
+  }
+  return `🔒 After chapter ${item.after}`;
+}
+
+// ---- The contract board ----
+
+export function contractText(c) {
+  const items = Object.entries(c.order).map(([item, n]) => plural(n, item));
+  const list = items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}` : items[0];
+  const extra = c.dinner ? ", and visit Daisy at the barn at least every 20 ticks" : "";
+  return `${list} in ${c.ticks} ticks${extra}`;
+}
+
+// The contracts on the board now: the first 3 not done yet that the player
+// can take on. Empty before the festival.
+export function contractBoard(p) {
+  if (!isChapterDone(p, CHAPTERS.length)) return [];
+  return CONTRACTS.filter((c) => !p.contracts.includes(c.id) && (c.needs ?? []).every((id) => p.owned.includes(id)))
+    .slice(0, 3);
+}
+
+// Judge a home farm run against a contract. run: { status, ticks }, gained:
+// { item: n } (net), end: the farm at the end.
+// Returns { met, problems }.
+export function checkContract(c, run, gained, end) {
+  const problems = [];
+  if (run.status !== "ok" && run.status !== "out_of_ticks") return { met: false, problems };
+  for (const [item, n] of Object.entries(c.order)) {
+    const got = gained[item] ?? 0;
+    if (got < n) problems.push(`You harvested ${plural(got, item)}. ${c.who} ordered ${n}.`);
+  }
+  if (run.ticks > c.ticks) problems.push(`That took ${run.ticks} ticks. The order has to be ready in ${c.ticks}.`);
+  const missed = end.dinner?.missed ?? 0;
+  if (c.dinner && missed > 0) {
+    problems.push(`Daisy missed ${missed === 1 ? "a meal" : `${missed} meals`}. Visit her at the barn at least every 20 ticks.`);
+  }
+  return { met: problems.length === 0, problems };
+}
+
+// Save a finished contract. Returns the reward lines to show.
+export function recordContract(p, id) {
+  const c = findContract(id);
+  if (!c || p.contracts.includes(id)) return [];
+  p.contracts.push(id);
+  const lines = [`${c.who} gave Bolt a ribbon! That's ${p.contracts.length} of ${CONTRACTS.length}.`];
+  const reward = shopItem(c.reward);
+  if (reward) lines.push(`New in the shop: ${reward.name}.`);
+  return lines;
 }
 
 export function canAfford(inventory, cost) {
@@ -333,7 +428,7 @@ export function buy(p, inventory, id) {
   const item = shopItem(id);
   if (!item) return "That isn't in the shop.";
   if (p.owned.includes(id)) return `You already have the ${item.name.toLowerCase()}.`;
-  if (!isForSale(p, item)) return `The ${item.name.toLowerCase()} is for sale after chapter ${item.after}.`;
+  if (!isForSale(p, item)) return item.contract ? `The ${item.name.toLowerCase()} is a contract reward.` : `The ${item.name.toLowerCase()} is for sale after chapter ${item.after}.`;
   if (!canAfford(inventory, item.cost)) return "You need more produce for that.";
   for (const [thing, n] of Object.entries(item.cost)) inventory[thing] -= n;
   p.owned.push(id);

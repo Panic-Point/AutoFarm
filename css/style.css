@@ -548,3 +548,9 @@ dialog h3 { margin: 14px 0 6px; font-size: 16px; }
 .crowns li:not(.earned) canvas { filter: grayscale(1); opacity: 0.35; }
 .next-why { color: var(--muted); font-size: 14px; }
 .replay { margin-top: 8px; }
+
+/* ---- After the festival ---- */
+.after-festival { border-left-color: var(--gold); }
+.after-festival h4 { margin: 10px 0 6px; font-size: 14px; color: var(--muted); }
+.quest-stop.golden .stop-bonus { background: none; }
+.contracts li.current { border-color: var(--gold); }

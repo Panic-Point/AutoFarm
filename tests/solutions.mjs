@@ -539,4 +539,128 @@ define plant_row(row, way):
         if can_move(way):
             move(way)`,
   },
+
+  "G-1": `
+repeat while is_ripe():
+    harvest()
+    move(EAST)`,
+  "G-2": `
+set way to EAST
+repeat while is_ripe():
+    repeat 3 times:
+        harvest()
+        move(way)
+    harvest()
+    move(NORTH)
+    if way == EAST:
+        set way to WEST
+    else:
+        set way to EAST`,
+  "G-3": `
+set size to field_size()
+
+define row(way):
+    repeat size - 1 times:
+        harvest()
+        move(way)
+    harvest()
+
+set way to EAST
+repeat size times:
+    row(way)
+    if can_move(NORTH):
+        move(NORTH)
+    if way == EAST:
+        set way to WEST
+    else:
+        set way to EAST`,
+  "G-4": `
+set size to field_size()
+
+define tend:
+    if is_ripe():
+        harvest()
+    else if is_rotten():
+        till()
+
+define row(way):
+    repeat size - 1 times:
+        tend()
+        move(way)
+    tend()
+
+repeat size / 2 times:
+    row(EAST)
+    move(NORTH)
+    row(WEST)
+    if can_move(NORTH):
+        move(NORTH)`,
+  "G-5": `
+set way to EAST
+repeat forever:
+    if crop_here() == Crop.MUSHROOM:
+        harvest()
+        break
+    if can_move(way):
+        move(way)
+    else:
+        move(NORTH)
+        if way == EAST:
+            set way to WEST
+        else:
+            set way to EAST
+repeat until position()[0] == 0:
+    move(WEST)
+repeat until position()[1] == 0:
+    move(SOUTH)`,
+  "G-6": `
+refill()
+if position()[1] == 0:
+    move(NORTH)
+else:
+    move(SOUTH)
+set way to EAST
+if position()[0] > 0:
+    set way to WEST
+if is_dry() and not is_ripe():
+    water()
+repeat while can_move(way):
+    move(way)
+    if is_dry() and not is_ripe():
+        water()`,
+  "G-7": `
+set size to field_size()
+
+define ripe_in_row(y):
+    set n to 0
+    for x from 0 to size - 1:
+        if ripe_at(x, y):
+            change n by 1
+    give back n
+
+define pick_row(way):
+    repeat size - 1 times:
+        if is_ripe():
+            harvest()
+        move(way)
+    if is_ripe():
+        harvest()
+
+for y from 1 to size - 1:
+    move(NORTH)
+    if ripe_in_row(y) >= 3:
+        if can_move(EAST):
+            pick_row(EAST)
+        else:
+            pick_row(WEST)`,
+  "G-8": `
+set basket to []
+repeat forever:
+    set crop to crop_here()
+    if crop in order() and crop not in basket:
+        harvest()
+        add crop to basket
+    if len(basket) == len(order()):
+        break
+    move(EAST)`,
 };

@@ -262,3 +262,33 @@ test("ripe sunflowers can be seen from anywhere", () => {
   assert.equal(ripeAt(g, 0, 1), false, "wheat is too short to see");
   assert.equal(ripeAt(g, 5, 1), false, "off the field");
 });
+
+test("bees: berries within 1 tile of the hive give 1 more, and the hive can't be planted on", () => {
+  const s = newFarmState(3, { wheat: 9 });
+  for (const t of s.tiles) Object.assign(t, { ground: "soil", crop: null, age: 0 });
+  s.hive = [1, 1];
+  const g = new Game(s);
+  g.move("east");
+  g.move("north"); // onto the hive
+  assert.equal(g.plant("strawberry"), false);
+  g.move("north"); // (1, 2) is next to the hive
+  assert.equal(g.plant("strawberry"), true);
+  waitTicks(g, CROPS.strawberry.growTicks);
+  assert.equal(g.harvest(), true);
+  assert.equal(g.inventory.strawberry, 2);
+  assert.equal(new Game(newFarmState(3)).snapshot().hive, null);
+});
+
+test("Daisy's dinner: a meal is missed each time Bolt stays away from the barn for 20 ticks", () => {
+  const s = newFarmState(3);
+  s.dinner = { every: 20, lastFed: 0, missed: 0 };
+  const g = new Game(s);
+  g.move("east");
+  waitTicks(g, 18);
+  g.move("west"); // tick 20, back at the barn just in time
+  assert.equal(g.dinner.missed, 0);
+  g.move("east");
+  waitTicks(g, 40);
+  assert.equal(g.dinner.missed, 2);
+  assert.deepEqual(g.snapshot().dinner, { every: 20, lastFed: 60, missed: 2 });
+});

@@ -98,7 +98,30 @@ export function harvestYield(state, x, y) {
   if (tile.rotated) n += info.afterBonus;
   if (info.friendBonus) n += info.friendBonus * (tile.friends ?? strawberryFriends(state, x, y));
   if (info.pickBonus) n = Math.min(info.maxYield, n + info.pickBonus * (tile.picks ?? 0));
+  if (BEE_CROPS.includes(tile.crop) && nearHive(state, x, y)) n += 1;
   return { [item]: n };
+}
+
+// Bees: a hive on the home farm makes these crops give 1 more when they grow
+// within 1 tile of it (diagonals count). Nothing can be planted on the hive.
+export const BEE_CROPS = ["strawberry", "blueberry"];
+
+export function nearHive(state, x, y) {
+  const h = state.hive;
+  return Boolean(h) && !(h[0] === x && h[1] === y) && Math.abs(h[0] - x) <= 1 && Math.abs(h[1] - y) <= 1;
+}
+
+// Daisy's dinner time: with `dinner` set ({ every, lastFed, missed }), Daisy
+// waits at the barn (0, 0). Bolt has to visit her at least once every
+// `every` ticks; each time it doesn't, she misses a meal.
+function checkDinner(game) {
+  const d = game.dinner;
+  if (!d) return;
+  if (game.x === 0 && game.y === 0) d.lastFed = game.tick;
+  else if (game.tick - d.lastFed >= d.every) {
+    d.missed += 1;
+    d.lastFed = game.tick;
+  }
 }
 
 // seeds: the crops that can be planted, or null for every crop.
@@ -136,6 +159,8 @@ export class Game {
     this.wilted = s.wilted ?? 0;
     this.can = s.can ?? CAN_SIZE;
     this.wasted = s.wasted ?? 0;
+    this.hive = s.hive ?? null;
+    this.dinner = s.dinner ?? null;
   }
 
   snapshot() {
@@ -151,6 +176,8 @@ export class Game {
       wilted: this.wilted,
       can: this.can,
       wasted: this.wasted,
+      hive: this.hive,
+      dinner: this.dinner && { ...this.dinner },
     };
   }
 
@@ -188,6 +215,7 @@ export class Game {
     for (const i of ripened) {
       this.tiles[i].friends = strawberryFriends(this, i % this.size, Math.floor(i / this.size));
     }
+    checkDinner(this);
   }
 
   // ---- Actions (each takes one tick, returns true if it did something) ----
@@ -233,7 +261,8 @@ export class Game {
     const info = CROPS[crop];
     if (!info) throw new Error(`unknown crop ${crop}`);
     const t = this.here;
-    const ok = !info.wild && this.hasSeed(crop) && t.crop === null && t.ground === info.ground && this.canAfford(info.cost);
+    const onHive = Boolean(this.hive) && this.hive[0] === this.x && this.hive[1] === this.y;
+    const ok = !info.wild && this.hasSeed(crop) && !onHive && t.crop === null && t.ground === info.ground && this.canAfford(info.cost);
     if (ok) {
       for (const [item, n] of Object.entries(info.cost)) this.inventory[item] -= n;
       clearExtras(t);

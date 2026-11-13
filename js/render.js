@@ -68,6 +68,20 @@ const GEMS = {
 };
 for (const id of Object.keys(GEMS)) HATS[id] = ["#e6b422", "#f6cf3a", "crown"];
 
+// Thank-you hats from the contract board.
+Object.assign(HATS, {
+  blue_cap: ["#2f6fc4", "#4a8ae0", "cap"],
+  baker_hat: ["#e9e6dc", "#ffffff", "brim"],
+  orange_cap: ["#e0701e", "#f28a35", "cap"],
+  green_beanie: ["#3d7d3a", "#56a052", "cap"],
+  top_hat: ["#1f1f1f", "#333333", "brim"],
+  honey_hat: ["#d99a12", "#f2be3a", "brim"],
+  purple_cap: ["#5b3f9e", "#7656c0", "cap"],
+  sun_hat: ["#f0d264", "#f7e08a", "brim"],
+  ribbon_hat: ["#c8322b", "#f2d0e4", "berries"],
+  farmer_hat: ["#6b4a2b", "#8a6238", "brim"],
+});
+
 // Draw Bolt alone, wearing `hat`, filling the canvas. For the shelf and the
 // festival.
 export function drawBoltIcon(ctx, hat) {
@@ -99,11 +113,87 @@ export function drawFarm(ctx, state, opts = {}) {
   if (looks.fence) drawFence(ctx, W);
   if (looks.scarecrow) drawScarecrow(ctx, (size - 1) * cell, 0, cell);
   if (looks.jackOLantern) drawJackOLantern(ctx, 0, 0, cell);
+  if (state.hive) drawHive(ctx, state.hive[0] * cell, (size - 1 - state.hive[1]) * cell, cell);
+  if (looks.dinnerBell) drawBell(ctx, 0, (size - 1) * cell, cell);
+  if (state.dinner) drawCow(ctx, 0, (size - 1) * cell, cell, state.dinner.missed > 0);
   const bx = state.x * cell;
   const by = (size - 1 - state.y) * cell;
   if (looks.dog) drawDog(ctx, bx, by, cell, state.x === size - 1);
   drawBolt(ctx, bx, by, cell, looks.hat);
   if (opts.fog) drawFog(ctx, state, cell);
+}
+
+// A striped bee hive in the top right of its tile, with a bee beside it.
+function drawHive(ctx, px, py, cell) {
+  const cx = px + cell * 0.72;
+  const cy = py + cell * 0.3;
+  const r = cell * 0.17;
+  const bands = ["#e8b830", "#c9921a", "#e8b830", "#c9921a"];
+  bands.forEach((color, i) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - r * 0.6 + i * r * 0.42, r * (0.65 + i * 0.12), r * 0.26, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.fillStyle = "#5a3b12";
+  ctx.beginPath();
+  ctx.arc(cx, cy + r * 0.55, r * 0.16, 0, Math.PI * 2);
+  ctx.fill();
+  // A bee.
+  const bx = px + cell * 0.36;
+  const by = py + cell * 0.22;
+  ctx.fillStyle = "#f2c230";
+  ctx.beginPath();
+  ctx.ellipse(bx, by, cell * 0.05, cell * 0.035, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#2b2a26";
+  ctx.fillRect(bx - cell * 0.008, by - cell * 0.035, cell * 0.016, cell * 0.07);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+  ctx.beginPath();
+  ctx.ellipse(bx, by - cell * 0.05, cell * 0.03, cell * 0.02, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// A dinner bell on a post in the top left of the barn tile.
+function drawBell(ctx, px, py, cell) {
+  const x = px + cell * 0.14;
+  ctx.fillStyle = "#7a5230";
+  ctx.fillRect(x - cell * 0.015, py + cell * 0.12, cell * 0.03, cell * 0.36);
+  ctx.fillStyle = "#e6b422";
+  ctx.beginPath();
+  ctx.moveTo(x - cell * 0.07, py + cell * 0.26);
+  ctx.quadraticCurveTo(x, py + cell * 0.06, x + cell * 0.07, py + cell * 0.26);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Daisy waiting at the barn for dinner. She looks sad once she misses a meal.
+function drawCow(ctx, px, py, cell, sad) {
+  const cx = px + cell * 0.3;
+  const cy = py + cell * 0.74;
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#2b2a26";
+  ctx.lineWidth = Math.max(1, cell / 70);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, cell * 0.17, cell * 0.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#2b2a26";
+  ctx.beginPath();
+  ctx.arc(cx - cell * 0.05, cy - cell * 0.02, cell * 0.035, 0, Math.PI * 2);
+  ctx.arc(cx + cell * 0.07, cy + cell * 0.03, cell * 0.03, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#f2c4c4";
+  ctx.beginPath();
+  ctx.ellipse(cx + cell * 0.19, cy - cell * 0.05, cell * 0.06, cell * 0.05, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  if (sad) {
+    ctx.fillStyle = "#3f6fd9";
+    ctx.beginPath();
+    ctx.arc(cx + cell * 0.2, cy - cell * 0.15, cell * 0.02, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 // Tiles more than one step from Bolt are hidden.

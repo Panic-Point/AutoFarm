@@ -288,3 +288,49 @@ test("the Mayor's Order fails when Bolt picks extra produce", () => {
   assert.equal(result.met, false);
   assert.match(result.problems.join(" "), /You harvested 2 carrots, but the order is exactly 1/);
 });
+
+test("golden quests are well formed and come after the festival", () => {
+  const golden = QUESTS.filter((q) => q.golden);
+  assert.equal(golden.length, 8);
+  golden.forEach((q, i) => {
+    assert.equal(q.from, i + 1, `${q.id}: one golden quest per chapter, in order`);
+    assert.ok(questPlots(q).length >= 2, `${q.id}: golden quests use test plots`);
+    questPlots(q).forEach((plot, n) => {
+      const size = plot.map.length;
+      assert.ok(plot.map.every((row) => row.length === size), `${q.id} plot ${n + 1}: square`);
+      const pattern = plot.goal?.pattern ?? q.goal.pattern;
+      if (pattern) assert.ok(pattern.length === size && pattern.every((r) => r.length === size), `${q.id} plot ${n + 1}: pattern`);
+      questField(q, n);
+    });
+    assert.equal(q.hints.length, 3);
+    assert.ok(q.stars.three <= q.stars.two);
+  });
+});
+
+test("a contract can be filled on the home farm", async () => {
+  const { newFarmState } = await import("../js/game.js");
+  const { checkContract } = await import("../js/progress.js");
+  const { CONTRACTS } = await import("../js/postgame.js");
+  const c = CONTRACTS[0];
+  const start = newFarmState(5);
+  bridge.start(start, c.ticks);
+  const code = `
+set way to EAST
+repeat 5 times:
+    repeat 4 times:
+        harvest()
+        move(way)
+    harvest()
+    move(NORTH)
+    if way == EAST:
+        set way to WEST
+    else:
+        set way to EAST
+`;
+  const run = bridge.run(api, { code, files: {}, name: "main", locked: {} });
+  const end = bridge.game.snapshot();
+  const gained = { hay: end.inventory.hay - start.inventory.hay };
+  assert.equal(run.status, "ok");
+  assert.ok(run.ticks <= c.ticks);
+  assert.deepEqual(checkContract(c, run, gained, end), { met: true, problems: [] });
+});

@@ -4,13 +4,15 @@ import { CAN_SIZE, ITEMS, emptyInventory, newFarmState } from "./game.js";
 import { drawBoltIcon, drawFarm } from "./render.js";
 import { loadWorkspace } from "./files.js";
 import { Desk } from "./windows.js";
-import { CHAPTERS, chapterOf, findQuest } from "./chapters.js";
+import { CHAPTERS, QUESTS, chapterOf, findQuest } from "./chapters.js";
+import { CONTRACTS, DINNER_EVERY, findContract } from "./postgame.js";
 import {
   checkPlot, gains, plural, judgeQuest, patternMisses, plotData, plotProblem, questField, questPlots, starTargets, tickLimit,
 } from "./quests.js";
 import { WORDS, wordsInChapter } from "./words.js";
 import {
-  ALMANAC, CROWNS, HAT_NAMES, SHOP, badges, crownsOwned, nextStep, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
+  ALMANAC, CROWNS, HAT_NAMES, SHOP, badges, checkContract, contractBoard, contractText, crownsOwned, goldenStars,
+  nextStep, recordContract, saleLockText, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
   isChapterDone, isChapterOpen, isForSale, isQuestOpen, loadProgress, locked, looks, newProgress,
   nextQuest, noteHarvest, recordResult, seeds, titles, totalStars, wear,
 } from "./progress.js";
@@ -97,6 +99,10 @@ function loadHome(saved) {
   state.lost = 0;
   state.wilted = 0;
   state.wasted = 0;
+  // The bee hive sits in the middle of the farm once it's bought.
+  const mid = Math.floor(size / 2);
+  state.hive = progress.owned.includes("bee_hive") ? [mid, mid] : null;
+  state.dinner = null;
   // The well sits in the barn corner once it's bought.
   if (progress.owned.includes("well") && state.tiles[0].ground !== "well") {
     Object.assign(state.tiles[0], { ground: "well", crop: null, age: 0 });
@@ -107,12 +113,16 @@ function loadHome(saved) {
 
 function loadMode(saved) {
   if (saved?.quest && isQuestOpen(progress, saved.quest)) return { quest: saved.quest };
+  if (saved?.contract && contractBoard(progress).some((c) => c.id === saved.contract)) {
+    return { quest: null, contract: saved.contract };
+  }
   if (saved && !saved.quest) return { quest: null };
   // A new player goes straight to the first quest.
   return { quest: nextQuest(progress) };
 }
 
 const currentQuest = () => (mode.quest ? findQuest(mode.quest) : null);
+const currentContract = () => (!mode.quest && mode.contract ? findContract(mode.contract) : null);
 
 // ---- Console ----
 
@@ -163,9 +173,9 @@ function renderQuestCard(bubble) {
   if (quest) {
     const ch = chapterOf(quest.id);
     const best = progress.stars[quest.id] ?? 0;
-    $("quest-place").textContent = quest.festival
-      ? `Festival Day · Event ${quest.festival.event} of 3 · Quest ${quest.id}`
-      : `Chapter ${ch.n}: ${ch.title} · ${quest.bonus ? "Bonus quest" : "Quest"} ${quest.id}`;
+    if (quest.golden) $("quest-place").textContent = `After the Festival · Golden quest ${quest.id} · chapter ${quest.from}'s idea`;
+    else if (quest.festival) $("quest-place").textContent = `Festival Day · Event ${quest.festival.event} of 3 · Quest ${quest.id}`;
+    else $("quest-place").textContent = `Chapter ${ch.n}: ${ch.title} · ${quest.bonus ? "Bonus quest" : "Quest"} ${quest.id}`;
     $("quest-title").textContent = `${quest.title} ${best ? starText(best) : ""}`.trim();
     $("quest-who").textContent = quest.who;
     $("quest-bubble").textContent = bubble ?? quest.story;
@@ -180,19 +190,40 @@ function renderQuestCard(bubble) {
     hintEl.hidden = hintsShown === 0;
     hintEl.textContent = quest.hints.slice(0, hintsShown).map((h, i) => `Hint ${i + 1}: ${h}`).join("\n");
     $("mode-btn").textContent = "Home farm";
-    const next = nextQuest(progress);
-    nextBtn.hidden = !(best && next && next !== quest.id);
-    nextBtn.textContent = "Next quest";
+    const step = nextStep(progress);
+    nextBtn.hidden = !(best && step && step.id !== quest.id);
+    nextBtn.textContent = step?.why ? "What's next?" : "Next quest";
+    $("contract-btn").hidden = true;
+  } else if (currentContract()) {
+    const c = currentContract();
+    $("quest-place").textContent = "Home farm · Contract board";
+    $("quest-title").textContent = c.title ?? `${c.who}'s order`;
+    $("quest-who").textContent = c.who;
+    $("quest-bubble").textContent = bubble ?? (c.dinner
+      ? "Moo! I'll wait at the barn. Come and see me at least every 20 ticks while you farm, or I miss my dinner!"
+      : "Can you fill my order from your own farm? Use your own seeds, however you like.");
+    $("quest-goal").textContent = `Order: ${contractText(c)}.`;
+    $("quest-targets").textContent = `Finish it for a ribbon and a thank-you in the shop. Bolt stops after ${c.ticks} ticks.`;
+    $("quest-targets").hidden = false;
+    $("quest-plots").hidden = true;
+    $("starter-btn").hidden = true;
+    $("hint-btn").hidden = true;
+    hintEl.hidden = true;
+    $("mode-btn").textContent = "Map";
+    nextBtn.hidden = true;
+    $("contract-btn").hidden = false;
   } else {
     const step = nextStep(progress);
-    const next = step?.id ?? null;
+    const next = step?.id ?? step?.contract ?? null;
+    $("contract-btn").hidden = true;
     $("quest-place").textContent = "Home farm";
     $("quest-title").textContent = "Your farm";
     $("quest-who").textContent = "Bolt";
     $("quest-bubble").textContent = bubble ?? "This is your own farm. Everything I harvest goes in the barn, and you can spend it in the shop.";
-    $("quest-goal").textContent = next
-      ? `What's next: ${findQuest(next).title}${step.why ? `. ${step.why}` : ""}`
-      : "Every quest has 3 stars. What a farmer!";
+    let goal = "Every quest has 3 stars and every contract is done. What a farmer!";
+    if (step?.contract) goal = `What's next: ${step.why}`;
+    else if (step) goal = `What's next: ${findQuest(step.id).title}${step.why ? `. ${step.why}` : ""}`;
+    $("quest-goal").textContent = goal;
     $("quest-targets").hidden = true;
     $("quest-plots").hidden = true;
     $("starter-btn").hidden = true;
@@ -299,10 +330,22 @@ function showFestivalBanner(quest) {
   bannerTimer = setTimeout(() => (banner.hidden = true), 2600);
 }
 
-function goHome() {
+// Play whatever What's next suggests: a quest or a contract.
+function goNext() {
+  const step = nextStep(progress);
+  if (step?.contract) takeContract(step.contract);
+  else if (step) playQuest(step.id);
+}
+
+function takeContract(id) {
+  goHome(id);
+  log(`Contract: ${contractText(findContract(id))}. Write your program and press Run.`, "note");
+}
+
+function goHome(contract = null) {
   if (run) stopRun();
   cancelNextPlot();
-  mode = { quest: null };
+  mode = contract ? { quest: null, contract } : { quest: null };
   home = loadHome(home);
   farm = home;
   save(STORE_MODE, mode);
@@ -363,6 +406,9 @@ function startRun(name = desk.active, plotIndex = 0, results = []) {
     if (questPlots(quest).length > 1) log(`Plot ${plot + 1} of ${questPlots(quest).length}`, "note");
   } else {
     home.seeds = seeds(progress);
+    // Daisy starts her dinner clock when a dinner contract's run starts.
+    const c = currentContract();
+    home.dinner = c?.dinner ? { every: DINNER_EVERY, lastFed: home.tick, missed: 0 } : null;
     farm = home;
   }
   render();
@@ -375,12 +421,13 @@ function startRun(name = desk.active, plotIndex = 0, results = []) {
     pos: 0,
     start: structuredClone(farm),
     quest: quest?.id ?? null,
+    contract: quest ? null : (currentContract()?.id ?? null),
     name,
     results,
   };
   save(STORE_FILES, desk.workspace);
   const program = desk.program(name);
-  const maxTicks = quest ? tickLimit(quest) : undefined;
+  const maxTicks = quest ? tickLimit(quest) : currentContract()?.ticks;
   const data = quest ? plotData(quest, plot) : {};
   worker.postMessage({ type: "run", runId, ...program, state: farm, locked: locked(progress), maxTicks, data });
   desk.setRunning(name);
@@ -422,7 +469,7 @@ function stopRun() {
 function completeRun(done) {
   const start = run.start;
   const questId = run.quest;
-  const { name, results } = run;
+  const { name, results, contract } = run;
   const { status, message, ticks } = done;
   const cls = status === "ok" ? "status" : "error";
   finishRun(`${message} (${ticks} ${ticks === 1 ? "tick" : "ticks"})`, cls);
@@ -434,6 +481,26 @@ function completeRun(done) {
     for (const [item, n] of Object.entries(gained)) home.inventory[item] += n;
   }
   const pages = noteHarvest(progress, gained);
+  if (!questId && contract) {
+    const c = findContract(contract);
+    const result = checkContract(c, done, gained, farm);
+    home.dinner = null;
+    if (!result.met) {
+      for (const problem of result.problems) log(problem, "note");
+      saveAll();
+      renderAll(`*shrug* ${result.problems[0] ?? message}`);
+      beep(false);
+      if (pages.length) showReward({ title: "New almanac page!", pages });
+      return;
+    }
+    const lines = recordContract(progress, contract);
+    mode = { quest: null };
+    saveAll();
+    renderAll("Beep boop! Order filled.");
+    beep(true);
+    showReward({ title: `${c.title ?? `${c.who}'s order`}: done!`, icon: "🎀", lines, pages, ticks });
+    return;
+  }
   if (!questId) {
     saveAll();
     renderAll(status === "ok" ? "Beep boop! All done." : `*shrug* ${message}`);
@@ -615,10 +682,52 @@ function renderMap() {
       done ? el("p", { class: "chapter-badge" }, `🏅 ${ch.badge}`) : null,
     ));
   }
+  body.append(renderAfterFestival());
   body.append(el("button", { type: "button", class: "secondary home-stop", onclick: () => {
     $("map-dialog").close();
     goHome();
   } }, "Go to your home farm"));
+}
+
+// The ninth page of the map: golden quests and the contract board.
+function renderAfterFestival() {
+  const open = isChapterDone(progress, CHAPTERS.length);
+  const golden = QUESTS.filter((q) => q.golden);
+  const head = el("div", { class: "chapter-head" },
+    el("span", { class: "chapter-num" }, "★"),
+    el("div", {},
+      el("h3", {}, "Willow Creek After the Festival"),
+      el("p", { class: "chapter-intro" }, "Golden quests put old ideas on new fields, and the neighbors post orders for your home farm.")),
+    el("span", { class: "chapter-stars" }, `🏆 ${goldenStars(progress)}/${golden.length} · 🎀 ${progress.contracts.length}/${CONTRACTS.length}`));
+  if (!open) {
+    return el("article", { class: "chapter closed after-festival" }, head,
+      el("p", { class: "lock-reason" }, "🔒 To open: finish Festival Day."));
+  }
+  const stops = golden.map((q) => el("button", {
+    type: "button",
+    class: `quest-stop golden${mode.quest === q.id ? " current" : ""}`,
+    title: `Play ${q.title}`,
+    onclick: () => {
+      $("map-dialog").close();
+      playQuest(q.id);
+    },
+  }, el("span", { class: "stop-id" }, q.id), el("span", {}, q.title),
+  el("span", { class: "stop-bonus" }, progress.stars[q.id] ? "🏆" : `Ch. ${q.from}`),
+  el("span", { class: "stop-stars" }, starText(progress.stars[q.id] ?? 0))));
+  const board = contractBoard(progress);
+  const cards = board.map((c) => el("li", { class: `contract${mode.contract === c.id ? " current" : ""}` },
+    el("div", {}, el("b", {}, c.title ?? `${c.who}'s order`), el("span", { class: "item-text" }, `${contractText(c)}.`)),
+    el("button", { type: "button", class: "small", onclick: () => {
+      $("map-dialog").close();
+      takeContract(c.id);
+    } }, mode.contract === c.id ? "Taken" : "Take it")));
+  return el("article", { class: "chapter after-festival" }, head,
+    el("h4", {}, "Golden quests"),
+    el("div", { class: "quest-stops" }, stops),
+    el("h4", {}, "Contract board"),
+    cards.length
+      ? el("ul", { class: "shop-list contracts" }, cards)
+      : el("p", { class: "chapter-intro" }, "Every order is filled. The neighbors are very happy!"));
 }
 
 function renderShop(message = "") {
@@ -651,7 +760,7 @@ function renderShop(message = "") {
       } else if (owned) {
         action = el("span", { class: "owned" }, "Yours ✓");
       } else if (!isForSale(progress, item)) {
-        action = el("span", { class: "for-sale-later" }, `🔒 After chapter ${item.after}`);
+        action = el("span", { class: "for-sale-later" }, saleLockText(item));
       } else {
         action = el("button", {
           type: "button",
@@ -714,6 +823,12 @@ function renderShelf() {
         playFestival();
       } }, "Watch the festival again")
       : null,
+    el("h3", {}, `Golden trophies ${goldenStars(progress)}/8 · Ribbons ${progress.contracts.length}/${CONTRACTS.length}`),
+    el("ul", { class: "badge-shelf" }, QUESTS.filter((q) => q.golden).map((q) => {
+      const has = progress.stars[q.id] >= 1;
+      return el("li", { class: has ? "earned" : "", title: has ? q.title : `Golden quest ${q.id}, after the festival` },
+        el("span", { class: "badge-icon" }, has ? "🏆" : "?"), el("span", {}, has ? q.title : q.id));
+    })),
     el("h3", {}, "Titles"),
     el("p", {}, titles(progress).join(" · ")),
     el("h3", {}, "Almanac"),
@@ -727,8 +842,8 @@ function renderShelf() {
   $("practice").checked = progress.practice;
 }
 
-function showReward({ quest, stars, ticks, gained, rewards, pages = [], title }) {
-  $("reward-stars").textContent = quest ? starText(stars) : "📖";
+function showReward({ quest, stars, ticks, gained, rewards, pages = [], title, icon = "📖", lines: extra = [] }) {
+  $("reward-stars").textContent = quest ? starText(stars) : icon;
   $("reward-heading").textContent = quest ? `${quest.title}: done!` : title;
   const lines = [];
   if (quest) {
@@ -740,22 +855,23 @@ function showReward({ quest, stars, ticks, gained, rewards, pages = [], title })
     if (got) lines.push(`Your barn got ${got}.`);
     lines.push(...rewards.lines);
   } else {
-    $("reward-text").textContent = "";
+    $("reward-text").textContent = extra.length ? `Bolt filled the order in ${ticks} ${ticks === 1 ? "tick" : "ticks"}.` : "";
+    lines.push(...extra);
   }
   for (const page of pages) lines.push(`New almanac page: ${page.name}. ${page.fact}`);
   const step = nextStep(progress);
-  const next = step?.id ?? null;
-  if (quest && next && next !== quest.id && step.why) lines.push(`What's next: ${step.why}`);
+  const goOn = Boolean(step) && Boolean(quest || extra.length) && !(quest && step.id === quest.id);
+  if (goOn && step.why) lines.push(`What's next: ${step.why}`);
   $("reward-lines").replaceChildren(...lines.map((l) => el("li", {}, l)));
   $("reward-again").hidden = !quest;
-  const nextQ = next ? findQuest(next) : null;
+  const nextQ = step?.id ? findQuest(step.id) : null;
   let nextText = "Next quest";
   if (nextQ?.festival) nextText = `Event ${nextQ.festival.event} of 3: ${nextQ.festival.name}!`;
   else if (step?.why) nextText = "What's next?";
-  $("reward-next").textContent = next && next !== quest?.id ? nextText : "OK";
+  $("reward-next").textContent = goOn ? nextText : "OK";
   $("reward-next").onclick = () => {
     $("reward-dialog").close();
-    if (quest && next && next !== quest.id) playQuest(next);
+    if (goOn) goNext();
   };
   $("reward-again").onclick = () => $("reward-dialog").close();
   $("reward-dialog").showModal();
@@ -883,7 +999,11 @@ $("mode-btn").addEventListener("click", () => {
     $("map-dialog").showModal();
   }
 });
-$("next-btn").addEventListener("click", () => playQuest(nextQuest(progress)));
+$("next-btn").addEventListener("click", goNext);
+$("contract-btn").addEventListener("click", () => {
+  goHome();
+  log("You put the contract back on the board. Take it again from the map.", "note");
+});
 $("starter-btn").addEventListener("click", () => {
   if (run) stopRun();
   openStarter(currentQuest(), true);
