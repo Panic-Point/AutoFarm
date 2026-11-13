@@ -81,7 +81,8 @@ onmessage = async (e) => {
   let status = "error";
   let message = "";
   try {
-    const result = api.run(msg.code);
+    // The window being run, plus every other window it can `use`.
+    const result = api.run(msg.code, JSON.stringify(msg.files ?? {}), msg.name ?? "main");
     [status, message] = result.toJs();
     result.destroy();
   } catch (err) {
