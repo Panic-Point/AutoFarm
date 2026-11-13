@@ -90,13 +90,26 @@ export function plural(n, word) {
   return `${n} ${word}s`;
 }
 
+// How many ticks a quest run may use before Bolt gets tired and stops. A few
+// times the 2-star target leaves room for slow answers, but a loop that never
+// ends stops in seconds instead of walking into the fence for 5,000 ticks.
+export function tickLimit(quest) {
+  return Math.max(60, quest.stars.two * 5);
+}
+
 // Judge a finished run. run: { status, ticks, words }.
 // Returns { met, stars, problems: [text], gained }.
 export function checkQuest(quest, start, end, run) {
   const goal = quest.goal;
   const gained = gains(start, end);
   const problems = [];
-  if (run.status !== "ok" && run.status !== "out_of_ticks") {
+  if (run.status === "out_of_ticks") {
+    // The program never finished, so the quest isn't done, even if the field
+    // happens to look right (like Bolt walking into the fence forever).
+    problems.push("Bolt got tired before your program finished. Make your loop stop when the job is done!");
+    return { met: false, stars: 0, problems, gained };
+  }
+  if (run.status !== "ok") {
     return { met: false, stars: 0, problems, gained };
   }
   for (const [item, n] of Object.entries(goal.gain ?? {})) {

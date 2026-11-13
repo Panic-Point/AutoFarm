@@ -36,7 +36,7 @@ onmessage = async (e) => {
   if (msg.type !== "run") return;
   const api = await ready;
   runId = msg.runId;
-  bridge.start(msg.state);
+  bridge.start(msg.state, msg.maxTicks);
   // The window being run, plus every other window it can `use`.
   const result = bridge.run(api, msg);
   postMessage({ type: "done", runId, ...result });
