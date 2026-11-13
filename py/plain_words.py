@@ -33,34 +33,35 @@ _NAME = r"[A-Za-z_]\w*"
 # A block opener ends in a colon, optionally followed by more code or a comment.
 _TAIL = r"\s*:(?P<tail>.*)$"
 
-# (pattern, replacement builder). Patterns match the line after its indent.
+# (tag, pattern, replacement builder). Patterns match the line after its indent.
+# The tag says which plain-word statement a line was, for py/words.py.
 _RULES = [
-    (re.compile(r"repeat\s+forever" + _TAIL),
+    ("repeat_forever", re.compile(r"repeat\s+forever" + _TAIL),
      lambda m: "while True:"),
-    (re.compile(r"repeat\s+until\s+(?P<cond>.+?)" + _TAIL),
+    ("repeat_until", re.compile(r"repeat\s+until\s+(?P<cond>.+?)" + _TAIL),
      lambda m: f"while not ({m['cond']}):"),
-    (re.compile(r"repeat\s+while\s+(?P<cond>.+?)" + _TAIL),
+    ("repeat_while", re.compile(r"repeat\s+while\s+(?P<cond>.+?)" + _TAIL),
      lambda m: f"while {m['cond']}:"),
-    (re.compile(r"repeat\s+(?P<n>.+?)\s+times?" + _TAIL),
+    ("repeat_times", re.compile(r"repeat\s+(?P<n>.+?)\s+times?" + _TAIL),
      lambda m: f"for _ in _times({m['n']}):"),
-    (re.compile(rf"for\s+each\s+(?P<var>{_NAME})\s+in\s+(?P<seq>.+?)" + _TAIL),
+    ("for_each", re.compile(rf"for\s+each\s+(?P<var>{_NAME})\s+in\s+(?P<seq>.+?)" + _TAIL),
      lambda m: f"for {m['var']} in {m['seq']}:"),
-    (re.compile(rf"for\s+(?P<var>{_NAME})\s+from\s+(?P<a>.+?)\s+to\s+(?P<b>.+?)" + _TAIL),
+    ("count_from", re.compile(rf"for\s+(?P<var>{_NAME})\s+from\s+(?P<a>.+?)\s+to\s+(?P<b>.+?)" + _TAIL),
      lambda m: f"for {m['var']} in _count({m['a']}, {m['b']}):"),
     # `for amount times:` but not regular Python `for x in ...:`.
-    (re.compile(rf"for\s+(?!{_NAME}\s+in\b)(?P<n>.+?)\s+times?" + _TAIL),
+    ("for_times", re.compile(rf"for\s+(?!{_NAME}\s+in\b)(?P<n>.+?)\s+times?" + _TAIL),
      lambda m: f"for _ in _times({m['n']}):"),
-    (re.compile(r"else\s+if\s+(?P<cond>.+?)" + _TAIL),
+    ("else_if", re.compile(r"else\s+if\s+(?P<cond>.+?)" + _TAIL),
      lambda m: f"elif {m['cond']}:"),
-    (re.compile(rf"define\s+(?P<name>{_NAME})\s*(?P<args>\(.*\))?" + _TAIL),
+    ("define", re.compile(rf"define\s+(?P<name>{_NAME})\s*(?P<args>\(.*\))?" + _TAIL),
      lambda m: f"def {m['name']}{m['args'] or '()'}:"),
-    (re.compile(rf"set\s+(?P<var>{_NAME})\s+to\s+(?P<value>.+)$"),
+    ("set", re.compile(rf"set\s+(?P<var>{_NAME})\s+to\s+(?P<value>.+)$"),
      lambda m: f"{m['var']} = {m['value']}"),
-    (re.compile(rf"change\s+(?P<var>{_NAME})\s+by\s+(?P<value>.+)$"),
+    ("change", re.compile(rf"change\s+(?P<var>{_NAME})\s+by\s+(?P<value>.+)$"),
      lambda m: f"{m['var']} += {m['value']}"),
-    (re.compile(rf"use\s+(?P<names>{_NAME}(?:\s*,\s*{_NAME})*)\s+from\s+(?P<file>{_NAME})\s*(?P<tail>#.*)?$"),
+    ("use", re.compile(rf"use\s+(?P<names>{_NAME}(?:\s*,\s*{_NAME})*)\s+from\s+(?P<file>{_NAME})\s*(?P<tail>#.*)?$"),
      lambda m: f"from {m['file']} import {_names(m['names'])}"),
-    (re.compile(rf"use\s+(?P<files>{_NAME}(?:\s*(?:,|\band\b)\s*{_NAME})*)\s*(?P<tail>#.*)?$"),
+    ("use", re.compile(rf"use\s+(?P<files>{_NAME}(?:\s*(?:,|\band\b)\s*{_NAME})*)\s*(?P<tail>#.*)?$"),
      lambda m: "; ".join(f"from {f} import *" for f in _split(m['files']))),
 ]
 
@@ -107,9 +108,11 @@ def _keep_comment(tail):
     return tail.rstrip() and " " + tail.strip()
 
 
-def translate(code):
+def translate(code, tags=None):
     """Rewrite plain-word lines into Python. Raises PlainWordsError for a line
-    that starts like a plain-word statement but is not written right."""
+    that starts like a plain-word statement but is not written right.
+
+    If `tags` is a dict, it gets {line number: tag} for every plain-word line."""
     skip = _string_lines(code)
     out = []
     for number, line in enumerate(code.split("\n"), start=1):
@@ -118,9 +121,11 @@ def translate(code):
             out.append(line)
             continue
         indent = line[: len(line) - len(body)]
-        for pattern, build in _RULES:
+        for tag, pattern, build in _RULES:
             m = pattern.match(body)
             if m:
+                if tags is not None:
+                    tags[number] = tag
                 tail = m.groupdict().get("tail") or ""
                 out.append(indent + build(m) + _keep_comment(tail))
                 break
