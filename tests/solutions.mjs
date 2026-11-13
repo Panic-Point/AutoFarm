@@ -206,6 +206,24 @@ repeat while can_move(WEST):
 repeat while can_move(SOUTH):
     move(SOUTH)`,
 
+  "5-6": `
+repeat 3 times:
+    harvest()
+    plant(Crop.CARROT)
+    move(EAST)
+harvest()
+plant(Crop.CARROT)
+repeat 3 times:
+    move(WEST)
+repeat 3 times:
+    repeat until is_ripe():
+        wait()
+    harvest()
+    move(EAST)
+repeat until is_ripe():
+    wait()
+harvest()`,
+
   "6-1": `
 harvest()
 repeat until count("hay") == 7:

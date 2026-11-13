@@ -9,7 +9,7 @@ import { AFTER_FESTIVAL, WORDS, lockedWords } from "./words.js";
 export const SHOP = [
   { id: "wheat_seeds", kind: "seeds", name: "Wheat seeds", text: "Plant wheat on your home farm.", cost: { hay: 3 }, after: 1, crop: "wheat" },
   { id: "field_5", kind: "growth", name: "Bigger field", text: "Your home farm grows to 5 by 5.", cost: { hay: 15 }, after: 2, size: 5 },
-  { id: "carrot_seeds", kind: "seeds", name: "Carrot seeds", text: "Plant carrots on your home farm.", cost: { wheat: 10 }, after: 3, crop: "carrot" },
+  { id: "carrot_seeds", kind: "seeds", name: "Carrot seeds", text: "Plant carrots. Plant them where wheat was just picked and they give 2!", cost: { wheat: 10 }, after: 3, crop: "carrot" },
   { id: "strawberry_seeds", kind: "seeds", name: "Strawberry seeds", text: "Plant strawberries. Each one gives more for every strawberry next to it.", cost: { wheat: 12 }, after: 3, crop: "strawberry" },
   { id: "scarecrow", kind: "looks", name: "Scarecrow", text: "A friendly scarecrow for your farm.", cost: { wheat: 8 }, after: 3 },
   { id: "lettuce_seeds", kind: "seeds", name: "Lettuce seeds", text: "Plant lettuce. It's quick, but pick it before it wilts!", cost: { hay: 12 }, after: 4, crop: "lettuce" },

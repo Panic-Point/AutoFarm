@@ -23,13 +23,16 @@ export const DIRECTIONS = {
 // friendBonus (strawberry): when it ripens, it counts the strawberries right
 //   next to it (north, south, east and west), and gives this much more for
 //   each one.
+// after (carrot): planted on soil where this crop was just picked, it gives
+//   afterBonus more. Soil remembers the last crop picked ripe on it until
+//   something is planted there or it's tilled.
 // regrowTicks (blueberry): the bush stays after a ripe harvest and is ripe
 //   again this many ticks later. Each ripe harvest gives pickBonus more than
 //   the one before, up to maxYield.
 export const CROPS = {
   grass: { growTicks: 4, ground: "grass", cost: {}, yield: { hay: 1 } },
   wheat: { growTicks: 8, ground: "soil", cost: {}, yield: { wheat: 1 } },
-  carrot: { growTicks: 14, ground: "soil", cost: { wheat: 2 }, yield: { carrot: 1 } },
+  carrot: { growTicks: 14, ground: "soil", cost: { wheat: 2 }, yield: { carrot: 1 }, after: "wheat", afterBonus: 1 },
   lettuce: { growTicks: 6, ground: "soil", cost: { hay: 2 }, yield: { lettuce: 1 }, crispTicks: 8 },
   strawberry: { growTicks: 12, ground: "soil", cost: { wheat: 3 }, yield: { strawberry: 1 }, friendBonus: 1 },
   blueberry: {
@@ -63,6 +66,7 @@ export function harvestYield(state, x, y) {
   const info = CROPS[tile.crop];
   const [[item, base]] = Object.entries(info.yield);
   let n = base;
+  if (tile.rotated) n += info.afterBonus;
   if (info.friendBonus) n += info.friendBonus * (tile.friends ?? strawberryFriends(state, x, y));
   if (info.pickBonus) n = Math.min(info.maxYield, n + info.pickBonus * (tile.picks ?? 0));
   return { [item]: n };
@@ -158,6 +162,7 @@ export class Game {
   till() {
     const t = this.here;
     clearExtras(t);
+    delete t.last;
     if (t.ground === "grass") {
       t.ground = "soil";
       t.crop = null;
@@ -179,6 +184,8 @@ export class Game {
     if (ok) {
       for (const [item, n] of Object.entries(info.cost)) this.inventory[item] -= n;
       clearExtras(t);
+      if (info.after && t.last === info.after) t.rotated = true;
+      delete t.last;
       t.crop = crop;
       t.age = 0;
     }
@@ -204,9 +211,12 @@ export class Game {
         t.age = info.growTicks - info.regrowTicks;
         t.picks = (t.picks ?? 0) + 1;
       } else {
+        const picked = t.crop;
         clearExtras(t);
         t.crop = t.ground === "grass" ? "grass" : null;
         t.age = 0;
+        // Soil remembers what was just picked, for crops that like to follow it.
+        if (ok && t.ground === "soil") t.last = picked;
       }
     }
     this.advance();
@@ -245,8 +255,10 @@ export class Game {
   }
 }
 
-// Forget what a tile's last crop remembered (friends, picks, wilting).
+// Forget what a tile's last crop remembered (friends, picks, wilting,
+// planted after the right crop).
 function clearExtras(t) {
+  delete t.rotated;
   delete t.friends;
   delete t.picks;
   delete t.wilted;

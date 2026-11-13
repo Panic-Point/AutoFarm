@@ -164,3 +164,37 @@ test("picking a blueberry bush early loses the whole bush", () => {
   g.plant("blueberry");
   assert.equal(g.here.picks, undefined);
 });
+
+test("a carrot planted where wheat was just picked gives 2", () => {
+  const g = soilGame(3, { wheat: 8 });
+  g.plant("wheat");
+  waitTicks(g, CROPS.wheat.growTicks - 1);
+  assert.equal(g.harvest(), true);
+  assert.equal(g.here.last, "wheat", "the soil remembers the wheat");
+  assert.equal(g.plant("carrot"), true);
+  assert.equal(g.here.rotated, true);
+  assert.equal(g.here.last, undefined, "planting uses it up");
+  waitTicks(g, CROPS.carrot.growTicks - 1);
+  assert.equal(g.harvest(), true);
+  assert.equal(g.inventory.carrot, 2);
+
+  // Carrot after carrot is an ordinary carrot.
+  assert.equal(g.here.last, "carrot");
+  g.plant("carrot");
+  waitTicks(g, CROPS.carrot.growTicks - 1);
+  g.harvest();
+  assert.equal(g.inventory.carrot, 3);
+});
+
+test("tilling or losing the wheat means no carrot bonus", () => {
+  const g = soilGame(3, { wheat: 4 });
+  g.plant("wheat");
+  g.harvest(); // unripe: lost, so the soil remembers nothing
+  assert.equal(g.here.last, undefined);
+  g.plant("wheat");
+  waitTicks(g, CROPS.wheat.growTicks - 1);
+  g.harvest();
+  g.till();
+  g.till();
+  assert.equal(g.here.last, undefined);
+});

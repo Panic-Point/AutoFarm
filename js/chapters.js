@@ -453,6 +453,22 @@ export const CHAPTERS = [
           "Two loops: repeat while can_move(WEST), then repeat while can_move(SOUTH).",
         ],
       },
+      {
+        id: "5-6",
+        bonus: true,
+        title: "Wheat Then Carrots",
+        who: "Wren",
+        story: "Carrots grow best where wheat just grew. Plant one where you picked wheat and it gives 2 carrots!",
+        goalText: "Pick the wheat, plant carrots in the same spots, and harvest 8 carrots.",
+        field: { map: ["....", "....", "....", "WWWW"], inventory: { wheat: 4 } },
+        goal: { gain: { carrot: 8 }, noLoss: true, needs: [["repeat_until", "repeat_while"]] },
+        stars: { two: 32, three: 25 },
+        hints: [
+          "After you pick wheat, the soil remembers. A carrot planted there right away gives 2.",
+          "On each tile: harvest() the wheat, then plant(Crop.CARROT) in the same spot.",
+          "The first carrot you planted is ripe first. Walk back to it, then repeat until is_ripe(): wait() before each harvest.",
+        ],
+      },
     ],
   },
   {

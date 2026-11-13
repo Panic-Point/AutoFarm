@@ -186,6 +186,17 @@ function drawGround(ctx, tile, px, py, cell) {
       ctx.lineTo(px + cell * 0.9, fy);
       ctx.stroke();
     }
+    // Stubble left behind where wheat was just picked: carrots love it here.
+    if (tile.last === "wheat" && !tile.crop) {
+      ctx.strokeStyle = COLORS.wheatStem;
+      ctx.lineWidth = Math.max(1.5, cell / 40);
+      for (const [dx, dy] of [[0.25, 0.3], [0.5, 0.55], [0.72, 0.3], [0.35, 0.8], [0.68, 0.78]]) {
+        ctx.beginPath();
+        ctx.moveTo(px + dx * cell, py + dy * cell);
+        ctx.lineTo(px + dx * cell + cell * 0.02, py + dy * cell - cell * 0.08);
+        ctx.stroke();
+      }
+    }
   }
 }
 
@@ -241,13 +252,16 @@ function drawCrop(ctx, state, tx, ty, px, py, cell) {
       ctx.fill();
     }
     if (growth > 0.5) {
+      // A carrot planted after wheat grows two roots.
       ctx.fillStyle = COLORS.carrot;
-      ctx.beginPath();
-      ctx.moveTo(cx - cell * 0.1, base - cell * 0.05);
-      ctx.lineTo(cx + cell * 0.1, base - cell * 0.05);
-      ctx.lineTo(cx, base + cell * 0.12 * growth);
-      ctx.closePath();
-      ctx.fill();
+      for (const dx of tile.rotated ? [-0.12, 0.12] : [0]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx * cell - cell * 0.1, base - cell * 0.05);
+        ctx.lineTo(cx + dx * cell + cell * 0.1, base - cell * 0.05);
+        ctx.lineTo(cx + dx * cell, base + cell * 0.12 * growth);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
   } else if (tile.crop === "lettuce") {
     drawLettuce(ctx, cx, base, cell, growth, tile.wilted);
