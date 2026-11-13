@@ -429,7 +429,7 @@ function drawCorn(ctx, cx, base, cell, growth, ripe) {
 
 // A tall stem with a flower head that opens yellow when it's ripe.
 function drawSunflower(ctx, cx, base, cell, growth, ripe) {
-  const h = cell * (0.2 + 0.55 * growth);
+  const h = cell * (0.15 + 0.4 * growth);
   ctx.strokeStyle = COLORS.cornLeaf;
   ctx.lineWidth = Math.max(2, cell / 26);
   ctx.beginPath();

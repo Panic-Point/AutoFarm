@@ -1,6 +1,6 @@
 // Page controller: quests and the home farm, run/stop, playback of the
 // worker's snapshots, and the map, shop and shelf.
-import { ITEMS, emptyInventory, newFarmState } from "./game.js";
+import { CAN_SIZE, ITEMS, emptyInventory, newFarmState } from "./game.js";
 import { drawBoltIcon, drawFarm } from "./render.js";
 import { loadWorkspace } from "./files.js";
 import { Desk } from "./windows.js";
@@ -141,7 +141,10 @@ function render() {
   }
   drawFarm(ctx, farm, { looks: looks(progress), fog: Boolean(quest && questPlots(quest)[plot].fog), goal });
   $("tick").textContent = farm.tick;
-  $("inventory").innerHTML = inventoryHtml(farm.inventory);
+  // The watering can, on fields where it matters (corn or a well).
+  const usesWater = farm.tiles.some((t) => t.crop === "corn" || t.ground === "well");
+  $("inventory").innerHTML = inventoryHtml(farm.inventory)
+    + (usesWater ? `<span title="Water left in the can">💧 Water <b>${farm.can ?? CAN_SIZE}/${CAN_SIZE}</b></span>` : "");
   $("inv-label").textContent = quest ? "This try" : "Barn";
   $("barn").innerHTML = inventoryHtml(home.inventory);
 }
