@@ -172,6 +172,15 @@ def _plot_data(key):
     return json.loads(_farm.plot_data(key))
 
 
+def design():
+    """The festival design for this plot: a list of rows, south row first,
+    each a list of crops like Crop.WHEAT."""
+    rows = _plot_data("design")
+    if rows is None:
+        raise FarmError("There's no design for this field. design() is for Aunt Juniper's Grand Display.")
+    return rows
+
+
 def _print(*args, sep=" ", end=""):
     _farm.log(sep.join(str(a) for a in args) + end)
 
@@ -181,7 +190,7 @@ API = {
     "is_ripe": is_ripe, "crop_here": crop_here, "ground_here": ground_here, "can_move": can_move,
     "position": position, "field_size": field_size, "count": count, "ticks": ticks,
     "NORTH": NORTH, "SOUTH": SOUTH, "EAST": EAST, "WEST": WEST, "Crop": Crop,
-    "print": _print,
+    "print": _print, "design": design,
 }
 
 # Every code window the player writes compiles under a filename like
@@ -288,7 +297,7 @@ class _Loader:
         self.main = main
         self.locked = locked or {}
         # Names that are commands, so `harvest` without brackets is a mistake.
-        self.commands = API_WORDS | {"print"} | defined_commands(files)
+        self.commands = API_WORDS | {"print", "design"} | defined_commands(files)
         self.used = set()
         self.modules = {}
         self.loading = []

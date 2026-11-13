@@ -1,6 +1,7 @@
 // The player's progress: stars, open chapters, the shop, badges, the almanac
 // and titles. No DOM code here, so it can be tested with Node.
 import { CHAPTERS, QUESTS, findQuest } from "./chapters.js";
+import { ITEMS } from "./game.js";
 import { AFTER_FESTIVAL, WORDS, lockedWords } from "./words.js";
 
 // ---- The shop ----
@@ -22,12 +23,30 @@ export const SHOP = [
   { id: "flower_crown", kind: "hat", name: "Flower crown", text: "Daisies and buttercups for Bolt.", cost: { carrot: 5 }, after: 6 },
   { id: "dog", kind: "looks", name: "Farm dog", text: "A puppy that follows Bolt around.", cost: { carrot: 8 }, after: 7 },
   { id: "field_10", kind: "growth", name: "Giant field", text: "Your home farm grows to 10 by 10.", cost: { carrot: 20 }, after: 8, size: 10 },
-  { id: "gold_crown", kind: "hat", name: "Golden crown", text: "For the winner of the Harvest Festival.", cost: { carrot: 15, wheat: 30 }, after: 8 },
 ];
+
+// ---- Golden crowns: a free gift for each finished chapter ----
+// Each has its chapter's crop on it. Aunt Juniper gives the last one at the
+// Harvest Festival.
+export const CROWNS = [
+  { id: "crown_1", chapter: 1, name: "Hay Crown", crop: "hay" },
+  { id: "crown_2", chapter: 2, name: "Wheat Crown", crop: "wheat" },
+  { id: "crown_3", chapter: 3, name: "Strawberry Crown", crop: "strawberry" },
+  { id: "crown_4", chapter: 4, name: "Pumpkin Crown", crop: "pumpkin" },
+  { id: "crown_5", chapter: 5, name: "Mushroom Crown", crop: "mushroom" },
+  { id: "crown_6", chapter: 6, name: "Corn Crown", crop: "corn" },
+  { id: "crown_7", chapter: 7, name: "Sunflower Crown", crop: "sunflower" },
+  { id: "crown_8", chapter: 8, name: "Festival Crown", crop: "festival" },
+];
+
+export function crownFor(chapter) {
+  return CROWNS.find((c) => c.chapter === chapter) ?? null;
+}
 
 export const STARTING_HAT = "straw_hat";
 export const HAT_NAMES = { straw_hat: "Straw hat" };
 for (const item of SHOP) if (item.kind === "hat") HAT_NAMES[item.id] = item.name;
+for (const crown of CROWNS) HAT_NAMES[crown.id] = crown.name;
 
 export function shopItem(id) {
   return SHOP.find((item) => item.id === id) ?? null;
@@ -71,16 +90,37 @@ export const MIGRATIONS = [
       saved.finished = core.flatMap((ids, i) => (ids.every((id) => stars[id] >= 1) ? [i + 1] : []));
     },
   },
+  {
+    // Version 3: the old 8-4, The Harvest Festival, became Festival Day (8-5
+    // to 8-7), and 8-4 is free for a new quest. Finishing the old one already
+    // finished chapter 8 (see version 2). The golden crown left the shop and
+    // became the festival's gift, so a bought one is paid back.
+    version: 3,
+    run(saved) {
+      if (saved.stars) delete saved.stars["8-4"];
+      if (saved.best) delete saved.best["8-4"];
+      if (Array.isArray(saved.owned) && saved.owned.includes("gold_crown")) {
+        saved.owned = saved.owned.filter((id) => id !== "gold_crown");
+        saved.refund = { carrot: 15, wheat: 30 };
+        if (saved.hat === "gold_crown") saved.hat = "crown_8";
+      }
+      // They finished the festival before there was a scene, so they've seen it.
+      if ((saved.finished ?? []).includes(8)) saved.festivalSeen = true;
+    },
+  },
 ];
 
 export const SAVE_VERSION = MIGRATIONS.reduce((v, m) => Math.max(v, m.version), 1);
 
 // finished: chapters the player has finished. Once finished, a chapter stays
 // finished, even if a new quest is added to it later.
+// harvested: everything ever harvested, for the season's total at the festival.
+// festivalSeen: the festival scene has played once.
+// refund: produce to give back to the barn once (see version 3).
 export function newProgress() {
   return {
     version: SAVE_VERSION, stars: {}, best: {}, owned: [STARTING_HAT], hat: STARTING_HAT,
-    almanac: [], practice: false, finished: [],
+    almanac: [], practice: false, finished: [], harvested: {}, festivalSeen: false, refund: null,
   };
 }
 
@@ -107,6 +147,7 @@ export function loadProgress(raw) {
   if (Array.isArray(saved.owned)) {
     for (const id of saved.owned) if (shopItem(id) && !p.owned.includes(id)) p.owned.push(id);
   }
+  // Crowns come from finished chapters (below), not from the save.
   if (p.owned.includes(saved.hat) && HAT_NAMES[saved.hat]) p.hat = saved.hat;
   if (Array.isArray(saved.almanac)) {
     p.almanac = ALMANAC.map((a) => a.item).filter((item) => saved.almanac.includes(item));
@@ -115,8 +156,25 @@ export function loadProgress(raw) {
   if (Array.isArray(saved.finished)) {
     p.finished = CHAPTERS.map((ch) => ch.n).filter((n) => saved.finished.includes(n));
   }
+  for (const [item, n] of Object.entries(saved.harvested ?? {})) {
+    if (ITEMS.includes(item) && Number.isFinite(n) && n > 0) p.harvested[item] = n;
+  }
+  p.festivalSeen = saved.festivalSeen === true;
+  if (saved.refund && typeof saved.refund === "object") p.refund = saved.refund;
   noteFinished(p);
+  if (p.owned.includes(saved.hat) && HAT_NAMES[saved.hat]) p.hat = saved.hat;
   return p;
+}
+
+// Hand over a crown for every finished chapter.
+function giveCrowns(p) {
+  for (const crown of CROWNS) {
+    if (p.finished.includes(crown.chapter) && !p.owned.includes(crown.id)) p.owned.push(crown.id);
+  }
+}
+
+export function crownsOwned(p) {
+  return CROWNS.filter((c) => p.owned.includes(c.id));
 }
 
 // Remember every chapter whose core quests all have a star.
@@ -127,6 +185,7 @@ function noteFinished(p) {
     }
   }
   p.finished.sort((a, b) => a - b);
+  giveCrowns(p);
 }
 
 // ---- Stars and chapters ----
@@ -181,13 +240,31 @@ export function isQuestOpen(p, id) {
   return i === 0 || p.stars[id] >= 1 || p.stars[list[i - 1].id] >= 1;
 }
 
-// The quest to play next: the first open one not yet finished (bonus quests
-// last), then the first open one without 3 stars. Null when every quest has
-// 3 stars.
-export function nextQuest(p) {
+// What to play next, and why: { id, why }, or null when every quest has 3
+// stars. Before the festival it's the first open quest not yet finished
+// (bonus quests last), then the first open one without 3 stars. After the
+// festival it never sends the player back to the start: a new quest, then
+// a bonus quest not tried yet, then the quest with the fewest stars.
+export function nextStep(p) {
   const open = QUESTS.filter((q) => isQuestOpen(p, q.id));
-  return (open.find((q) => !p.stars[q.id] && !q.bonus) ?? open.find((q) => !p.stars[q.id])
-    ?? open.find((q) => p.stars[q.id] < 3) ?? null)?.id ?? null;
+  if (!isChapterDone(p, CHAPTERS.length)) {
+    const q = open.find((x) => !p.stars[x.id] && !x.bonus) ?? open.find((x) => !p.stars[x.id])
+      ?? open.find((x) => p.stars[x.id] < 3);
+    return q ? { id: q.id, why: null } : null;
+  }
+  const fresh = open.find((q) => !p.stars[q.id] && !q.bonus);
+  if (fresh) return { id: fresh.id, why: `${fresh.title} is a new quest from ${fresh.who}!` };
+  const bonus = open.find((q) => !p.stars[q.id]);
+  if (bonus) return { id: bonus.id, why: `${bonus.title} is a bonus quest you haven't tried yet.` };
+  let fewest = null;
+  for (const q of open) if (p.stars[q.id] < 3 && (!fewest || p.stars[q.id] < p.stars[fewest.id])) fewest = q;
+  if (!fewest) return null;
+  const n = p.stars[fewest.id];
+  return { id: fewest.id, why: `${fewest.title} has ${n} ${n === 1 ? "star" : "stars"}. Can you get 3?` };
+}
+
+export function nextQuest(p) {
+  return nextStep(p)?.id ?? null;
 }
 
 export function locked(p) {
@@ -256,6 +333,8 @@ export function titles(p) {
 
 // Note crops harvested for the first time. Returns the new almanac pages.
 export function noteHarvest(p, gained) {
+  p.harvested ??= {};
+  for (const [item, n] of Object.entries(gained)) p.harvested[item] = (p.harvested[item] ?? 0) + n;
   const added = [];
   for (const page of ALMANAC) {
     if ((gained[page.item] ?? 0) > 0 && !p.almanac.includes(page.item)) {
@@ -291,7 +370,12 @@ export function recordResult(p, id, stars, ticks) {
   const after = unlockState(p);
   const added = (key) => after[key].filter((x) => !before[key].includes(x));
   const lines = [];
-  for (const n of added("done")) lines.push(`You earned the ${CHAPTERS[n - 1].badge}!`);
+  for (const n of added("done")) {
+    lines.push(`You earned the ${CHAPTERS[n - 1].badge}!`);
+    const crown = crownFor(n);
+    if (crown && n !== CHAPTERS.length) lines.push(`A gift: the ${crown.name}! Bolt can wear it. Find it on the shelf.`);
+    if (crown && n === CHAPTERS.length) lines.push(`Aunt Juniper gave Bolt the ${crown.name}, the last of the 8 golden crowns!`);
+  }
   for (const n of added("chapters")) lines.push(`Chapter ${n}, ${CHAPTERS[n - 1].title}, is open!`);
   const words = added("words").filter((w) => WORDS[w].chapter !== AFTER_FESTIVAL);
   if (words.length) lines.push(`Bolt learned: ${words.map((w) => WORDS[w].label).join(", ")}.`);

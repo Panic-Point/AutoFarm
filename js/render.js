@@ -36,9 +36,30 @@ const HATS = {
   red_cap: ["#c8322b", "#e0473f", "cap"],
   cowboy_hat: ["#7a4b26", "#8f5a2f", "brim"],
   flower_crown: ["#5f9e4a", "#f2d0e4", "flowers"],
-  gold_crown: ["#e6b422", "#f6cf3a", "crown"],
   berry_hat: ["#e9c98a", "#f3dca8", "berries"],
 };
+
+// The golden crowns, one per chapter, each with its chapter's crop as the gem.
+const GEMS = {
+  crown_1: ["#b5c44f"], // hay
+  crown_2: ["#b8862a"], // wheat
+  crown_3: ["#d9363e"], // strawberry
+  crown_4: ["#e8761e"], // pumpkin
+  crown_5: ["#a0522d"], // mushroom
+  crown_6: ["#5f9e4a"], // corn
+  crown_7: ["#6b3e1e"], // sunflower
+  crown_8: ["#d9363e", "#3f6fd9", "#3f9e4a"], // festival
+};
+for (const id of Object.keys(GEMS)) HATS[id] = ["#e6b422", "#f6cf3a", "crown"];
+
+// Draw Bolt alone, wearing `hat`, filling the canvas. For the shelf and the
+// festival.
+export function drawBoltIcon(ctx, hat) {
+  const W = ctx.canvas.width;
+  ctx.clearRect(0, 0, W, W);
+  const cell = W * 1.9;
+  drawBolt(ctx, (W - cell) / 2, (W - cell) / 2 + W * 0.12, cell, hat);
+}
 
 // opts: { looks: { hat, scarecrow, fence, dog }, fog, goal: { at, pattern } }
 export function drawFarm(ctx, state, opts = {}) {
@@ -413,17 +434,29 @@ function drawHat(ctx, cx, top, w, cell, hat) {
     return;
   }
   if (style === "crown") {
+    const tall = hat === "crown_8" ? 1.35 : 1;
     ctx.fillStyle = crown;
     ctx.beginPath();
     ctx.moveTo(cx - w * 0.4, top);
-    ctx.lineTo(cx - w * 0.4, top - cell * 0.12);
-    ctx.lineTo(cx - w * 0.2, top - cell * 0.05);
-    ctx.lineTo(cx, top - cell * 0.14);
-    ctx.lineTo(cx + w * 0.2, top - cell * 0.05);
-    ctx.lineTo(cx + w * 0.4, top - cell * 0.12);
+    ctx.lineTo(cx - w * 0.4, top - cell * 0.12 * tall);
+    ctx.lineTo(cx - w * 0.2, top - cell * 0.05 * tall);
+    ctx.lineTo(cx, top - cell * 0.14 * tall);
+    ctx.lineTo(cx + w * 0.2, top - cell * 0.05 * tall);
+    ctx.lineTo(cx + w * 0.4, top - cell * 0.12 * tall);
     ctx.lineTo(cx + w * 0.4, top);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = "#a87b0c";
+    ctx.lineWidth = Math.max(1, cell / 80);
+    ctx.stroke();
+    const gems = GEMS[hat] ?? [];
+    const spots = gems.length === 1 ? [0] : [-0.22, 0, 0.22];
+    gems.forEach((color, i) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(cx + spots[i] * w, top - cell * 0.04, cell * (gems.length === 1 ? 0.03 : 0.024), 0, Math.PI * 2);
+      ctx.fill();
+    });
     return;
   }
   ctx.fillStyle = brim;
