@@ -11,6 +11,7 @@ import sys
 import traceback
 
 import _farm
+from plain_words import HELPERS, PlainWordsError, translate
 
 NORTH = "north"
 SOUTH = "south"
@@ -188,6 +189,10 @@ def run(code):
     global _lines
     _lines = 0
     try:
+        code = translate(code)
+    except PlainWordsError as e:
+        return ["error", e.message]
+    try:
         tree = ast.parse(code, USER_FILE)
     except SyntaxError as e:
         return ["error", f"Line {e.lineno}: SyntaxError: {e.msg}"]
@@ -198,6 +203,7 @@ def run(code):
 
     env = {"__name__": "__main__", "__builtins__": _SAFE_BUILTINS}
     env.update(API)
+    env.update(HELPERS)
     sys.settrace(_global_trace)
     try:
         exec(compiled, env)
