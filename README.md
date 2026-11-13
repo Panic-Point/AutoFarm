@@ -36,6 +36,18 @@ repeat until position() == (0, 0):
 | `set total to 0` / `change total by 1` | `total = 0` / `total += 1` |
 | `true` / `false` | `True` / `False` |
 
+## Code windows
+
+Code can be split across several named windows, like files. Make one with **+ New window**, drag windows around by their title bar, and double-click a name to rename it. Any window can use the commands and classes another window makes:
+
+```
+use helper                  # everything from the helper window
+use helper, crops           # two windows at once
+use go_home from helper     # just one command
+```
+
+Python's `from helper import *` and `import helper` work too. Every window has its own run button, and **Run** at the top runs the window used last. A window you use runs once per run, the first time it's used, and an error inside it says which window and line it came from. Windows can't import anything except each other.
+
 `py/plain_words.py` rewrites these lines into Python before the program runs, one line for one line, so error messages keep the player's line numbers. A line that starts like a plain-word statement but isn't written right gets a hint instead of a Python syntax error.
 
 ## Run it locally
@@ -52,12 +64,14 @@ Then open http://localhost:8000. Opening `index.html` straight from disk won't w
 
 - `js/game.js`: the farm simulation, with no DOM code.
 - `py/plain_words.py`: turns plain-word lines like `repeat 5 times:` into Python.
-- `py/farm_api.py`: the Python commands players use, plus the sandbox. It blocks imports, dunder names and file or eval builtins, and limits runaway loops.
+- `py/farm_api.py`: the Python commands players use, plus the sandbox. It only lets programs import the player's own code windows, and blocks dunder names and file or eval builtins, and limits runaway loops.
 - `js/worker.js`: a web worker that loads Pyodide and runs the player's program at full speed against a copy of the farm. It streams one snapshot per tick, plus `print()` output, back to the page.
+- `js/files.js`: window names, the starter windows, and loading saved windows.
+- `js/windows.js`: the desk of code windows (move, resize, rename, hide, delete, run).
 - `js/main.js`: the page. It replays the snapshots at the chosen speed, and handles Run, Stop and Reset.
 - `js/render.js`: canvas drawing.
 
-Each run can use up to 5,000 ticks. The farm and your code are saved in the browser's local storage for now. Accounts and cloud saves are planned.
+Each run can use up to 5,000 ticks. The farm and your code windows are saved in the browser's local storage for now. Accounts and cloud saves are planned.
 
 ## Tests
 

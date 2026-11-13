@@ -36,7 +36,10 @@
         </label>
         <button id="reset" class="secondary" title="Start the farm over">Reset farm</button>
       </div>
-      <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Your program"></textarea>
+      <div class="window-chips" id="window-bar" aria-label="Your code windows"></div>
+      <div class="desk" id="desk">
+        <p class="desk-empty">Every window is hidden. Pick one above to open it again.</p>
+      </div>
       <div class="console" id="console" aria-live="polite"></div>
     </section>
 
@@ -68,6 +71,15 @@
         <li><code>set total to 0</code> and <code>change total by 1</code> make and update variables.</li>
         <li><code>define sweep_row:</code> makes your own command. Run it with <code>sweep_row()</code>.</li>
         <li>Lines inside a loop, choice or command are indented by 4 spaces. Regular Python works too.</li>
+      </ul>
+      <h3>Code windows</h3>
+      <ul>
+        <li>Split your code into windows. Make one with <b>+ New window</b>, and double-click a window's name to rename it.</li>
+        <li><code>use helper</code> lets a window use every command and class made in the window called <code>helper</code>. <code>use helper, crops</code> uses two windows.</li>
+        <li><code>use go_home from helper</code> takes just one command. Python's <code>from helper import *</code> and <code>import helper</code> work too.</li>
+        <li>Each window has its own &#9654; button. <b>Run</b> at the top runs the window you used last.</li>
+        <li>A window you use runs from top to bottom the first time it's used, so keep it to <code>define</code> and <code>class</code>.</li>
+        <li>Drag a window by its title bar, and resize it from its bottom-right corner.</li>
       </ul>
       <h3>Crops</h3>
       <ul>

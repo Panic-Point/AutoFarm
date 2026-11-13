@@ -1,40 +1,18 @@
 // Page controller: editor, run/stop, playback of the worker's snapshots.
 import { ITEMS, newFarmState } from "./game.js";
 import { drawFarm } from "./render.js";
-
-const STARTER_CODE = `# Sweep the field row by row and harvest everything that is ripe.
-set size to field_size()
-
-define harvest_if_ripe:
-    if is_ripe():
-        harvest()
-
-repeat 3 times:
-    repeat size times:
-        repeat size - 1 times:
-            harvest_if_ripe()
-            move(EAST)
-        harvest_if_ripe()
-        # Walk back to the west edge, then go up a row.
-        repeat size - 1 times:
-            move(WEST)
-        move(NORTH)
-    # Back to the south-west corner for the next sweep.
-    repeat until position() == (0, 0):
-        move(SOUTH)
-
-print("Hay collected:", count("hay"))
-`;
+import { loadWorkspace } from "./files.js";
+import { Desk } from "./windows.js";
 
 // Watchdog: if Python goes quiet this long, restart it.
 const WATCHDOG_MS = 20000;
-const STORE_CODE = "autofarm.code";
+const STORE_CODE = "autofarm.code"; // the single program saved before code windows
+const STORE_FILES = "autofarm.files";
 const STORE_FARM = "autofarm.farm";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("farm");
 const ctx = canvas.getContext("2d");
-const codeEl = $("code");
 const runBtn = $("run");
 const stopBtn = $("stop");
 const speedEl = $("speed");
@@ -105,8 +83,7 @@ function onWorkerMessage(e) {
   const msg = e.data;
   if (msg.type === "ready") {
     workerReady = true;
-    runBtn.disabled = false;
-    runBtn.textContent = "Run";
+    updateRunButton();
     log(`Python is ready. Each run can use up to ${msg.maxTicks} ticks.`, "note");
     return;
   }
@@ -123,14 +100,17 @@ function onWorkerMessage(e) {
 
 // ---- Running ----
 
-function startRun() {
+function startRun(name = desk.active) {
   if (!workerReady || run) return;
   consoleEl.textContent = "";
   runId += 1;
   run = { id: runId, queue: [], done: null, lastActivity: performance.now(), pos: 0 };
-  save(STORE_CODE, codeEl.value);
-  worker.postMessage({ type: "run", runId, code: codeEl.value, state: farm });
-  runBtn.disabled = true;
+  save(STORE_FILES, desk.workspace);
+  const program = desk.program(name);
+  worker.postMessage({ type: "run", runId, ...program, state: farm });
+  desk.setRunning(name);
+  updateRunButton();
+  stopBtn.disabled = false;
   stopBtn.disabled = false;
   accumulator = 0;
 }
@@ -138,7 +118,8 @@ function startRun() {
 function finishRun(message, cls) {
   if (message) log(message, cls);
   run = null;
-  runBtn.disabled = !workerReady;
+  desk.setRunning(null);
+  updateRunButton();
   stopBtn.disabled = true;
   save(STORE_FARM, farm);
 }
@@ -206,30 +187,27 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-// ---- Editor niceties ----
+// ---- Code windows ----
 
-codeEl.addEventListener("keydown", (e) => {
-  if (e.key === "Tab" && !e.shiftKey) {
-    e.preventDefault();
-    const { selectionStart: s, selectionEnd: end } = codeEl;
-    codeEl.setRangeText("    ", s, end, "end");
-  } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault();
-    startRun();
-  } else if (e.key === "Enter") {
-    // Keep the current line's indentation, and indent after a colon.
-    const s = codeEl.selectionStart;
-    const lineStart = codeEl.value.lastIndexOf("\n", s - 1) + 1;
-    const line = codeEl.value.slice(lineStart, s);
-    let indent = line.match(/^\s*/)[0];
-    if (line.trimEnd().endsWith(":")) indent += "    ";
-    e.preventDefault();
-    codeEl.setRangeText("\n" + indent, s, codeEl.selectionEnd, "end");
-  }
+const desk = new Desk({
+  desk: $("desk"),
+  bar: $("window-bar"),
+  workspace: loadWorkspace(load(STORE_FILES), load(STORE_CODE)),
+  onChange: (workspace) => {
+    save(STORE_FILES, workspace);
+    updateRunButton();
+  },
+  onRun: (name) => startRun(name),
+  onMessage: (text, cls) => log(text, cls),
 });
-codeEl.addEventListener("input", () => save(STORE_CODE, codeEl.value));
 
-runBtn.addEventListener("click", startRun);
+function updateRunButton() {
+  if (!workerReady) return;
+  runBtn.disabled = Boolean(run);
+  runBtn.textContent = `Run ${desk.active}`;
+}
+
+runBtn.addEventListener("click", () => startRun());
 stopBtn.addEventListener("click", stopRun);
 $("reset").addEventListener("click", () => {
   if (run) stopRun();
@@ -240,7 +218,7 @@ $("reset").addEventListener("click", () => {
   render();
 });
 
-codeEl.value = load(STORE_CODE) ?? STARTER_CODE;
+save(STORE_FILES, desk.workspace);
 render();
 startWorker();
 requestAnimationFrame(loop);

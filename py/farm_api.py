@@ -7,8 +7,10 @@ return 1 (did something), 0 (could not), or -1 (out of ticks for this run).
 
 import ast
 import builtins
+import json
 import sys
 import traceback
+import types
 
 import _farm
 from plain_words import HELPERS, PlainWordsError, translate
@@ -131,8 +133,18 @@ API = {
     "print": _print,
 }
 
-USER_FILE = "<farm>"
+# Every code window the player writes compiles under a filename like
+# "<file:helper>", so tracebacks and the line counter know which code is theirs.
+_FILE_PREFIX = "<file:"
 _lines = 0
+
+
+def _filename(name):
+    return f"{_FILE_PREFIX}{name}>"
+
+
+def _is_player_file(filename):
+    return filename.startswith(_FILE_PREFIX)
 
 
 def _local_trace(frame, event, arg):
@@ -146,18 +158,22 @@ def _local_trace(frame, event, arg):
 
 def _global_trace(frame, event, arg):
     # Only count lines in the player's own code.
-    if frame.f_code.co_filename == USER_FILE:
+    if _is_player_file(frame.f_code.co_filename):
         return _local_trace
     return None
 
 
-def _user_line(exc):
-    frames = [f for f in traceback.extract_tb(exc.__traceback__) if f.filename == USER_FILE]
-    return frames[-1].lineno if frames else None
+def _user_frame(exc):
+    """(file name, line) of the last player line in the traceback, or None."""
+    frames = [f for f in traceback.extract_tb(exc.__traceback__) if _is_player_file(f.filename)]
+    if not frames:
+        return None
+    return frames[-1].filename[len(_FILE_PREFIX):-1], frames[-1].lineno
 
 
 # Sandbox: player programs get plain Python (loops, functions, classes, lists,
-# dicts...) but no imports, no dunder access and no file or eval builtins.
+# dicts...) but no dunder access, no file or eval builtins, and they can only
+# import their own code windows.
 _BLOCKED_BUILTINS = {
     "__import__", "open", "eval", "exec", "compile", "input", "breakpoint",
     "globals", "locals", "vars", "getattr", "setattr", "delattr", "help", "exit", "quit",
@@ -167,58 +183,145 @@ _SAFE_BUILTINS = {k: v for k, v in builtins.__dict__.items()
 _SAFE_BUILTINS["__build_class__"] = builtins.__build_class__  # allow `class`
 
 
-def _check_sandbox(tree):
-    """Return an error message for code the sandbox does not allow, or None."""
+class PlayerError(Exception):
+    """A problem in the player's code that already has a friendly message."""
+
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
+
+def _where(name, main, line):
+    """'Line 3' for the file being run, 'In helper, line 3' for another file."""
+    if name == main:
+        return f"Line {line}"
+    return f"In {name}, line {line}"
+
+
+def _check_sandbox(tree, name, main, files):
+    """Raise PlayerError for code the sandbox does not allow."""
     for node in ast.walk(tree):
         line = getattr(node, "lineno", None)
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            return f"Line {line}: import is not available in AutoFarm programs."
-        name = None
+        where = _where(name, main, line)
+        modules = []
+        if isinstance(node, ast.Import):
+            modules = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                raise PlayerError(f"{where}: write `use helper` without any dots.")
+            modules = [node.module or ""]
+        for module in modules:
+            if module not in files:
+                raise PlayerError(
+                    f"{where}: {module} is not available. You can only use your own "
+                    "code windows, and there is no code window with that name.")
+        attr = None
         if isinstance(node, ast.Attribute):
-            name = node.attr
+            attr = node.attr
         elif isinstance(node, ast.Name):
-            name = node.id
-        if name and name.startswith("__") and name.endswith("__"):
-            return f"Line {line}: names like {name} are not available in AutoFarm programs."
-    return None
+            attr = node.id
+        elif isinstance(node, ast.alias):
+            attr = node.asname or node.name
+        if attr and attr.startswith("__") and attr.endswith("__"):
+            raise PlayerError(f"{where}: names like {attr} are not available in AutoFarm programs.")
 
 
-def run(code):
-    """Run a player's program. Returns [status, message] where status is
-    'ok', 'out_of_ticks', 'too_many_steps' or 'error'."""
+class _Loader:
+    """Compiles and runs the player's code windows, and imports one window
+    into another. Each window runs once per run, the first time it's used."""
+
+    def __init__(self, files, main):
+        self.files = files
+        self.main = main
+        self.modules = {}
+        self.loading = []
+        self.builtins = dict(_SAFE_BUILTINS)
+        self.builtins["__import__"] = self.import_
+
+    def compile(self, name):
+        try:
+            code = translate(self.files[name])
+        except PlainWordsError as e:
+            if name == self.main:
+                raise PlayerError(e.message) from None
+            raise PlayerError(f"In {name}, l{e.message[1:]}") from None
+        try:
+            tree = ast.parse(code, _filename(name))
+        except SyntaxError as e:
+            raise PlayerError(f"{_where(name, self.main, e.lineno)}: SyntaxError: {e.msg}") from None
+        _check_sandbox(tree, name, self.main, self.files)
+        return compile(tree, _filename(name), "exec")
+
+    def run(self, name, env):
+        env["__builtins__"] = self.builtins
+        env.update(API)
+        env.update(HELPERS)
+        compiled = self.compile(name)
+        self.loading.append(name)
+        try:
+            exec(compiled, env)
+        finally:
+            self.loading.pop()
+
+    def import_(self, name, globals=None, locals=None, fromlist=(), level=0):
+        if level or name not in self.files:
+            raise PlayerError(f"There is no code window called {name}.")
+        if name in self.loading:
+            chain = " -> ".join(self.loading[self.loading.index(name):] + [name])
+            raise PlayerError(
+                f"Your code windows use each other in a circle ({chain}). "
+                "Move the shared commands into a window that doesn't use the others.")
+        if name not in self.modules:
+            module = types.ModuleType(name)
+            self.modules[name] = module
+            try:
+                self.run(name, module.__dict__)
+            except BaseException:
+                del self.modules[name]
+                raise
+        return self.modules[name]
+
+
+def _parse_files(files):
+    if files is None:
+        return {}
+    if isinstance(files, str):
+        files = json.loads(files)
+    return {str(k): str(v) for k, v in dict(files).items()}
+
+
+def run(code, files=None, name="main"):
+    """Run a player's program. `code` is the code window being run and `name`
+    is its name. `files` maps the names of the other code windows to their code
+    (a dict or a JSON string), so the program can use them.
+
+    Returns [status, message] where status is 'ok', 'out_of_ticks',
+    'too_many_steps' or 'error'."""
     global _lines
     _lines = 0
-    try:
-        code = translate(code)
-    except PlainWordsError as e:
-        return ["error", e.message]
-    try:
-        tree = ast.parse(code, USER_FILE)
-    except SyntaxError as e:
-        return ["error", f"Line {e.lineno}: SyntaxError: {e.msg}"]
-    problem = _check_sandbox(tree)
-    if problem:
-        return ["error", problem]
-    compiled = compile(tree, USER_FILE, "exec")
-
-    env = {"__name__": "__main__", "__builtins__": _SAFE_BUILTINS}
-    env.update(API)
-    env.update(HELPERS)
+    files = _parse_files(files)
+    files[name] = code
+    loader = _Loader(files, name)
+    env = {"__name__": "__main__"}
     sys.settrace(_global_trace)
     try:
-        exec(compiled, env)
+        loader.run(name, env)
+    except PlayerError as e:
+        return ["error", e.message]
     except OutOfTicks:
         return ["out_of_ticks", "The farmer ran out of ticks for this run."]
     except TooManySteps as e:
-        line = _user_line(e)
-        where = f" (around line {line})" if line else ""
+        found = _user_frame(e)
+        where = ""
+        if found:
+            where = f" (around line {found[1]}" + ("" if found[0] == name else f" of {found[0]}") + ")"
         return ["too_many_steps",
                 f"Your program ran {LINE_LIMIT:,} lines without finishing{where}. "
                 "Is there a loop that never ends without the farmer doing anything?"]
     except BaseException as e:  # noqa: BLE001 - report every player error
-        line = _user_line(e)
+        found = _user_frame(e)
         msg = f"{type(e).__name__}: {e}"
-        return ["error", f"Line {line}: {msg}" if line else msg]
+        return ["error", f"{_where(found[0], name, found[1])}: {msg}" if found else msg]
     finally:
         sys.settrace(None)
     return ["ok", "Program finished."]

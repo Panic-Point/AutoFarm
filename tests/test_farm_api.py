@@ -91,7 +91,7 @@ class FarmApiTest(unittest.TestCase):
         self.assertIn("line", msg)
 
     def test_sandbox_blocks_import_and_dunders(self):
-        for code in ("import os", "from js import document", "x = ().__class__",
+        for code in ("import os", "from js import document", "x = ().__class__", "use os",
                      "__import__('os')"):
             status, msg = farm_api.run(code)
             self.assertEqual(status, "error", code)
@@ -170,6 +170,103 @@ class PlainWordsTest(unittest.TestCase):
             status, msg = farm_api.run(code)
             self.assertEqual(status, "error", code)
             self.assertIn(expected, msg, code)
+
+
+class CodeWindowsTest(unittest.TestCase):
+    """Programs split across several named code windows."""
+
+    HELPER = (
+        "define step(n):\n"
+        "    repeat n times:\n"
+        "        move(EAST)\n"
+        "class Counter:\n"
+        "    def __init__(self):\n"
+        "        self.total = 0\n"
+        "    def add(self):\n"
+        "        self.total += 1\n"
+        "_secret = 1\n"
+    )
+
+    def setUp(self):
+        calls.clear()
+        logs.clear()
+        state["budget"] = 10**9
+
+    def run_ok(self, code, files, name="main"):
+        result = farm_api.run(code, files, name)
+        self.assertEqual(result, ["ok", "Program finished."], code)
+
+    def test_use_plain_words(self):
+        self.run_ok("use helper\nstep(2)\nc = Counter()\nc.add()\nprint(c.total)\n",
+                    {"helper": self.HELPER})
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(logs, ["1"])
+
+    def test_python_import_forms(self):
+        files = {"helper": self.HELPER, "more": "def hi():\n    print('hi')\n"}
+        self.run_ok("from helper import *\nimport more\nstep(1)\nmore.hi()\n", files)
+        self.run_ok("use step from helper\nuse helper and more\nstep(1)\nhi()\n", files)
+        self.run_ok("use helper, more\nhi()\n", files)
+        self.assertEqual(logs, ["hi", "hi", "hi"])
+
+    def test_files_passed_as_json(self):
+        import json
+        self.run_ok("use helper\nstep(3)\n", json.dumps({"helper": self.HELPER}))
+        self.assertEqual(len(calls), 3)
+
+    def test_star_import_skips_private_names(self):
+        status, msg = farm_api.run("use helper\nprint(_secret)\n", {"helper": self.HELPER})
+        self.assertEqual(status, "error")
+        self.assertIn("NameError", msg)
+
+    def test_window_runs_once_and_chains(self):
+        files = {
+            "a": "print('loading a')\ndefine go:\n    move(NORTH)\n",
+            "b": "use a\ndefine go_twice:\n    go()\n    go()\n",
+        }
+        self.run_ok("use a\nuse b\ngo_twice()\n", files)
+        self.assertEqual(logs, ["loading a"])
+        self.assertEqual(len(calls), 2)
+
+    def test_any_window_can_be_run(self):
+        self.run_ok("use helper\nstep(1)\n", {"helper": self.HELPER, "main": "this is not code"}, name="crops")
+        self.assertEqual(len(calls), 1)
+
+    def test_errors_name_the_window(self):
+        helper = "define boom:\n    wait()\n    plant('potato')\n"
+        status, msg = farm_api.run("use helper\nboom()\n", {"helper": helper})
+        self.assertEqual(status, "error")
+        self.assertTrue(msg.startswith("In helper, line 3: ValueError"), msg)
+
+        status, msg = farm_api.run("use helper\n", {"helper": "repeat 3 times\n    wait()\n"})
+        self.assertTrue(msg.startswith("In helper, line 1: add a colon"), msg)
+
+        status, msg = farm_api.run("use helper\n", {"helper": "x = (\n"})
+        self.assertTrue(msg.startswith("In helper, line"), msg)
+
+        status, msg = farm_api.run("use helper\n", {"helper": "import os\n"})
+        self.assertIn("In helper, line 1: os is not available", msg)
+
+    def test_missing_window(self):
+        status, msg = farm_api.run("use helpr\n", {"helper": ""})
+        self.assertEqual(status, "error")
+        self.assertIn("Line 1: helpr is not available", msg)
+
+    def test_circular_use(self):
+        files = {"a": "use b\n", "b": "use a\n"}
+        status, msg = farm_api.run("use a\n", files)
+        self.assertEqual(status, "error")
+        self.assertIn("circle (a -> b -> a)", msg)
+
+    def test_runaway_loop_in_other_window(self):
+        status, msg = farm_api.run("use helper\nspin()\n", {"helper": "define spin:\n    repeat forever:\n        pass\n"})
+        self.assertEqual(status, "too_many_steps")
+        self.assertIn("around line 3 of helper", msg)
+
+    def test_use_hint(self):
+        status, msg = farm_api.run("use helper.py\n", {"helper": ""})
+        self.assertEqual(status, "error")
+        self.assertIn("Try `use helper`", msg)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,9 @@ player's own code.
     define go(steps):            def go(steps):
     set total to 0               total = 0
     change total by 1            total += 1
+    use helper                   from helper import *
+    use helper, crops            from helper import *; from crops import *
+    use go_home from helper      from helper import go_home
 """
 
 import io
@@ -55,7 +58,19 @@ _RULES = [
      lambda m: f"{m['var']} = {m['value']}"),
     (re.compile(rf"change\s+(?P<var>{_NAME})\s+by\s+(?P<value>.+)$"),
      lambda m: f"{m['var']} += {m['value']}"),
+    (re.compile(rf"use\s+(?P<names>{_NAME}(?:\s*,\s*{_NAME})*)\s+from\s+(?P<file>{_NAME})\s*(?P<tail>#.*)?$"),
+     lambda m: f"from {m['file']} import {_names(m['names'])}"),
+    (re.compile(rf"use\s+(?P<files>{_NAME}(?:\s*(?:,|\band\b)\s*{_NAME})*)\s*(?P<tail>#.*)?$"),
+     lambda m: "; ".join(f"from {f} import *" for f in _split(m['files']))),
 ]
+
+
+def _split(names):
+    return [n for n in re.split(r"\s*(?:,|\band\b)\s*", names.strip()) if n]
+
+
+def _names(names):
+    return ", ".join(_split(names))
 
 # Lines that start with one of these words but match no rule get a hint.
 _HINTS = {
@@ -63,6 +78,7 @@ _HINTS = {
     "define": "Try `define sweep_row:` or `define go(steps):`.",
     "set": "Try `set total to 0`.",
     "change": "Try `change total by 1`.",
+    "use": "Try `use helper` to use the code in your helper window, or `use go_home from helper`.",
 }
 _FIRST_WORD = re.compile(r"(?P<word>[A-Za-z_]\w*)\b")
 
