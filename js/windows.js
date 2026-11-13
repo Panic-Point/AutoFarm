@@ -349,6 +349,23 @@ export class Desk {
     this.onMessage(`Deleted the ${name} window.`, "note");
   }
 
+  // Open the window `name` with `code` and bring it to the front. If it's
+  // already there, it keeps its code, unless `fresh` puts `code` back.
+  openWindow(name, code, fresh = false) {
+    let view = this.views.get(name);
+    if (!view) {
+      const data = newWindow(name, code, this.views.size % 6);
+      this.workspace.windows.push(data);
+      view = this.addView(data);
+      this.clamp(view);
+    } else if (fresh) {
+      view.data.code = code;
+      view.textarea.value = code;
+    }
+    this.focus(name, false);
+    this.save();
+  }
+
   create() {
     const name = nextName(this.names());
     const code = `# Write commands here with define.\n# Then write  use ${name}  in another window to use them.\n\n`;

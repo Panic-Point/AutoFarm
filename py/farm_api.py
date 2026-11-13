@@ -166,6 +166,12 @@ def ticks():
     return _farm.ticks()
 
 
+def _plot_data(key):
+    """A fact about this quest plot (like the rows of a design), or None.
+    For commands like design() that a quest's plots answer differently."""
+    return json.loads(_farm.plot_data(key))
+
+
 def _print(*args, sep=" ", end=""):
     _farm.log(sep.join(str(a) for a in args) + end)
 

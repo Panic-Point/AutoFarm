@@ -13,6 +13,7 @@ export class FarmBridge {
     this.game = null;
     this.startTick = 0;
     this.events = [];
+    this.data = {};
     const act = (fn) => this.act(fn);
     const game = () => this.game;
     this.module = {
@@ -31,6 +32,8 @@ export class FarmBridge {
       field_size: () => game().size,
       count: (item) => game().inventory[item] ?? 0,
       ticks: () => game().tick - this.startTick,
+      // Facts about this plot (a quest's plot `data`), as JSON, or "null".
+      plot_data: (key) => JSON.stringify(this.data[String(key)] ?? null),
       // The line of the player's code doing the next action: [window, line].
       at: (name, line) => {
         this.where = { name: String(name), line: Number(line) };
@@ -42,7 +45,9 @@ export class FarmBridge {
   }
 
   // maxTicks: how many ticks this run may use before Bolt gets tired.
-  start(state, maxTicks = MAX_TICKS) {
+  // data: facts about the plot the program can read with plot_data.
+  start(state, maxTicks = MAX_TICKS, data = {}) {
+    this.data = data ?? {};
     this.maxTicks = Math.min(maxTicks, MAX_TICKS);
     this.game = new Game(state);
     this.startTick = this.game.tick;

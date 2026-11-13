@@ -8,6 +8,16 @@
 // Bolt starts at `start` ([x, y], with [0, 0] in the south-west corner).
 // `fog: true` hides every tile more than one step away from Bolt.
 //
+// Test plots: `field` can be a list of 2 or 3 fields instead of one. The
+// same program runs on each plot in turn, the run stops at the first plot
+// that fails, and the star targets count the ticks of every plot together.
+// A plot can have its own `goal` (added to the quest's goal) and `data`, facts
+// the program can read about the plot (farm_api's _plot_data(key)).
+//
+// `starter` is code the quest starts with, for quests where the player fixes
+// Bolt's code: a string, or { name, code } to choose the window's name
+// (fix_1_6 for quest 1-6 otherwise). It opens in its own window.
+//
 // Goals (all that are given must be met):
 //   gain:    { item: n }  harvest at least n of the item
 //   exactly: { item: n }  harvest exactly n of the item

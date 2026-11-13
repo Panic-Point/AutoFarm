@@ -30,6 +30,7 @@ fake.field_size = lambda: 4
 fake.count = lambda item: 0
 fake.ticks = lambda: 0
 fake.can_move = lambda d: True
+fake.plot_data = lambda key: '[1, 2]' if key == "rows" else "null"
 state["seeds"] = None
 fake.has_seed = lambda c: state["seeds"] is None or c in state["seeds"]
 logs = []
@@ -400,6 +401,10 @@ class WordsTest(unittest.TestCase):
         self.assertEqual(farm_api.error_line(), [])
         farm_api.run("repeat 3:\n    move(EAST)\n")
         self.assertEqual(farm_api.error_line(), ["main", 1])
+
+    def test_plot_data(self):
+        self.assertEqual(farm_api._plot_data("rows"), [1, 2])
+        self.assertIsNone(farm_api._plot_data("nothing"))
 
 
 if __name__ == "__main__":

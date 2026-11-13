@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { CHAPTERS, QUESTS } from "../js/chapters.js";
 import { FarmBridge, PY_FILES } from "../js/bridge.js";
-import { checkQuest, questField, tickLimit } from "../js/quests.js";
+import { checkQuest, judgeQuest, plotData, questField, questPlots, tickLimit } from "../js/quests.js";
 import { WORDS, lockedWords } from "../js/words.js";
 import { SOLUTIONS } from "./solutions.mjs";
 
@@ -23,14 +23,24 @@ before(async () => {
   api = pyodide.pyimport("farm_api");
 });
 
-// Run a solution the way the game does: only words from open chapters.
+// Run a solution the way the game does: only words from open chapters, on
+// each test plot in turn until one fails. `run` is the last plot's run, with
+// the ticks of every plot that ran.
 function play(quest, solution, chapter = quest.chapter) {
   const { main, ...files } = typeof solution === "string" ? { main: solution } : solution;
-  const start = questField(quest);
-  bridge.start(start, tickLimit(quest));
   const locked = lockedWords((n) => n <= chapter);
-  const run = bridge.run(api, { code: main.trim() + "\n", files, name: "main", locked });
-  return { run, result: checkQuest(quest, start, bridge.game.snapshot(), run) };
+  const results = [];
+  for (let i = 0; i < questPlots(quest).length; i++) {
+    const start = questField(quest, i);
+    bridge.start(start, tickLimit(quest), plotData(quest, i));
+    const run = bridge.run(api, { code: main.trim() + "\n", files, name: "main", locked });
+    results.push({ start, end: bridge.game.snapshot(), run });
+    const judged = judgeQuest(quest, results);
+    if (!judged.met && judged.failedPlot === i) break;
+  }
+  const result = judgeQuest(quest, results);
+  const last = results[results.length - 1].run;
+  return { run: { ...last, ticks: result.ticks }, result, results };
 }
 
 test("quest data is well formed", () => {
@@ -40,11 +50,21 @@ test("quest data is well formed", () => {
     for (const q of ch.quests) {
       assert.ok(!ids.has(q.id), `duplicate quest id ${q.id}`);
       ids.add(q.id);
-      const size = q.field.map.length;
-      assert.ok(q.field.map.every((row) => row.length === size), `${q.id}: field must be square`);
-      if (q.goal.pattern) {
-        assert.equal(q.goal.pattern.length, size, `${q.id}: pattern size`);
-        assert.ok(q.goal.pattern.every((row) => row.length === size), `${q.id}: pattern rows`);
+      const plots = questPlots(q);
+      assert.ok(plots.length >= 1 && plots.length <= 3, `${q.id}: 1 to 3 test plots`);
+      plots.forEach((plot, i) => {
+        const size = plot.map.length;
+        assert.ok(plot.map.every((row) => row.length === size), `${q.id} plot ${i + 1}: field must be square`);
+        const pattern = plot.goal?.pattern ?? q.goal.pattern;
+        if (pattern) {
+          assert.equal(pattern.length, size, `${q.id} plot ${i + 1}: pattern size`);
+          assert.ok(pattern.every((row) => row.length === size), `${q.id} plot ${i + 1}: pattern rows`);
+        }
+        questField(q, i); // throws on unknown tiles
+      });
+      if (q.starter !== undefined) {
+        const code = typeof q.starter === "string" ? q.starter : q.starter.code;
+        assert.equal(typeof code, "string", `${q.id}: starter needs code`);
       }
       assert.ok(q.stars.three <= q.stars.two, `${q.id}: 3 stars must need fewer ticks than 2`);
       assert.equal(q.hints.length, 3, `${q.id}: three hints`);
@@ -52,7 +72,6 @@ test("quest data is well formed", () => {
         for (const w of group) assert.ok(WORDS[w], `${q.id}: unknown word ${w}`);
         assert.ok(group.some((w) => WORDS[w].chapter <= ch.n), `${q.id}: needs a word from a later chapter`);
       }
-      questField(q); // throws on unknown tiles
     }
   }
   // A chapter must be possible to open with the stars from earlier chapters.
@@ -165,4 +184,60 @@ test("every quest's tick limit leaves room for slow answers", () => {
   for (const quest of QUESTS) {
     assert.ok(tickLimit(quest) >= quest.stars.two * 3, `${quest.id}: tick limit is too tight`);
   }
+});
+
+// A made-up quest with three test plots: the grass row is a different length
+// on each, so counting steps works on one plot but not the others.
+const ROWS = {
+  id: "t-1",
+  title: "Test Rows",
+  field: [
+    { map: ["...", "...", "GGG"] },
+    { map: ["....", "....", "....", "GGGG"], data: { size: 4 } },
+    { map: [".....", ".....", ".....", ".....", "GGGGG"], goal: { at: [4, 0] } },
+  ],
+  goal: { gain: { hay: 3 } },
+  stars: { two: 20, three: 12 },
+  hints: ["", "", ""],
+};
+ROWS.field[1].goal = { gain: { hay: 4 } };
+ROWS.field[2].goal.gain = { hay: 5 };
+
+test("test plots: one program runs on every plot and the ticks add up", () => {
+  const general = "repeat until not can_move(EAST):\n    harvest()\n    move(EAST)\nharvest()\n";
+  const { result, results } = play(ROWS, general, 8);
+  assert.equal(results.length, 3);
+  assert.deepEqual(results.map((r) => r.run.ticks), [5, 7, 9]);
+  assert.equal(result.met, true);
+  assert.equal(result.ticks, 21);
+  assert.equal(result.stars, 1);
+  assert.deepEqual(result.gained, { hay: 12 });
+});
+
+test("test plots: counting steps works on plot 1 but stops on plot 2", () => {
+  const counted = "harvest()\nmove(EAST)\nharvest()\nmove(EAST)\nharvest()\n";
+  const { result, results } = play(ROWS, counted, 8);
+  assert.equal(results.length, 2, "plot 3 never runs");
+  assert.equal(result.met, false);
+  assert.equal(result.failedPlot, 1);
+  assert.deepEqual(result.problems, [
+    "Your program worked on plot 1, but not on plot 2.",
+    "You harvested 3 hay. The goal is 4.",
+  ]);
+});
+
+test("test plots: a plot's goal is added to the quest's goal", () => {
+  const stopShort = "repeat field_size() times:\n    harvest()\n    if position()[0] < field_size() - 2:\n        move(EAST)\n";
+  const { result } = play(ROWS, stopShort, 8);
+  assert.equal(result.met, false);
+  assert.equal(result.failedPlot, 0);
+  assert.equal(result.problems[0], "It didn't work on plot 1 of 3.");
+});
+
+test("test plots: a program can read facts about its plot", () => {
+  bridge.start(questField(ROWS, 1), 100, plotData(ROWS, 1));
+  const run = bridge.run(api, { code: "print(_plot_data('size'))\n", files: {}, name: "main", locked: {} });
+  assert.equal(run.status, "error", "private helpers stay private to the game");
+  assert.equal(bridge.module.plot_data("size"), "4");
+  assert.equal(bridge.module.plot_data("nothing"), "null");
 });

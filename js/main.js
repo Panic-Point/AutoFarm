@@ -5,7 +5,9 @@ import { drawFarm } from "./render.js";
 import { loadWorkspace } from "./files.js";
 import { Desk } from "./windows.js";
 import { CHAPTERS, chapterOf, findQuest } from "./chapters.js";
-import { checkQuest, gains, patternMisses, questField, starTargets, tickLimit } from "./quests.js";
+import {
+  checkPlot, gains, judgeQuest, patternMisses, plotData, plotProblem, questField, questPlots, starTargets, tickLimit,
+} from "./quests.js";
 import { WORDS, wordsInChapter } from "./words.js";
 import {
   ALMANAC, HAT_NAMES, SHOP, badges, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
@@ -33,6 +35,12 @@ let progress = loadProgress(load(STORE_PROGRESS));
 let home = loadHome(load(STORE_FARM));
 // What the player is doing: the home farm (free play) or a quest.
 let mode = loadMode(load(STORE_MODE));
+// The quest plot on the field: the one Bolt is running, or the one picked to look at.
+let plot = 0;
+// Plots that passed in the current try, while a quest with test plots runs.
+let passedPlots = 0;
+// Waiting to start the next plot of a quest with test plots.
+let nextPlotTimer = null;
 let farm = mode.quest ? questField(findQuest(mode.quest)) : home;
 let hintsShown = 0;
 let worker = null;
@@ -116,7 +124,7 @@ function render() {
     goal = { at: quest.goal.at };
     if (quest.goal.pattern) goal.misses = patternMisses(quest.goal.pattern, farm);
   }
-  drawFarm(ctx, farm, { looks: looks(progress), fog: Boolean(quest?.field.fog), goal });
+  drawFarm(ctx, farm, { looks: looks(progress), fog: Boolean(quest && questPlots(quest)[plot].fog), goal });
   $("tick").textContent = farm.tick;
   $("inventory").innerHTML = inventoryHtml(farm.inventory);
   $("inv-label").textContent = quest ? "This try" : "Barn";
@@ -144,6 +152,8 @@ function renderQuestCard(bubble) {
     $("quest-goal").textContent = `Goal: ${quest.goalText}`;
     $("quest-targets").textContent = starTargets(quest);
     $("quest-targets").hidden = false;
+    renderPlots(quest);
+    $("starter-btn").hidden = !quest.starter;
     $("hint-btn").hidden = false;
     $("hint-btn").textContent = hintsShown >= quest.hints.length ? "No more hints" : "Hint";
     $("hint-btn").disabled = hintsShown >= quest.hints.length;
@@ -161,6 +171,8 @@ function renderQuestCard(bubble) {
     $("quest-bubble").textContent = bubble ?? "This is your own farm. Everything I harvest goes in the barn, and you can spend it in the shop.";
     $("quest-goal").textContent = next ? `Next quest: ${findQuest(next).title}` : "Every quest has 3 stars. What a farmer!";
     $("quest-targets").hidden = true;
+    $("quest-plots").hidden = true;
+    $("starter-btn").hidden = true;
     $("hint-btn").hidden = true;
     hintEl.hidden = true;
     $("mode-btn").textContent = "Map";
@@ -169,6 +181,44 @@ function renderQuestCard(bubble) {
   }
   $("reset").textContent = quest ? "Reset field" : "Reset farm";
   $("reset").title = quest ? "Put the quest field back how it started" : "Start the farm over (the barn keeps its produce)";
+}
+
+// Chips for a quest's test plots: which one is on the field, and which ones
+// passed in this try. Click one to look at it.
+function renderPlots(quest) {
+  const box = $("quest-plots");
+  const plots = questPlots(quest);
+  box.hidden = plots.length < 2;
+  if (box.hidden) return;
+  const chips = plots.map((_, i) => el("button", {
+    type: "button",
+    class: `plot-chip${i === plot ? " current" : ""}${run && i < passedPlots ? " passed" : ""}`,
+    title: `Look at plot ${i + 1}`,
+    disabled: Boolean(run || nextPlotTimer),
+    onclick: () => showPlot(i),
+  }, `Plot ${i + 1}`));
+  box.replaceChildren(el("span", { class: "plots-label" }, `${plots.length} test plots, one program:`), ...chips);
+}
+
+function showPlot(i) {
+  const quest = currentQuest();
+  if (!quest || run || nextPlotTimer) return;
+  plot = i;
+  farm = questField(quest, plot);
+  renderQuestCard();
+  render();
+}
+
+// A quest that starts with code to fix opens it in its own window. Code the
+// player already changed there is kept, unless they ask for it back.
+function starterName(quest) {
+  return quest.starter?.name ?? `fix_${quest.id.replace(/-/g, "_")}`;
+}
+
+function openStarter(quest, fresh = false) {
+  if (!quest?.starter) return;
+  const code = typeof quest.starter === "string" ? quest.starter : quest.starter.code;
+  desk.openWindow(starterName(quest), code.trim() + "\n", fresh);
 }
 
 // Grey out commands Bolt hasn't learned yet.
@@ -199,10 +249,13 @@ function renderAll(bubble) {
 
 function playQuest(id) {
   if (run) stopRun();
+  cancelNextPlot();
   if (!id || !isQuestOpen(progress, id)) return;
   if (mode.quest !== id) hintsShown = 0;
   mode = { quest: id };
+  plot = 0;
   farm = questField(findQuest(id));
+  openStarter(findQuest(id));
   save(STORE_MODE, mode);
   consoleEl.textContent = "";
   renderAll();
@@ -210,6 +263,7 @@ function playQuest(id) {
 
 function goHome() {
   if (run) stopRun();
+  cancelNextPlot();
   mode = { quest: null };
   home = loadHome(home);
   farm = home;
@@ -252,13 +306,23 @@ function onWorkerMessage(e) {
 
 // ---- Running ----
 
-function startRun(name = desk.active) {
+function cancelNextPlot() {
+  clearTimeout(nextPlotTimer);
+  nextPlotTimer = null;
+}
+
+// results: the runs on the plots before this one, for quests with test plots.
+function startRun(name = desk.active, plotIndex = 0, results = []) {
   if (!workerReady || run) return;
-  consoleEl.textContent = "";
+  cancelNextPlot();
+  if (plotIndex === 0) consoleEl.textContent = "";
   const quest = currentQuest();
   if (quest) {
     // Every try starts from the same field.
-    farm = questField(quest);
+    plot = plotIndex;
+    passedPlots = plotIndex;
+    farm = questField(quest, plot);
+    if (questPlots(quest).length > 1) log(`Plot ${plot + 1} of ${questPlots(quest).length}`, "note");
   } else {
     home.seeds = seeds(progress);
     farm = home;
@@ -273,16 +337,20 @@ function startRun(name = desk.active) {
     pos: 0,
     start: structuredClone(farm),
     quest: quest?.id ?? null,
+    name,
+    results,
   };
   save(STORE_FILES, desk.workspace);
   const program = desk.program(name);
   const maxTicks = quest ? tickLimit(quest) : undefined;
-  worker.postMessage({ type: "run", runId, ...program, state: farm, locked: locked(progress), maxTicks });
+  const data = quest ? plotData(quest, plot) : {};
+  worker.postMessage({ type: "run", runId, ...program, state: farm, locked: locked(progress), maxTicks, data });
   desk.setRunning(name);
   desk.showLine(null);
   updateRunButton();
   stopBtn.disabled = false;
   accumulator = 0;
+  if (quest) renderPlots(quest);
 }
 
 function finishRun(message, cls) {
@@ -297,6 +365,11 @@ function finishRun(message, cls) {
 }
 
 function stopRun() {
+  if (nextPlotTimer) {
+    cancelNextPlot();
+    log("Stopped.", "note");
+    renderAll();
+  }
   if (!run) return;
   const stillComputing = !run.done;
   finishRun("Stopped.", "note");
@@ -311,6 +384,7 @@ function stopRun() {
 function completeRun(done) {
   const start = run.start;
   const questId = run.quest;
+  const { name, results } = run;
   const { status, message, ticks } = done;
   const cls = status === "ok" ? "status" : "error";
   finishRun(`${message} (${ticks} ${ticks === 1 ? "tick" : "ticks"})`, cls);
@@ -329,20 +403,36 @@ function completeRun(done) {
     return;
   }
   const quest = findQuest(questId);
-  const result = checkQuest(quest, start, farm, done);
+  const plots = questPlots(quest).length;
+  const thisPlot = results.length;
+  const all = [...results, { start, end: farm, run: done }];
+  // On to the next test plot while the program keeps working.
+  if (thisPlot + 1 < plots && checkPlot(quest, thisPlot, start, farm, done).met) {
+    passedPlots = thisPlot + 1;
+    saveAll();
+    renderAll(`Plot ${thisPlot + 1} done! Now plot ${thisPlot + 2}...`);
+    nextPlotTimer = setTimeout(() => {
+      nextPlotTimer = null;
+      startRun(name, thisPlot + 1, all);
+    }, 1200);
+    return;
+  }
+  const result = judgeQuest(quest, all);
   if (!result.met) {
     for (const problem of result.problems) log(problem, "note");
     saveAll();
-    const why = status === "error" || status === "too_many_steps" ? message : result.problems[0];
+    let why = status === "error" || status === "too_many_steps" ? message : result.problems[plots > 1 ? 1 : 0];
+    const lead = plotProblem(quest, thisPlot);
+    if (lead) why = `${lead} ${why ?? ""}`.trim();
     renderAll(`*shrug* ${why ?? "Not quite. Try again!"}`);
     beep(false);
     return;
   }
-  const rewards = recordResult(progress, questId, result.stars, ticks);
+  const rewards = recordResult(progress, questId, result.stars, result.ticks);
   saveAll();
   renderAll(`Beep boop! ${starText(result.stars)}`);
   beep(true);
-  showReward({ quest, stars: result.stars, ticks, gained, rewards, pages });
+  showReward({ quest, stars: result.stars, ticks: result.ticks, gained: result.gained, rewards, pages });
 }
 
 // Apply queued events: logs immediately, frames at the chosen speed.
@@ -573,7 +663,8 @@ function showReward({ quest, stars, ticks, gained, rewards, pages = [], title })
   $("reward-heading").textContent = quest ? `${quest.title}: done!` : title;
   const lines = [];
   if (quest) {
-    let text = `Bolt finished in ${ticks} ${ticks === 1 ? "tick" : "ticks"}.`;
+    const plots = questPlots(quest).length;
+    let text = `Bolt finished in ${ticks} ${ticks === 1 ? "tick" : "ticks"}${plots > 1 ? ` on all ${plots} plots` : ""}.`;
     if (stars < 3) text += ` Can you do it in ${stars === 1 ? quest.stars.two : quest.stars.three} for another star?`;
     $("reward-text").textContent = text;
     const got = Object.entries(gained).map(([item, n]) => `${n} ${item}`).join(", ");
@@ -635,6 +726,11 @@ $("mode-btn").addEventListener("click", () => {
   }
 });
 $("next-btn").addEventListener("click", () => playQuest(nextQuest(progress)));
+$("starter-btn").addEventListener("click", () => {
+  if (run) stopRun();
+  openStarter(currentQuest(), true);
+  log("Bolt's code is back the way it started.", "note");
+});
 $("hint-btn").addEventListener("click", () => {
   hintsShown += 1;
   renderQuestCard();
@@ -667,7 +763,8 @@ $("reset").addEventListener("click", () => {
   consoleEl.textContent = "";
   const quest = currentQuest();
   if (quest) {
-    farm = questField(quest);
+    cancelNextPlot();
+    farm = questField(quest, plot);
     log("The field was put back.", "note");
   } else {
     // The barn keeps its produce.
@@ -679,6 +776,7 @@ $("reset").addEventListener("click", () => {
   render();
 });
 
+openStarter(currentQuest());
 save(STORE_FILES, desk.workspace);
 saveAll();
 renderAll();
