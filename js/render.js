@@ -12,15 +12,30 @@ const COLORS = {
   carrot: "#ef7d2d",
   hay: "#c9d36b",
   ripe: "#fff4b8",
-  farmer: "#2f5d8c",
-  hat: "#d9a441",
+  bolt: "#9fb4c7",
+  boltDark: "#4d6275",
+  boltEye: "#20303f",
   shadow: "rgba(0,0,0,0.18)",
+  fog: "rgba(232, 236, 240, 0.93)",
+  target: "#d93b3b",
+  wood: "#a0703f",
 };
 
-export function drawFarm(ctx, state) {
+// Hats Bolt can wear: [brim color, crown color, style].
+const HATS = {
+  straw_hat: ["#d9a441", "#e8bd5c", "brim"],
+  red_cap: ["#c8322b", "#e0473f", "cap"],
+  cowboy_hat: ["#7a4b26", "#8f5a2f", "brim"],
+  flower_crown: ["#5f9e4a", "#f2d0e4", "flowers"],
+  gold_crown: ["#e6b422", "#f6cf3a", "crown"],
+};
+
+// opts: { looks: { hat, scarecrow, fence, dog }, fog, goal: { at, pattern } }
+export function drawFarm(ctx, state, opts = {}) {
   const { size } = state;
   const W = ctx.canvas.width;
   const cell = W / size;
+  const looks = opts.looks ?? { hat: "straw_hat" };
   ctx.clearRect(0, 0, W, W);
 
   for (let y = 0; y < size; y++) {
@@ -33,7 +48,113 @@ export function drawFarm(ctx, state) {
       if (tile.crop) drawCrop(ctx, tile, px, py, cell);
     }
   }
-  drawFarmer(ctx, state.x * cell, (size - 1 - state.y) * cell, cell);
+  if (opts.goal) drawGoal(ctx, state, opts.goal, cell);
+  if (looks.fence) drawFence(ctx, W);
+  if (looks.scarecrow) drawScarecrow(ctx, (size - 1) * cell, 0, cell);
+  const bx = state.x * cell;
+  const by = (size - 1 - state.y) * cell;
+  if (looks.dog) drawDog(ctx, bx, by, cell, state.x === size - 1);
+  drawBolt(ctx, bx, by, cell, looks.hat);
+  if (opts.fog) drawFog(ctx, state, cell);
+}
+
+// Tiles more than one step from Bolt are hidden.
+function drawFog(ctx, state, cell) {
+  ctx.fillStyle = COLORS.fog;
+  for (let y = 0; y < state.size; y++) {
+    for (let x = 0; x < state.size; x++) {
+      if (Math.abs(x - state.x) <= 1 && Math.abs(y - state.y) <= 1) continue;
+      ctx.fillRect(x * cell, (state.size - 1 - y) * cell, cell + 0.5, cell + 0.5);
+    }
+  }
+}
+
+// A flag on the tile Bolt must finish on, and dotted squares on tiles that
+// don't match the goal pattern yet.
+function drawGoal(ctx, state, goal, cell) {
+  const { size } = state;
+  if (goal.misses) {
+    ctx.save();
+    ctx.setLineDash([cell / 10, cell / 12]);
+    ctx.lineWidth = Math.max(2, cell / 26);
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    for (const [x, y] of goal.misses) {
+      const pad = cell * 0.08;
+      ctx.strokeRect(x * cell + pad, (size - 1 - y) * cell + pad, cell - 2 * pad, cell - 2 * pad);
+    }
+    ctx.restore();
+  }
+  if (goal.at) {
+    const px = goal.at[0] * cell;
+    const py = (size - 1 - goal.at[1]) * cell;
+    ctx.strokeStyle = COLORS.wood;
+    ctx.lineWidth = Math.max(2, cell / 24);
+    ctx.beginPath();
+    ctx.moveTo(px + cell * 0.72, py + cell * 0.85);
+    ctx.lineTo(px + cell * 0.72, py + cell * 0.15);
+    ctx.stroke();
+    ctx.fillStyle = COLORS.target;
+    ctx.beginPath();
+    ctx.moveTo(px + cell * 0.72, py + cell * 0.15);
+    ctx.lineTo(px + cell * 0.95, py + cell * 0.25);
+    ctx.lineTo(px + cell * 0.72, py + cell * 0.36);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawFence(ctx, W) {
+  const t = Math.max(4, W / 80);
+  ctx.strokeStyle = COLORS.wood;
+  ctx.lineWidth = t;
+  ctx.strokeRect(t / 2, t / 2, W - t, W - t);
+  ctx.fillStyle = "#7a5230";
+  const step = W / 12;
+  for (let i = 0; i <= 12; i++) {
+    const p = Math.min(W - t * 1.5, i * step);
+    for (const [x, y] of [[p, 0], [p, W - t * 1.5], [0, p], [W - t * 1.5, p]]) ctx.fillRect(x, y, t * 1.5, t * 1.5);
+  }
+}
+
+function drawScarecrow(ctx, px, py, cell) {
+  const cx = px + cell * 0.78;
+  const top = py + cell * 0.12;
+  const s = cell * 0.22;
+  ctx.strokeStyle = COLORS.wood;
+  ctx.lineWidth = Math.max(2, cell / 30);
+  ctx.beginPath();
+  ctx.moveTo(cx, top + s * 0.5);
+  ctx.lineTo(cx, top + s * 2.4);
+  ctx.moveTo(cx - s * 0.8, top + s * 1.1);
+  ctx.lineTo(cx + s * 0.8, top + s * 1.1);
+  ctx.stroke();
+  ctx.fillStyle = "#3e6fb0";
+  ctx.fillRect(cx - s * 0.4, top + s * 0.9, s * 0.8, s * 0.8);
+  ctx.fillStyle = "#f1d9a6";
+  ctx.beginPath();
+  ctx.arc(cx, top + s * 0.55, s * 0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#d9a441";
+  ctx.fillRect(cx - s * 0.6, top + s * 0.18, s * 1.2, s * 0.14);
+}
+
+function drawDog(ctx, bx, by, cell, atEastEdge) {
+  // Sit beside Bolt, on whichever side has room.
+  const cx = bx + cell * (atEastEdge ? 0.14 : 0.86);
+  const cy = by + cell * 0.72;
+  const r = cell * 0.09;
+  ctx.fillStyle = "#9b6a3c";
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, r * 1.3, r, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy - r * 1.2, r * 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#5e3d1f";
+  ctx.beginPath();
+  ctx.ellipse(cx - r * 0.7, cy - r * 1.4, r * 0.3, r * 0.55, 0.4, 0, Math.PI * 2);
+  ctx.ellipse(cx + r * 0.7, cy - r * 1.4, r * 0.3, r * 0.55, -0.4, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawGround(ctx, tile, px, py, cell) {
@@ -119,21 +240,91 @@ function drawCrop(ctx, tile, px, py, cell) {
   }
 }
 
-function drawFarmer(ctx, px, py, cell) {
+// Bolt, the farm robot, wearing a hat.
+function drawBolt(ctx, px, py, cell, hat = "straw_hat") {
   const cx = px + cell / 2;
-  const cy = py + cell / 2;
-  const r = cell * 0.2;
+  const cy = py + cell / 2 + cell * 0.04;
+  const w = cell * 0.4;
+  const h = cell * 0.32;
   ctx.fillStyle = COLORS.shadow;
   ctx.beginPath();
-  ctx.ellipse(cx, cy + r * 1.1, r * 1.1, r * 0.35, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + h * 0.75, w * 0.6, h * 0.18, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = COLORS.farmer;
+  // Wheels, body and face.
+  ctx.fillStyle = COLORS.boltDark;
+  ctx.fillRect(cx - w * 0.45, cy + h * 0.38, w * 0.25, h * 0.25);
+  ctx.fillRect(cx + w * 0.2, cy + h * 0.38, w * 0.25, h * 0.25);
+  ctx.fillStyle = COLORS.bolt;
+  roundRect(ctx, cx - w / 2, cy - h / 2, w, h, cell * 0.06);
+  ctx.fill();
+  ctx.strokeStyle = COLORS.boltDark;
+  ctx.lineWidth = Math.max(1.5, cell / 40);
+  ctx.stroke();
+  ctx.fillStyle = COLORS.boltEye;
+  for (const dx of [-0.2, 0.2]) {
+    ctx.beginPath();
+    ctx.arc(cx + dx * w, cy - h * 0.08, cell * 0.035, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = COLORS.boltEye;
   ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.arc(cx, cy + h * 0.08, w * 0.14, 0.15 * Math.PI, 0.85 * Math.PI);
+  ctx.stroke();
+  drawHat(ctx, cx, cy - h / 2, w, cell, hat);
+}
+
+function drawHat(ctx, cx, top, w, cell, hat) {
+  const [brim, crown, style] = HATS[hat] ?? HATS.straw_hat;
+  if (style === "flowers") {
+    ctx.strokeStyle = brim;
+    ctx.lineWidth = Math.max(2, cell / 30);
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.5, top);
+    ctx.lineTo(cx + w * 0.5, top);
+    ctx.stroke();
+    for (const [dx, color] of [[-0.35, "#f2d0e4"], [0, "#ffe066"], [0.35, "#f2d0e4"]]) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(cx + dx * w, top - cell * 0.02, cell * 0.045, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+  if (style === "crown") {
+    ctx.fillStyle = crown;
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.4, top);
+    ctx.lineTo(cx - w * 0.4, top - cell * 0.12);
+    ctx.lineTo(cx - w * 0.2, top - cell * 0.05);
+    ctx.lineTo(cx, top - cell * 0.14);
+    ctx.lineTo(cx + w * 0.2, top - cell * 0.05);
+    ctx.lineTo(cx + w * 0.4, top - cell * 0.12);
+    ctx.lineTo(cx + w * 0.4, top);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+  ctx.fillStyle = brim;
+  if (style === "cap") {
+    ctx.beginPath();
+    ctx.ellipse(cx + w * 0.3, top, w * 0.35, cell * 0.035, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.ellipse(cx, top, w * 0.75, cell * 0.045, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = crown;
+  roundRect(ctx, cx - w * 0.3, top - cell * 0.11, w * 0.6, cell * 0.11, cell * 0.03);
   ctx.fill();
-  ctx.fillStyle = COLORS.hat;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
-  ctx.ellipse(cx, cy - r * 0.7, r * 1.25, r * 0.32, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillRect(cx - r * 0.55, cy - r * 1.35, r * 1.1, r * 0.7);
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }

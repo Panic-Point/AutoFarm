@@ -9,14 +9,39 @@
 <body>
   <header>
     <h1>AutoFarm</h1>
-    <p class="tagline">Write code. Run the farm.</p>
+    <span class="title-badge" id="player-title">Farm Helper</span>
+    <div class="top-bar">
+      <span class="star-total" title="Stars earned in quests">★ <b id="star-total">0</b></span>
+      <span class="barn" id="barn" title="Your barn"></span>
+      <button id="open-map" type="button">Map</button>
+      <button id="open-shop" type="button">Shop</button>
+      <button id="open-shelf" type="button">Shelf</button>
+    </div>
   </header>
 
   <main>
     <section class="farm-panel">
+      <div class="quest-card" id="quest-card">
+        <div class="quest-head">
+          <span class="quest-place" id="quest-place"></span>
+          <button id="mode-btn" class="secondary small" type="button"></button>
+        </div>
+        <h2 id="quest-title"></h2>
+        <div class="speech">
+          <span class="who" id="quest-who"></span>
+          <p class="bubble" id="quest-bubble"></p>
+        </div>
+        <p class="goal" id="quest-goal"></p>
+        <p class="targets" id="quest-targets"></p>
+        <p class="hint" id="quest-hint" hidden></p>
+        <div class="quest-actions">
+          <button id="hint-btn" class="secondary small" type="button">Hint</button>
+          <button id="next-btn" class="small" type="button" hidden></button>
+        </div>
+      </div>
       <canvas id="farm" width="480" height="480" aria-label="The farm field"></canvas>
       <div class="stats">
-        <div class="inventory" id="inventory"></div>
+        <div class="inventory"><span class="inv-label" id="inv-label">Barn</span><span id="inventory"></span></div>
         <div class="tick">Tick <span id="tick">0</span></div>
       </div>
     </section>
@@ -45,40 +70,40 @@
 
     <section class="reference">
       <h2>Commands</h2>
-      <p>Each action takes one tick. Crops grow every tick. Looking around is free.</p>
+      <p>Each action takes one tick. Crops grow every tick. Looking around is free. Words with a lock open in a later chapter.</p>
       <h3>Actions</h3>
       <ul>
-        <li><code>move(NORTH)</code> <code>SOUTH</code> <code>EAST</code> <code>WEST</code>. Returns <code>False</code> at the edge.</li>
-        <li><code>harvest()</code> collects a ripe crop. An unripe crop is lost.</li>
-        <li><code>till()</code> turns grass into soil, or soil back into grass.</li>
-        <li><code>plant(Crop.WHEAT)</code> on soil. <code>Crop.CARROT</code> costs 2 wheat.</li>
-        <li><code>wait()</code> does nothing for one tick.</li>
+        <li data-word="move"><code>move(NORTH)</code> <code>SOUTH</code> <code>EAST</code> <code>WEST</code>. Returns <code>False</code> at the edge.</li>
+        <li data-word="harvest"><code>harvest()</code> collects a ripe crop. An unripe crop is lost.</li>
+        <li data-word="till"><code>till()</code> turns grass into soil, or soil back into grass.</li>
+        <li data-word="plant"><code>plant(Crop.WHEAT)</code> on soil. <code>Crop.CARROT</code> costs 2 wheat.</li>
+        <li data-word="wait"><code>wait()</code> does nothing for one tick.</li>
       </ul>
       <h3>Looking</h3>
       <ul>
-        <li><code>is_ripe()</code>, <code>crop_here()</code>, <code>ground_here()</code></li>
-        <li><code>position()</code> gives <code>(x, y)</code>, with <code>(0, 0)</code> in the south-west corner.</li>
-        <li><code>field_size()</code>, <code>count("wheat")</code>, <code>ticks()</code></li>
+        <li data-word="is_ripe"><code>is_ripe()</code> is <code>True</code> when the crop under Bolt is ready.</li>
+        <li data-word="crop_here"><code>crop_here()</code> and <code>ground_here()</code> say what's under Bolt.</li>
+        <li data-word="can_move"><code>can_move(EAST)</code> is <code>True</code> if Bolt can step that way.</li>
+        <li data-word="position"><code>position()</code> gives <code>(x, y)</code>, with <code>(0, 0)</code> in the south-west corner. <code>field_size()</code> is how wide the field is.</li>
+        <li data-word="count"><code>count("wheat")</code> says how many Bolt has. <code>ticks()</code> counts ticks used.</li>
         <li><code>print(...)</code> writes to the console below your code.</li>
       </ul>
       <h3>Loops and choices</h3>
       <ul>
-        <li><code>repeat 5 times:</code> or <code>for amount times:</code> runs the indented lines below it that many times.</li>
-        <li><code>repeat until is_ripe():</code> keeps going until something is true. <code>repeat while ...:</code> keeps going while it is true. <code>repeat forever:</code> never stops on its own.</li>
-        <li><code>for x from 1 to 10:</code> counts, and <code>x</code> holds the number each time round.</li>
-        <li><code>for each item in things:</code> goes through a list.</li>
-        <li><code>if ...:</code>, <code>else if ...:</code>, <code>else:</code> choose what to do.</li>
-        <li><code>set total to 0</code> and <code>change total by 1</code> make and update variables.</li>
-        <li><code>define sweep_row:</code> makes your own command. Run it with <code>sweep_row()</code>.</li>
-        <li>Lines inside a loop, choice or command are indented by 4 spaces. Regular Python works too.</li>
+        <li data-word="repeat"><code>repeat 5 times:</code> runs the indented lines below it that many times.</li>
+        <li data-word="nested">A <code>repeat</code> inside a <code>repeat</code> does a whole loop each time round.</li>
+        <li data-word="if"><code>if ...:</code>, <code>else if ...:</code>, <code>else:</code> choose what to do.</li>
+        <li data-word="repeat_until"><code>repeat until is_ripe():</code> keeps going until something is true. <code>repeat while ...:</code> keeps going while it is true. <code>repeat forever:</code> never stops on its own, and <code>break</code> jumps out.</li>
+        <li data-word="variables"><code>set total to 0</code> and <code>change total by 1</code> make and update variables. <code>for x from 1 to 10:</code> counts.</li>
+        <li data-word="define"><code>define sweep_row:</code> makes your own command. Run it with <code>sweep_row()</code>.</li>
+        <li data-word="lists"><code>[Crop.WHEAT, Crop.CARROT]</code> is a list. <code>for each crop in plan:</code> goes through it.</li>
+        <li>Lines inside a loop, choice or command are indented by 4 spaces.</li>
       </ul>
       <h3>Code windows</h3>
       <ul>
         <li>Split your code into windows. Make one with <b>+ New window</b>, and double-click a window's name to rename it.</li>
-        <li><code>use helper</code> lets a window use every command and class made in the window called <code>helper</code>. <code>use helper, crops</code> uses two windows.</li>
-        <li><code>use go_home from helper</code> takes just one command. Python's <code>from helper import *</code> and <code>import helper</code> work too.</li>
+        <li data-word="use"><code>use helper</code> lets a window use every command made in the window called <code>helper</code>. <code>use go_home from helper</code> takes just one.</li>
         <li>Each window has its own &#9654; button. <b>Run</b> at the top runs the window you used last.</li>
-        <li>A window you use runs from top to bottom the first time it's used, so keep it to <code>define</code> and <code>class</code>.</li>
         <li>Drag a window by its title bar, and resize it from its bottom-right corner.</li>
       </ul>
       <h3>Crops</h3>
@@ -89,6 +114,45 @@
       </ul>
     </section>
   </main>
+
+  <dialog id="map-dialog" class="panel-dialog" aria-labelledby="map-heading">
+    <div class="dialog-head"><h2 id="map-heading">Willow Creek Farm</h2><button class="close secondary small" type="button">Close</button></div>
+    <div id="map-body" class="map"></div>
+  </dialog>
+
+  <dialog id="shop-dialog" class="panel-dialog" aria-labelledby="shop-heading">
+    <div class="dialog-head"><h2 id="shop-heading">Shop</h2><button class="close secondary small" type="button">Close</button></div>
+    <p class="dialog-note">Pay with produce from your barn: <span id="shop-barn"></span></p>
+    <p class="dialog-message" id="shop-message" aria-live="polite"></p>
+    <div id="shop-body"></div>
+  </dialog>
+
+  <dialog id="shelf-dialog" class="panel-dialog" aria-labelledby="shelf-heading">
+    <div class="dialog-head"><h2 id="shelf-heading">Shelf</h2><button class="close secondary small" type="button">Close</button></div>
+    <div id="shelf-body"></div>
+    <details class="grown-ups">
+      <summary>For grown-ups</summary>
+      <label><input type="checkbox" id="practice"> Practice mode: open every chapter, quest and coding word.</label>
+      <p>
+        <button id="start-over" class="danger small" type="button">Start progress over</button>
+        <span id="start-over-confirm" hidden>Erase all stars, badges and shop items?
+          <button id="start-over-yes" class="danger small" type="button">Erase</button>
+          <button id="start-over-no" class="secondary small" type="button">Keep</button>
+        </span>
+      </p>
+    </details>
+  </dialog>
+
+  <dialog id="reward-dialog" class="reward" aria-labelledby="reward-heading">
+    <p class="reward-stars" id="reward-stars"></p>
+    <h2 id="reward-heading"></h2>
+    <p id="reward-text"></p>
+    <ul id="reward-lines"></ul>
+    <div class="reward-actions">
+      <button id="reward-again" class="secondary" type="button">Try again</button>
+      <button id="reward-next" type="button">Next quest</button>
+    </div>
+  </dialog>
 
   <script type="module" src="js/main.js"></script>
 </body>

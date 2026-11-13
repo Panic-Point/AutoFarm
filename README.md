@@ -1,6 +1,29 @@
 # AutoFarm
 
-A browser farming game where you write code to automate a farmer. It's made for kids learning to program: loops and choices read like plain words, closer to Scratch, but you type them.
+A browser farming game where you write code to automate Bolt, a little farm robot. It's made for kids (6 and up, with a grown-up to help read) learning to program: loops and choices read like plain words, closer to Scratch, but you type them.
+
+## Chapters, quests and stars
+
+The game is 8 chapters at Willow Creek Farm, and each one teaches one coding idea through short quests from a neighbor:
+
+| # | Chapter | Bolt learns |
+| --- | --- | --- |
+| 1 | First Steps | `move`, `harvest` |
+| 2 | Do It Again | `repeat 5 times:` (plus `till`, `plant`, `wait`) |
+| 3 | Loops in Loops | a repeat inside a repeat |
+| 4 | Look Before You Act | `if` / `else`, `is_ripe()`, `ground_here()` |
+| 5 | Until It's Done | `repeat until`, `repeat while`, `can_move()` |
+| 6 | Keeping Count | `set` / `change`, `count()`, `for x from 1 to 5:` |
+| 7 | Teach Bolt | `define`, `use helper` |
+| 8 | Big Farm Plans | lists and `for each`, ending at the Harvest Festival |
+
+- **Quests** run on their own field, which starts over on every try. Finishing a quest gives 1 star; finishing within a tick (cycle) limit gives 2, and within a tighter one 3. Quests in a chapter open one after another.
+- **Chapters** open when the one before is finished and you have enough stars.
+- **Locked words:** a coding word stays locked until its chapter opens. Using it early stops the run with a note like "Bolt doesn't know repeat yet. You'll learn it in chapter 2!", and the command list greys it out. Anything no chapter teaches (classes, lambdas, try...) opens after the festival.
+- **The home farm** is free play. Everything harvested, in quests too, goes to the barn, and the shop sells field upgrades, seeds, hats for Bolt and farm decorations for produce. Each finished chapter puts new things in the shop and a badge on the shelf. The shelf also has the almanac (a page per crop) and titles.
+- **For grown-ups:** the shelf has a practice mode that opens every chapter and word, and a button to start progress over.
+
+Quests are plain data in `js/chapters.js`, so adding one needs no new code. `tests/solutions.mjs` holds a 3-star program for every quest, and the tests run them all with the real game and Python, so the star targets always stay within reach.
 
 Your program runs in the browser with [Pyodide](https://pyodide.org). The farm is a grid of tiles. Every farmer action (`move`, `till`, `plant`, `harvest`, `wait`) takes one tick, crops grow every tick, and looking around (`is_ripe()`, `position()` and so on) is free. The full command list is on the game page.
 
@@ -63,20 +86,26 @@ Then open http://localhost:8000. Opening `index.html` straight from disk won't w
 ## How it works
 
 - `js/game.js`: the farm simulation, with no DOM code.
+- `js/chapters.js`: the story, chapters and quests, as data.
+- `js/quests.js`: builds a quest's field and checks its goal and stars.
+- `js/progress.js`: stars, open chapters, the shop, badges, almanac and titles.
+- `js/words.js`: the coding words and which chapter teaches each.
+- `py/words.py`: finds the coding words a program uses, for the locks.
 - `py/plain_words.py`: turns plain-word lines like `repeat 5 times:` into Python.
 - `py/farm_api.py`: the Python commands players use, plus the sandbox. It only lets programs import the player's own code windows, and blocks dunder names and file or eval builtins, and limits runaway loops.
-- `js/worker.js`: a web worker that loads Pyodide and runs the player's program at full speed against a copy of the farm. It streams one snapshot per tick, plus `print()` output, back to the page.
+- `js/worker.js` and `js/bridge.js`: a web worker that loads Pyodide and runs the player's program at full speed against a copy of the farm. It streams one snapshot per tick, plus `print()` output, back to the page.
 - `js/files.js`: window names, the starter windows, and loading saved windows.
 - `js/windows.js`: the desk of code windows (move, resize, rename, hide, delete, run).
-- `js/main.js`: the page. It replays the snapshots at the chosen speed, and handles Run, Stop and Reset.
+- `js/main.js`: the page. It replays the snapshots at the chosen speed, handles Run, Stop and Reset, judges quests, and draws the map, shop and shelf.
 - `js/render.js`: canvas drawing.
 
-Each run can use up to 5,000 ticks. The farm and your code windows are saved in the browser's local storage for now. Accounts and cloud saves are planned.
+Each run can use up to 5,000 ticks. Progress, the home farm and your code windows are saved in the browser's local storage for now. Accounts and cloud saves are planned.
 
 ## Tests
 
 ```sh
+npm install
 npm test
 ```
 
-This runs the simulation tests with Node and the Python API and sandbox tests with CPython, using a fake farm module.
+This runs the simulation, progress and quest tests with Node, including every quest solution with Pyodide from `node_modules`, and the Python API and sandbox tests with CPython, using a fake farm module.

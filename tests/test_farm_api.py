@@ -29,6 +29,9 @@ fake.pos_y = lambda: 0
 fake.field_size = lambda: 4
 fake.count = lambda item: 0
 fake.ticks = lambda: 0
+fake.can_move = lambda d: True
+state["seeds"] = None
+fake.has_seed = lambda c: state["seeds"] is None or c in state["seeds"]
 logs = []
 fake.log = logs.append
 sys.modules["_farm"] = fake
@@ -267,6 +270,66 @@ class CodeWindowsTest(unittest.TestCase):
         status, msg = farm_api.run("use helper.py\n", {"helper": ""})
         self.assertEqual(status, "error")
         self.assertIn("Try `use helper`", msg)
+
+
+class WordsTest(unittest.TestCase):
+    """Finding coding words, and keeping the ones Bolt hasn't learned locked."""
+
+    def setUp(self):
+        calls.clear()
+        logs.clear()
+        state["budget"] = 10**9
+        state["seeds"] = None
+
+    def words(self, code, files=None):
+        status, msg = farm_api.run(code, files)
+        self.assertEqual(status, "ok", msg)
+        return farm_api.used_words()
+
+    def test_plain_words_and_python_are_the_same_word(self):
+        self.assertEqual(self.words("repeat 2 times:\n    move(EAST)\n"), ["move", "repeat"])
+        self.assertEqual(self.words("repeat until is_ripe():\n    wait()\n"), ["is_ripe", "repeat_until", "wait"])
+        self.assertEqual(self.words("while not is_ripe():\n    wait()\n"), ["is_ripe", "repeat_while", "wait"])
+        self.assertEqual(self.words("set n to 1\nchange n by 1\n"), ["variables"])
+        self.assertEqual(self.words("n = 1\n"), ["variables"])
+        self.assertEqual(self.words("for x from 1 to 2:\n    pass\nfor i in range(2):\n    pass\n"), ["count_from"])
+        self.assertEqual(self.words("for each c in [1]:\n    pass\n"), ["lists"])
+
+    def test_loop_inside_loop(self):
+        self.assertIn("nested", self.words("repeat 2 times:\n    repeat 2 times:\n        wait()\n"))
+        # A loop inside a command isn't inside the loop that calls the command.
+        used = self.words("define row:\n    repeat 2 times:\n        wait()\nrepeat 2 times:\n    row()\n")
+        self.assertNotIn("nested", used)
+        self.assertIn("define", used)
+
+    def test_words_in_other_windows_count(self):
+        used = self.words("use helper\ngo()\n", {"helper": "define go:\n    if is_ripe():\n        harvest()\n"})
+        self.assertEqual(used, ["define", "harvest", "if", "is_ripe", "use"])
+
+    def test_locked_word_stops_the_run(self):
+        locked = {"repeat": "Bolt doesn't know repeat yet. You'll learn it in chapter 2!"}
+        status, msg = farm_api.run("move(EAST)\nrepeat 2 times:\n    harvest()\n", None, "main", locked)
+        self.assertEqual(status, "error")
+        self.assertEqual(msg, "Line 2: Bolt doesn't know repeat yet. You'll learn it in chapter 2!")
+        self.assertEqual(calls, [], "nothing runs")
+
+    def test_locked_word_in_another_window(self):
+        import json
+        locked = json.dumps({"if": "Bolt doesn't know if and else yet."})
+        status, msg = farm_api.run("use helper\n", {"helper": "\nif true:\n    pass\n"}, "main", locked)
+        self.assertEqual(msg, "In helper, line 2: Bolt doesn't know if and else yet.")
+
+    def test_advanced_python(self):
+        self.assertIn("advanced", self.words("class A:\n    pass\n"))
+        self.assertIn("advanced", self.words("f = lambda: 1\n"))
+        self.assertNotIn("advanced", self.words("print(f'{1}')\n"))
+
+    def test_seeds_and_can_move(self):
+        state["seeds"] = ["grass"]
+        status, msg = farm_api.run("plant(Crop.CARROT)\n")
+        self.assertEqual(msg, "Line 1: Bolt has no carrot seeds yet. You can buy them in the shop.")
+        self.assertEqual(self.words("print(can_move(NORTH))\n"), ["can_move"])
+        self.assertEqual(logs, ["True"])
 
 
 if __name__ == "__main__":

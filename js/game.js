@@ -24,14 +24,19 @@ export const CROPS = {
 
 export const ITEMS = ["hay", "wheat", "carrot"];
 
-export function newFarmState(size = 6) {
+// seeds: the crops that can be planted, or null for every crop.
+// lost: how many unripe crops were harvested (and so lost).
+export function newFarmState(size = 3, inventory = {}) {
   const tiles = [];
   for (let i = 0; i < size * size; i++) {
     // Start with a field of ripe grass so the first harvest pays off at once.
     tiles.push({ ground: "grass", crop: "grass", age: CROPS.grass.growTicks });
   }
-  const inventory = Object.fromEntries(ITEMS.map((item) => [item, 0]));
-  return { size, x: 0, y: 0, tick: 0, tiles, inventory };
+  return { size, x: 0, y: 0, tick: 0, tiles, inventory: emptyInventory(inventory), seeds: null, lost: 0 };
+}
+
+export function emptyInventory(from = {}) {
+  return Object.fromEntries(ITEMS.map((item) => [item, Number(from[item]) || 0]));
 }
 
 export class Game {
@@ -43,6 +48,8 @@ export class Game {
     this.tick = s.tick;
     this.tiles = s.tiles;
     this.inventory = s.inventory;
+    this.seeds = s.seeds ?? null;
+    this.lost = s.lost ?? 0;
   }
 
   snapshot() {
@@ -53,6 +60,8 @@ export class Game {
       tick: this.tick,
       tiles: this.tiles.map((t) => ({ ...t })),
       inventory: { ...this.inventory },
+      seeds: this.seeds,
+      lost: this.lost,
     };
   }
 
@@ -75,14 +84,10 @@ export class Game {
   // ---- Actions (each takes one tick, returns true if it did something) ----
 
   move(direction) {
-    const delta = DIRECTIONS[direction];
-    if (!delta) throw new Error(`unknown direction ${direction}`);
-    const nx = this.x + delta[0];
-    const ny = this.y + delta[1];
-    const ok = nx >= 0 && ny >= 0 && nx < this.size && ny < this.size;
+    const ok = this.canMove(direction);
     if (ok) {
-      this.x = nx;
-      this.y = ny;
+      this.x += DIRECTIONS[direction][0];
+      this.y += DIRECTIONS[direction][1];
     }
     this.advance();
     return ok;
@@ -108,7 +113,7 @@ export class Game {
     const info = CROPS[crop];
     if (!info) throw new Error(`unknown crop ${crop}`);
     const t = this.here;
-    const ok = t.crop === null && t.ground === info.ground && this.canAfford(info.cost);
+    const ok = this.hasSeed(crop) && t.crop === null && t.ground === info.ground && this.canAfford(info.cost);
     if (ok) {
       for (const [item, n] of Object.entries(info.cost)) this.inventory[item] -= n;
       t.crop = crop;
@@ -128,6 +133,8 @@ export class Game {
       ok = t.age >= info.growTicks;
       if (ok) {
         for (const [item, n] of Object.entries(info.yield)) this.inventory[item] += n;
+      } else {
+        this.lost += 1;
       }
       t.crop = t.ground === "grass" ? "grass" : null;
       t.age = 0;
@@ -142,6 +149,18 @@ export class Game {
   }
 
   // ---- Sensing (free) ----
+
+  canMove(direction) {
+    const delta = DIRECTIONS[direction];
+    if (!delta) throw new Error(`unknown direction ${direction}`);
+    const nx = this.x + delta[0];
+    const ny = this.y + delta[1];
+    return nx >= 0 && ny >= 0 && nx < this.size && ny < this.size;
+  }
+
+  hasSeed(crop) {
+    return !this.seeds || this.seeds.includes(crop);
+  }
 
   canAfford(cost) {
     return Object.entries(cost).every(([item, n]) => this.inventory[item] >= n);
