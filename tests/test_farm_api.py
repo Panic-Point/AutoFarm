@@ -31,6 +31,12 @@ fake.count = lambda item: 0
 fake.ticks = lambda: 0
 fake.can_move = lambda d: True
 fake.plot_data = lambda key: '[1, 2]' if key == "rows" else "null"
+for n in ("water", "refill"):
+    setattr(fake, n, _action(n))
+fake.is_rotten = lambda: False
+fake.is_dry = lambda: True
+fake.water_left = lambda: 3
+fake.ripe_at = lambda x, y: x == 1 and y == 2
 state["seeds"] = None
 fake.has_seed = lambda c: state["seeds"] is None or c in state["seeds"]
 logs = []
@@ -343,9 +349,41 @@ class WordsTest(unittest.TestCase):
                          [("plant", ("lettuce",)), ("plant", ("strawberry",)), ("plant", ("blueberry",))])
         status, msg = farm_api.run("print(count('blueberry'))\ncount('apple')\n")
         self.assertEqual(logs, ["0"])
-        self.assertIn("'lettuce', 'strawberry' or 'blueberry'", msg)
+        self.assertIn("'lettuce', 'strawberry', 'blueberry', 'pumpkin', 'mushroom', 'corn' or 'sunflower'", msg)
         status, msg = farm_api.run("plant('apple')\n")
-        self.assertIn("Crop.LETTUCE, Crop.STRAWBERRY or Crop.BLUEBERRY", msg)
+        self.assertIn("Crop.BLUEBERRY, Crop.PUMPKIN, Crop.MUSHROOM, Crop.CORN or Crop.SUNFLOWER", msg)
+
+    def test_concept_crops(self):
+        calls.clear()
+        self.assertEqual(farm_api.run("plant(Crop.PUMPKIN)\nwater()\nrefill()\n")[0], "ok")
+        self.assertEqual([c[0] for c in calls], ["plant", "water", "refill"])
+        status, msg = farm_api.run("plant(Crop.MUSHROOM)\n")
+        self.assertEqual(msg, "Line 1: Mushrooms can't be planted. They only grow by themselves, in the fog.")
+        status, msg = farm_api.run("print(ripe_at(1, 2), is_rotten(), is_dry(), water_left())\n")
+        self.assertEqual(status, "ok", msg)
+        self.assertEqual(logs[-1], "True False True 3")
+        status, msg = farm_api.run("ripe_at('a', 2)\n")
+        self.assertIn("ripe_at() needs two whole numbers", msg)
+        status, msg = farm_api.run("if ripe_at:\n    wait()\n")
+        self.assertIn("Write `ripe_at(2, 3)`", msg)
+
+    def test_new_words(self):
+        self.assertIn("elif", self.words("if is_ripe():\n    wait()\nelse if is_rotten():\n    till()\n"))
+        self.assertIn("elif", self.words("if is_ripe():\n    wait()\nelif is_rotten():\n    till()\n"))
+        # `else:` with an `if` inside is fine Python, but it isn't else if.
+        self.assertNotIn("elif", self.words("if is_ripe():\n    wait()\nelse:\n    if is_rotten():\n        till()\n"))
+        self.assertEqual(self.words("if is_dry() and not is_ripe():\n    water()\n"),
+                         ["if", "is_ripe", "logic", "water"])
+        self.assertIn("logic", self.words("print(1 or 2)\n"))
+        # The `not` in a loop that waits for something isn't and/or/not.
+        self.assertNotIn("logic", self.words("repeat until is_ripe():\n    wait()\nwhile not is_ripe():\n    wait()\n"))
+        self.assertIn("logic", self.words("repeat until not is_rotten():\n    wait()\n"))
+        self.assertEqual(self.words("refill()\nprint(water_left())\n"), ["water"])
+        self.assertIn("give_back", self.words("define two:\n    give back 2\nprint(two())\n"))
+        self.assertIn("add", self.words("set basket to []\nadd 1 to basket\nprint(basket)\n"))
+        self.assertEqual(logs[-1], "[1]")
+        self.assertIn("add", self.words("b = []\nb.append(2)\n"))
+        self.assertIn("ripe_at", self.words("print(ripe_at(0, 0))\n"))
 
     def test_missing_brackets(self):
         cases = {

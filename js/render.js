@@ -28,6 +28,20 @@ const COLORS = {
   bush: "#3f7d4a",
   blueberry: "#4a5fc1",
   blueberryYoung: "#a7b0d8",
+  pumpkin: "#f28c28",
+  pumpkinYoung: "#c9c56a",
+  rotten: "#6b5a3a",
+  vine: "#4f8a3a",
+  mushroomCap: "#c0392b",
+  mushroomStem: "#f3ead8",
+  corn: "#f4d03f",
+  cornLeaf: "#5aa04a",
+  wetSoil: "#5e3b26",
+  petal: "#f7c600",
+  sunCenter: "#6b4423",
+  stone: "#9aa3ab",
+  stoneDark: "#6d7780",
+  water: "#4aa3df",
 };
 
 // Hats Bolt can wear: [brim color, crown color, style].
@@ -37,6 +51,8 @@ const HATS = {
   cowboy_hat: ["#7a4b26", "#8f5a2f", "brim"],
   flower_crown: ["#5f9e4a", "#f2d0e4", "flowers"],
   berry_hat: ["#e9c98a", "#f3dca8", "berries"],
+  mushroom_hat: ["#f3ead8", "#c0392b", "mushroom"],
+  sunflower_hat: ["#6b4423", "#f7c600", "sunflower"],
 };
 
 // The golden crowns, one per chapter, each with its chapter's crop as the gem.
@@ -82,6 +98,7 @@ export function drawFarm(ctx, state, opts = {}) {
   if (opts.goal) drawGoal(ctx, state, opts.goal, cell);
   if (looks.fence) drawFence(ctx, W);
   if (looks.scarecrow) drawScarecrow(ctx, (size - 1) * cell, 0, cell);
+  if (looks.jackOLantern) drawJackOLantern(ctx, 0, 0, cell);
   const bx = state.x * cell;
   const by = (size - 1 - state.y) * cell;
   if (looks.dog) drawDog(ctx, bx, by, cell, state.x === size - 1);
@@ -169,6 +186,31 @@ function drawScarecrow(ctx, px, py, cell) {
   ctx.fillRect(cx - s * 0.6, top + s * 0.18, s * 1.2, s * 0.14);
 }
 
+// A carved pumpkin in the north-west corner.
+function drawJackOLantern(ctx, px, py, cell) {
+  const cx = px + cell * 0.2;
+  const cy = py + cell * 0.22;
+  const r = cell * 0.12;
+  ctx.fillStyle = COLORS.pumpkin;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, r * 1.1, r, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#3b2a12";
+  for (const dx of [-0.4, 0.4]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + dx * r - r * 0.18, cy - r * 0.1);
+    ctx.lineTo(cx + dx * r + r * 0.18, cy - r * 0.1);
+    ctx.lineTo(cx + dx * r, cy - r * 0.4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + r * 0.35, r * 0.5, r * 0.18, 0, 0, Math.PI);
+  ctx.fill();
+  ctx.fillStyle = COLORS.vine;
+  ctx.fillRect(cx - r * 0.1, cy - r * 1.25, r * 0.2, r * 0.3);
+}
+
 function drawDog(ctx, bx, by, cell, atEastEdge) {
   // Sit beside Bolt, on whichever side has room.
   const cx = bx + cell * (atEastEdge ? 0.14 : 0.86);
@@ -189,6 +231,24 @@ function drawDog(ctx, bx, by, cell, atEastEdge) {
 }
 
 function drawGround(ctx, tile, px, py, cell) {
+  if (tile.ground === "well") {
+    ctx.fillStyle = COLORS.grass;
+    ctx.fillRect(px, py, cell, cell);
+    const cx = px + cell / 2;
+    const cy = py + cell / 2;
+    ctx.fillStyle = COLORS.stone;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cell * 0.36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = COLORS.stoneDark;
+    ctx.lineWidth = Math.max(1.5, cell / 40);
+    ctx.stroke();
+    ctx.fillStyle = COLORS.water;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cell * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
   if (tile.ground === "grass") {
     ctx.fillStyle = COLORS.grass;
     ctx.fillRect(px, py, cell, cell);
@@ -196,7 +256,7 @@ function drawGround(ctx, tile, px, py, cell) {
     ctx.lineWidth = 1;
     ctx.strokeRect(px + 0.5, py + 0.5, cell - 1, cell - 1);
   } else {
-    ctx.fillStyle = COLORS.soil;
+    ctx.fillStyle = tile.wet > 0 ? COLORS.wetSoil : COLORS.soil;
     ctx.fillRect(px, py, cell, cell);
     ctx.strokeStyle = COLORS.soilFurrow;
     ctx.lineWidth = Math.max(2, cell / 30);
@@ -294,7 +354,103 @@ function drawCrop(ctx, state, tx, ty, px, py, cell) {
     // The bush grows a little bigger each time it's picked.
     const berries = ripe ? harvestYield(state, tx, ty).blueberry : growth > 0.4 ? 3 : 0;
     drawBlueberry(ctx, cx, base, cell, growth, ripe, berries, tile.picks ?? 0);
+  } else if (tile.crop === "pumpkin") {
+    drawPumpkin(ctx, cx, base, cell, growth, ripe, tile.rotten);
+  } else if (tile.crop === "mushroom") {
+    drawMushroom(ctx, cx, base, cell);
+  } else if (tile.crop === "corn") {
+    drawCorn(ctx, cx, base, cell, growth, ripe);
+  } else if (tile.crop === "sunflower") {
+    drawSunflower(ctx, cx, base, cell, growth, ripe);
   }
+}
+
+// A round pumpkin on a vine. A rotten one sags and goes brown.
+function drawPumpkin(ctx, cx, base, cell, growth, ripe, rotten) {
+  ctx.strokeStyle = COLORS.vine;
+  ctx.lineWidth = Math.max(2, cell / 30);
+  ctx.beginPath();
+  ctx.moveTo(cx - cell * 0.3, base);
+  ctx.quadraticCurveTo(cx, base - cell * 0.1, cx + cell * 0.3, base - cell * 0.02);
+  ctx.stroke();
+  const r = cell * (0.06 + 0.16 * Math.min(1, growth));
+  const cy = base - r * (rotten ? 0.6 : 0.9);
+  ctx.fillStyle = rotten ? COLORS.rotten : ripe ? COLORS.pumpkin : COLORS.pumpkinYoung;
+  for (const dx of [-0.45, 0.45, 0]) {
+    ctx.beginPath();
+    ctx.ellipse(cx + dx * r, cy, r * 0.65, r * (rotten ? 0.6 : 0.85), 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (!rotten) {
+    ctx.fillStyle = COLORS.vine;
+    ctx.fillRect(cx - cell * 0.015, cy - r * 1.05, cell * 0.03, r * 0.3);
+  }
+}
+
+function drawMushroom(ctx, cx, base, cell) {
+  ctx.fillStyle = COLORS.mushroomStem;
+  ctx.fillRect(cx - cell * 0.05, base - cell * 0.22, cell * 0.1, cell * 0.22);
+  ctx.fillStyle = COLORS.mushroomCap;
+  ctx.beginPath();
+  ctx.ellipse(cx, base - cell * 0.22, cell * 0.2, cell * 0.13, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = COLORS.mushroomStem;
+  for (const [dx, dy] of [[-0.1, -0.27], [0.06, -0.31], [0.12, -0.25]]) {
+    ctx.beginPath();
+    ctx.arc(cx + dx * cell, base + dy * cell, cell * 0.022, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// A tall stalk with leaves. Ripe corn shows two yellow cobs (it gives 2).
+function drawCorn(ctx, cx, base, cell, growth, ripe) {
+  const h = cell * (0.15 + 0.6 * growth);
+  ctx.strokeStyle = COLORS.cornLeaf;
+  ctx.lineWidth = Math.max(2, cell / 24);
+  ctx.beginPath();
+  ctx.moveTo(cx, base);
+  ctx.lineTo(cx, base - h);
+  ctx.stroke();
+  ctx.fillStyle = COLORS.cornLeaf;
+  for (const [side, at] of [[-1, 0.3], [1, 0.55]]) {
+    ctx.beginPath();
+    ctx.ellipse(cx + side * cell * 0.1, base - h * at, cell * 0.12, cell * 0.035, side * -0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (ripe) {
+    ctx.fillStyle = COLORS.corn;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(cx + side * cell * 0.07, base - h * 0.6, cell * 0.045, cell * 0.11, side * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// A tall stem with a flower head that opens yellow when it's ripe.
+function drawSunflower(ctx, cx, base, cell, growth, ripe) {
+  const h = cell * (0.15 + 0.4 * growth);
+  ctx.strokeStyle = COLORS.cornLeaf;
+  ctx.lineWidth = Math.max(2, cell / 26);
+  ctx.beginPath();
+  ctx.moveTo(cx, base);
+  ctx.lineTo(cx, base - h);
+  ctx.stroke();
+  const r = cell * (0.04 + 0.08 * growth);
+  const cy = base - h;
+  if (ripe) {
+    ctx.fillStyle = COLORS.petal;
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(cx + Math.cos(a) * r * 1.3, cy + Math.sin(a) * r * 1.3, r * 0.6, r * 0.3, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.fillStyle = ripe ? COLORS.sunCenter : COLORS.cornLeaf;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 // A low rosette of round leaves that widens as it grows. Wilted lettuce
@@ -431,6 +587,33 @@ function drawHat(ctx, cx, top, w, cell, hat) {
       ctx.arc(cx + dx * w, top - cell * 0.06, cell * 0.022, 0, Math.PI * 2);
       ctx.fill();
     }
+    return;
+  }
+  if (style === "mushroom") {
+    ctx.fillStyle = crown;
+    ctx.beginPath();
+    ctx.ellipse(cx, top, w * 0.55, cell * 0.12, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = brim;
+    for (const [dx, dy] of [[-0.25, 0.05], [0.05, 0.09], [0.3, 0.04]]) {
+      ctx.beginPath();
+      ctx.arc(cx + dx * w, top - dy * cell, cell * 0.018, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+  if (style === "sunflower") {
+    ctx.fillStyle = crown;
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(cx + Math.cos(a) * cell * 0.07, top - cell * 0.06 + Math.sin(a) * cell * 0.07, cell * 0.035, cell * 0.018, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = brim;
+    ctx.beginPath();
+    ctx.arc(cx, top - cell * 0.06, cell * 0.045, 0, Math.PI * 2);
+    ctx.fill();
     return;
   }
   if (style === "crown") {

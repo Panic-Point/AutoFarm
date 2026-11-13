@@ -18,6 +18,7 @@ _EXAMPLES = {
     "plant": "plant(Crop.WHEAT)",
     "count": 'count("wheat")',
     "print": 'print("hello")',
+    "ripe_at": "ripe_at(2, 3)",
 }
 
 # Places where a yes-or-no question goes.

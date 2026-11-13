@@ -23,6 +23,8 @@ player's own code.
     use helper                   from helper import *
     use helper, crops            from helper import *; from crops import *
     use go_home from helper      from helper import go_home
+    give back total              return total
+    add crop to basket           basket.append(crop)
 """
 
 import io
@@ -59,6 +61,10 @@ _RULES = [
      lambda m: f"{m['var']} = {m['value']}"),
     ("change", re.compile(rf"change\s+(?P<var>{_NAME})\s+by\s+(?P<value>.+)$"),
      lambda m: f"{m['var']} += {m['value']}"),
+    ("give_back", re.compile(r"give\s+back(?:\s+(?P<value>.+))?$"),
+     lambda m: f"return {m['value']}" if m["value"] else "return"),
+    ("add", re.compile(rf"add\s+(?P<value>.+?)\s+to\s+(?P<seq>{_NAME}(?:\.{_NAME})*)\s*(?P<tail>#.*)?$"),
+     lambda m: f"{m['seq']}.append({m['value']})"),
     ("use", re.compile(rf"use\s+(?P<names>{_NAME}(?:\s*,\s*{_NAME})*)\s+from\s+(?P<file>{_NAME})\s*(?P<tail>#.*)?$"),
      lambda m: f"from {m['file']} import {_names(m['names'])}"),
     ("use", re.compile(rf"use\s+(?P<files>{_NAME}(?:\s*(?:,|\band\b)\s*{_NAME})*)\s*(?P<tail>#.*)?$"),
@@ -80,6 +86,8 @@ _HINTS = {
     "set": "Try `set total to 0`.",
     "change": "Try `change total by 1`.",
     "use": "Try `use helper` to use the code in your helper window, or `use go_home from helper`.",
+    "give": "Try `give back total` to give a number back from your command.",
+    "add": "Try `add crop to basket` to put something at the end of a list.",
 }
 _FIRST_WORD = re.compile(r"(?P<word>[A-Za-z_]\w*)\b")
 

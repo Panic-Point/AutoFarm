@@ -1,5 +1,5 @@
 // Quest fields and goal checks. No DOM code here, so it can be tested with Node.
-import { CROPS, ITEMS, emptyInventory, strawberryFriends } from "./game.js";
+import { CAN_SIZE, CROPS, ITEMS, WET_TICKS, emptyInventory, isTileDry, isTileRipe, strawberryFriends } from "./game.js";
 import { WORDS } from "./words.js";
 
 const TILE_CODES = {
@@ -16,9 +16,22 @@ const TILE_CODES = {
   r: { ground: "soil", crop: "strawberry", ripe: false },
   B: { ground: "soil", crop: "blueberry", ripe: true },
   b: { ground: "soil", crop: "blueberry", ripe: false },
+  P: { ground: "soil", crop: "pumpkin", ripe: true },
+  p: { ground: "soil", crop: "pumpkin", ripe: false },
+  x: { ground: "soil", crop: "pumpkin", rotten: true },
+  M: { ground: "soil", crop: "mushroom", ripe: true },
+  K: { ground: "soil", crop: "corn", ripe: true },
+  k: { ground: "soil", crop: "corn", ripe: false, age: 4 },
+  q: { ground: "soil", crop: "corn", ripe: false, age: 4, wet: true },
+  F: { ground: "soil", crop: "sunflower", ripe: true },
+  f: { ground: "soil", crop: "sunflower", ripe: false },
+  O: { ground: "well", crop: null },
 };
 
-const CROP_CODES = { G: "grass", W: "wheat", C: "carrot", L: "lettuce", R: "strawberry", B: "blueberry" };
+const CROP_CODES = {
+  G: "grass", W: "wheat", C: "carrot", L: "lettuce", R: "strawberry", B: "blueberry",
+  P: "pumpkin", M: "mushroom", K: "corn", F: "sunflower",
+};
 
 // The map's rows are north first, but tiles are stored south row first.
 function mapCell(map, x, y) {
@@ -44,15 +57,22 @@ export function plotData(quest, plot = 0) {
 
 // A fresh farm state for one of a quest's plots. Every try starts from this.
 export function questField(quest, plot = 0) {
-  const { map, start = [0, 0], inventory = {} } = questPlots(quest)[plot];
+  const { map, start = [0, 0], inventory = {}, can = CAN_SIZE } = questPlots(quest)[plot];
   const size = map.length;
   const tiles = [];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const code = TILE_CODES[mapCell(map, x, y)];
       if (!code) throw new Error(`Quest ${quest.id}: unknown tile "${mapCell(map, x, y)}"`);
-      const age = code.crop && code.ripe ? CROPS[code.crop].growTicks : 0;
-      tiles.push({ ground: code.ground, crop: code.crop, age });
+      const info = code.crop ? CROPS[code.crop] : null;
+      const tile = { ground: code.ground, crop: code.crop, age: code.age ?? 0 };
+      if (code.ripe) tile.age = info.growTicks;
+      if (code.rotten) {
+        tile.age = info.growTicks + info.rotTicks;
+        tile.rotten = true;
+      }
+      if (code.wet) tile.wet = WET_TICKS;
+      tiles.push(tile);
     }
   }
   const state = {
@@ -65,6 +85,8 @@ export function questField(quest, plot = 0) {
     seeds: null,
     lost: 0,
     wilted: 0,
+    can,
+    wasted: 0,
   };
   // Strawberries that start ripe have already counted their friends.
   tiles.forEach((t, i) => {
@@ -102,7 +124,7 @@ export function patternMisses(pattern, state) {
 }
 
 export function plural(n, word) {
-  if (n === 1 || word === "hay" || word === "wheat") return `${n} ${word}`;
+  if (n === 1 || word === "hay" || word === "wheat" || word === "corn") return `${n} ${word}`;
   if (word.endsWith("berry")) return `${n} ${word.slice(0, -1)}ies`;
   return `${n} ${word}s`;
 }
@@ -159,6 +181,15 @@ export function checkPlot(quest, plot, start, end, run) {
   }
   if (goal.fresh && end.wilted > 0) {
     problems.push(`${plural(end.wilted, "lettuce")} wilted before Bolt picked ${end.wilted === 1 ? "it" : "them"}.`);
+  }
+  if (goal.thirsty) {
+    // Every young corn that started on dry soil needs a drink.
+    const dry = start.tiles.filter((t, i) => t.crop === "corn" && !isTileRipe(t) && isTileDry(t)
+      && !(end.tiles[i].crop === "corn" && end.tiles[i].watered)).length;
+    if (dry) problems.push(`${plural(dry, "corn")} on dry soil didn't get any water.`);
+  }
+  if (goal.noWaste && end.wasted > 0) {
+    problems.push(`Bolt poured water where it wasn't needed ${end.wasted === 1 ? "once" : `${end.wasted} times`}. Only water dry corn that isn't ripe.`);
   }
   for (const group of goal.needs ?? []) {
     if (!group.some((w) => run.words.includes(w))) {

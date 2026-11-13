@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Game, newFarmState, CROPS } from "../js/game.js";
+import { CAN_SIZE, CROPS, Game, WET_TICKS, newFarmState, ripeAt } from "../js/game.js";
 
 test("moves are blocked at the edge and still take a tick", () => {
   const g = new Game(newFarmState(3));
@@ -197,4 +197,68 @@ test("tilling or losing the wheat means no carrot bonus", () => {
   g.till();
   g.till();
   assert.equal(g.here.last, undefined);
+});
+
+test("pumpkins rot when left too long, and only till() clears a rotten one", () => {
+  const g = soilGame(3, { carrot: 1 });
+  assert.equal(g.plant("pumpkin"), true);
+  for (let i = 0; i < CROPS.pumpkin.growTicks; i++) g.wait();
+  assert.equal(g.isRipe(), true);
+  for (let i = 0; i < CROPS.pumpkin.rotTicks; i++) g.wait();
+  assert.equal(g.isRotten(), true);
+  assert.equal(g.isRipe(), false);
+  assert.equal(g.harvest(), false);
+  assert.equal(g.here.crop, "pumpkin", "too squishy to pick");
+  assert.equal(g.lost, 0);
+  g.till();
+  assert.equal(g.here.crop, null);
+  assert.equal(g.here.ground, "soil", "tilling a rotten pumpkin leaves soil");
+});
+
+test("mushrooms can't be planted", () => {
+  const g = soilGame();
+  assert.equal(g.plant("mushroom"), false);
+  assert.equal(g.here.crop, null);
+});
+
+test("corn only grows on wet soil, and the can runs out", () => {
+  const g = soilGame(3, { wheat: 1 });
+  g.plant("corn");
+  g.wait();
+  assert.equal(g.here.age, 0, "dry corn doesn't grow");
+  assert.equal(g.isDry(), true);
+  assert.equal(g.water(), true);
+  assert.equal(g.can, CAN_SIZE - 1);
+  assert.equal(g.isDry(), false);
+  assert.equal(g.wasted, 0);
+  for (let i = 0; i < 10; i++) g.wait();
+  assert.equal(g.here.age, WET_TICKS, "it grew once for every wet tick");
+  assert.equal(g.isDry(), true);
+  g.water();
+  g.water(); // already wet: wasted
+  assert.equal(g.wasted, 1);
+  for (let i = 0; i < 10; i++) g.wait();
+  assert.equal(g.isRipe(), true);
+  g.water(); // ripe: wasted
+  assert.equal(g.wasted, 2);
+  assert.equal(g.harvest(), true);
+  assert.equal(g.inventory.corn, 2);
+  g.water(); // nothing growing: wasted
+  assert.equal(g.can, 0);
+  assert.equal(g.water(), false, "the can is empty");
+  assert.equal(g.refill(), false, "only at the well");
+  g.here.ground = "well";
+  assert.equal(g.refill(), true);
+  assert.equal(g.can, CAN_SIZE);
+});
+
+test("ripe sunflowers can be seen from anywhere", () => {
+  const g = soilGame(3);
+  Object.assign(g.tileAt(2, 1), { crop: "sunflower", age: CROPS.sunflower.growTicks });
+  Object.assign(g.tileAt(1, 1), { crop: "sunflower", age: 3 });
+  Object.assign(g.tileAt(0, 1), { crop: "wheat", age: CROPS.wheat.growTicks });
+  assert.equal(ripeAt(g, 2, 1), true);
+  assert.equal(ripeAt(g, 1, 1), false, "not ripe yet");
+  assert.equal(ripeAt(g, 0, 1), false, "wheat is too short to see");
+  assert.equal(ripeAt(g, 5, 1), false, "off the field");
 });

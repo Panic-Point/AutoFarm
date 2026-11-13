@@ -12,10 +12,15 @@ import ast
 
 # Farm commands that are words of their own. `print` is always allowed.
 API_WORDS = {
-    "move", "harvest", "till", "plant", "wait",
-    "is_ripe", "crop_here", "ground_here", "can_move", "position", "field_size",
-    "count", "ticks",
+    "move", "harvest", "till", "plant", "wait", "water", "refill",
+    "is_ripe", "is_rotten", "is_dry", "water_left", "ripe_at",
+    "crop_here", "ground_here", "can_move", "position", "field_size",
+    "count", "ticks", "order",
 }
+
+# Farm commands that belong to another command's word: the watering can's
+# commands are all one word, "water".
+_API_ALIASES = {"refill": "water", "is_dry": "water", "water_left": "water"}
 
 # Plain-word line tags (from plain_words.translate) for loops.
 _FOR_TAGS = {"repeat_times": "repeat", "for_times": "repeat", "count_from": "count_from", "for_each": "lists"}
@@ -36,6 +41,9 @@ class _Finder(ast.NodeVisitor):
         self.tags = tags
         self.found = []
         self.loops = 0
+        # `repeat until x:` becomes `while not (x):`, and `while not x:` means the
+        # same, so that `not` is part of the loop, not the word for and/or/not.
+        self.plain_not = set()
 
     def add(self, word, node):
         self.found.append((word, getattr(node, "lineno", 0)))
@@ -63,6 +71,8 @@ class _Finder(ast.NodeVisitor):
         self._loop(node, word)
 
     def visit_While(self, node):
+        if isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not):
+            self.plain_not.add(id(node.test))
         word = self.tags.get(node.lineno)
         if word not in _WHILE_TAGS:
             forever = isinstance(node.test, ast.Constant) and node.test.value is True
@@ -78,13 +88,33 @@ class _Finder(ast.NodeVisitor):
 
     def visit_Return(self, node):
         self.add("define", node)
+        self.add("give_back", node)
         self.generic_visit(node)
 
     def visit_If(self, node):
         self.add("if", node)
+        # `elif` (or plain-word `else if`) is an If that is the whole else part,
+        # written at the same indent. `else:` with an `if` inside it is not.
+        if len(node.orelse) == 1 and isinstance(node.orelse[0], ast.If):
+            inner = node.orelse[0]
+            if inner.col_offset == node.col_offset or self.tags.get(inner.lineno) == "else_if":
+                self.add("elif", inner)
         self.generic_visit(node)
 
-    visit_IfExp = visit_If
+    def visit_IfExp(self, node):
+        self.add("if", node)
+        self.generic_visit(node)
+
+    def _logic(self, node):
+        self.add("logic", node)
+        self.generic_visit(node)
+
+    visit_BoolOp = _logic
+
+    def visit_UnaryOp(self, node):
+        if isinstance(node.op, ast.Not) and id(node) not in self.plain_not:
+            self.add("logic", node)
+        self.generic_visit(node)
 
     def _variables(self, node):
         self.add("variables", node)
@@ -110,7 +140,9 @@ class _Finder(ast.NodeVisitor):
 
     def visit_Call(self, node):
         if isinstance(node.func, ast.Name) and node.func.id in API_WORDS:
-            self.add(node.func.id, node)
+            self.add(_API_ALIASES.get(node.func.id, node.func.id), node)
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "append":
+            self.add("add", node)
         self.generic_visit(node)
 
 

@@ -11,10 +11,10 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
 | 1 | First Steps | `move`, `harvest` |
 | 2 | Do It Again | `repeat 5 times:` (plus `till`, `plant`, `wait`) |
 | 3 | Loops in Loops | a repeat inside a repeat |
-| 4 | Look Before You Act | `if` / `else`, `is_ripe()`, `ground_here()` |
-| 5 | Until It's Done | `repeat until`, `repeat while`, `can_move()` |
-| 6 | Keeping Count | `set` / `change`, `count()`, `for x from 1 to 5:` |
-| 7 | Teach Bolt | `define`, `use helper` |
+| 4 | Look Before You Act | `if` / `else` / `else if`, `is_ripe()`, `ground_here()` |
+| 5 | Until It's Done | `repeat until`, `repeat while`, `repeat forever` and `break`, `can_move()` |
+| 6 | Keeping Count | `set` / `change`, `count()`, `for x from 1 to 5:`, `and` / `or` / `not` |
+| 7 | Teach Bolt | `define`, `use helper`, `give back` |
 | 8 | Big Farm Plans | lists and `for each`, ending with Festival Day |
 
 - **Quests** run on their own field, which starts over on every try. Finishing a quest gives 1 star; finishing within a tick (cycle) limit gives 2, and within a tighter one 3. Quests in a chapter open one after another.
@@ -41,8 +41,12 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
 | Strawberry | 3 wheat | 12 ticks | 1 + 1 per friend | **Friends:** when it ripens it counts the strawberries right next to it, and gives 1 more for each. A *layout puzzle*: 4 in a row make 10, a 2 by 2 square makes 12, and picking one before its neighbours ripen leaves them fewer friends. |
 | Lettuce | 2 hay | 6 ticks | 1 lettuce | **Wilts:** it stays crisp for 8 ticks, then wilts and gives nothing. A *scheduling puzzle*: first planted, first picked, so the order Bolt walks matters (a queue). |
 | Blueberry | 2 carrots | 24 ticks | 2, 3, 4, 5, 5... | **Bush:** stays after a ripe harvest and is ripe again 10 ticks later, giving 1 more each time up to 5. Picking it early loses the whole bush. A *keep-it-running puzzle*: a patrol loop with `repeat until count(...)` beats replanting. |
+| Pumpkin | 1 carrot | 16 ticks | 1 pumpkin | **Rots:** 30 ticks after it's ripe it rots. A rotten pumpkin can't be picked, and `till()` clears it (`is_rotten()` checks). A *three-way choice*: ripe → pick, rotten → till, young → leave it, with `else if`. |
+| Mushroom | can't be planted | | 1 mushroom | **Wild:** grows by itself in the fog, in a different spot on each test plot. A *search puzzle*: `repeat forever` until you find it, then `break`. |
+| Corn | 1 wheat | 10 wet ticks | 2 corn | **Thirsty:** only grows while its soil is wet. `water()` wets a tile for 6 ticks and uses 1 drop of the 5 in the can, and `refill()` fills it at the well. Water on wet soil, ripe corn or nothing is wasted. A *both-things-true puzzle*: `if is_dry() and not is_ripe():`. |
+| Sunflower | 2 wheat | 40 ticks | 1 sunflower | **Tall:** Bolt can see it from anywhere, with `ripe_at(x, y)`. A *count-it-first puzzle*: a command that gives back how many are ripe in a row. |
 
-Each special rule has a bonus quest built around it (3-5 Berry Friends, 4-5 Crunchy Lettuce, 5-6 Wheat Then Carrots, 6-5 Two Old Bushes), and the new seeds go in the shop after the chapter that fits them. Bonus quests give stars but aren't needed to finish a chapter.
+Each special rule has a quest built around it (3-5 Berry Friends, 4-6 Crunchy Lettuce, 5-7 Wheat Then Carrots, 6-6 Two Old Bushes, 4-5 Pip's Pumpkin Patch, 5-6 Mushroom in the Fog, 6-5 Thirsty Corn, 7-4 Sunflower Rows), and the new seeds go in the shop after the chapter that fits them. The pumpkin, mushroom, corn and sunflower quests are core quests because they teach a coding word (`else if`, `break`, `and`/`or`/`not`, `give back`), and each has a harder bonus quest after it. Bonus quests give stars but aren't needed to finish a chapter. Chapters 1 to 3 each end with a bonus **Fix Bolt's code** quest (1-6, 2-6, 3-6) that starts with a program that almost works.
 
 Quests are plain data in `js/chapters.js`, so adding one needs no new code. `tests/solutions.mjs` holds a 3-star program for every quest, and the tests run them all with the real game and Python, so the star targets always stay within reach.
 
@@ -79,6 +83,8 @@ repeat until position() == (0, 0):
 | `define sweep_row:` / `define go(steps):` | `def sweep_row():` / `def go(steps):` |
 | `set total to 0` / `change total by 1` | `total = 0` / `total += 1` |
 | `true` / `false` | `True` / `False` |
+| `give back total` | `return total` |
+| `add crop to basket` | `basket.append(crop)` |
 
 ## Code windows
 

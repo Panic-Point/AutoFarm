@@ -1,14 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CHAPTERS } from "../js/chapters.js";
+import { CHAPTERS, QUESTS } from "../js/chapters.js";
 import { emptyInventory } from "../js/game.js";
 import {
   CROWNS, MIGRATIONS, SAVE_VERSION, SHOP, buy, crownsOwned, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, migrate, newProgress, nextQuest, nextStep, wear,
   noteHarvest, recordResult, seeds, titles, totalStars,
 } from "../js/progress.js";
 
+// Finish a chapter's core quests (bonus quests aren't needed).
 function finishChapter(p, n, stars = 3) {
-  for (const q of CHAPTERS[n - 1].quests) recordResult(p, q.id, stars, 1);
+  for (const q of CHAPTERS[n - 1].quests) if (!q.bonus) recordResult(p, q.id, stars, 1);
 }
 
 test("a new player starts on the first quest with only move and harvest", () => {
@@ -69,7 +70,7 @@ test("finishing a chapter gives a badge and puts items in the shop", () => {
 
 test("finishing the festival opens all of Python and the Master Farmer title", () => {
   const p = newProgress();
-  for (const ch of CHAPTERS) finishChapter(p, ch.n);
+  for (const q of QUESTS) recordResult(p, q.id, 3, 1);
   assert.deepEqual(locked(p), {});
   assert.deepEqual(titles(p), ["Farm Helper", "Star Farmer", "Master Farmer"]);
   assert.equal(nextQuest(p), null);
@@ -204,7 +205,7 @@ test("an old save that finished the old 8-4 keeps the festival and its crown", (
 
 test("after the festival, what's next never sends the player back to 1-1", () => {
   const p = newProgress();
-  for (const ch of CHAPTERS) finishChapter(p, ch.n, 3);
+  for (const q of QUESTS) recordResult(p, q.id, 3, 1);
   p.stars["4-2"] = 1;
   p.stars["6-1"] = 2;
   assert.deepEqual(nextStep(p), { id: "4-2", why: "Pip's Garden has 1 star. Can you get 3?" });
@@ -220,8 +221,33 @@ test("the harvest is counted for the festival", () => {
   assert.deepEqual(loadProgress(JSON.parse(JSON.stringify(p))).harvested, { hay: 5, wheat: 1 });
 });
 
+// Finish a chapter's core quests, and gather every reward line on the way.
 function finishChapterResult(p, n) {
-  let last;
-  for (const q of CHAPTERS[n - 1].quests) last = recordResult(p, q.id, 3, 1);
-  return last;
+  const lines = [];
+  for (const q of CHAPTERS[n - 1].quests) if (!q.bonus) lines.push(...recordResult(p, q.id, 3, 1).lines);
+  return { lines };
 }
+test("bonus quests moved to new IDs keep their stars, and nothing re-locks", () => {
+  // A save from before the new quests: chapters 1 to 6 done, with the old
+  // bonus quests 4-5 (Crunchy Lettuce), 5-6 and 6-5.
+  const stars = {};
+  const old = [
+    "1-1", "1-2", "1-3", "1-4", "1-5", "2-1", "2-2", "2-3", "2-4", "2-5", "3-1", "3-2", "3-3", "3-4", "3-5",
+    "4-1", "4-2", "4-3", "4-4", "4-5", "5-1", "5-2", "5-3", "5-4", "5-5", "5-6", "6-1", "6-2", "6-3", "6-4", "6-5",
+  ];
+  for (const id of old) stars[id] = 2;
+  stars["4-5"] = 3;
+  const p = loadProgress({ stars, best: { "4-5": 20, "5-6": 30 } });
+  assert.equal(p.stars["4-6"], 3, "Crunchy Lettuce keeps its stars");
+  assert.equal(p.stars["5-7"], 2);
+  assert.equal(p.stars["6-6"], 2);
+  assert.equal(p.best["4-6"], 20);
+  assert.equal(p.best["5-7"], 30);
+  for (const id of ["4-5", "5-6", "6-5"]) assert.equal(p.stars[id], undefined, `new quest ${id} starts empty`);
+  assert.deepEqual(p.finished, [1, 2, 3, 4, 5, 6]);
+  for (let n = 1; n <= 7; n++) assert.ok(isChapterOpen(p, n), `chapter ${n} stays open`);
+  assert.ok(isQuestOpen(p, "4-5") && isQuestOpen(p, "4-6"));
+  // A save from version 2 is moved too, and a current one is left alone.
+  assert.equal(loadProgress({ version: 2, stars: { "6-5": 3 } }).stars["6-6"], 3);
+  assert.equal(loadProgress({ version: SAVE_VERSION, stars: { "6-5": 3 } }).stars["6-5"], 3);
+});

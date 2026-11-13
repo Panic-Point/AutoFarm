@@ -16,12 +16,19 @@ export const SHOP = [
   { id: "lettuce_seeds", kind: "seeds", name: "Lettuce seeds", text: "Plant lettuce. It's quick, but pick it before it wilts!", cost: { hay: 12 }, after: 4, crop: "lettuce" },
   { id: "red_cap", kind: "hat", name: "Red cap", text: "A bright red cap for Bolt.", cost: { hay: 10 }, after: 4 },
   { id: "cowboy_hat", kind: "hat", name: "Cowboy hat", text: "Yee-haw! A wide brown hat.", cost: { wheat: 12 }, after: 4 },
+  { id: "pumpkin_seeds", kind: "seeds", name: "Pumpkin seeds", text: "Plant pumpkins. Pick them when they're ripe, before they rot!", cost: { carrot: 3 }, after: 4, crop: "pumpkin" },
+  { id: "jack_o_lantern", kind: "looks", name: "Jack-o'-lantern", text: "A grinning pumpkin for your farm.", cost: { pumpkin: 2 }, after: 4 },
   { id: "field_7", kind: "growth", name: "Even bigger field", text: "Your home farm grows to 7 by 7.", cost: { hay: 20, wheat: 20 }, after: 5, size: 7 },
   { id: "blueberry_seeds", kind: "seeds", name: "Blueberry seeds", text: "Plant blueberry bushes. They grow back and give more each time.", cost: { carrot: 6 }, after: 5, crop: "blueberry" },
+  { id: "mushroom_hat", kind: "hat", name: "Mushroom hat", text: "A red spotty cap, like the mushrooms in the fog.", cost: { mushroom: 3 }, after: 5 },
   { id: "berry_hat", kind: "hat", name: "Berry hat", text: "A sun hat with strawberries and blueberries on it.", cost: { strawberry: 10, blueberry: 10 }, after: 6 },
   { id: "fence", kind: "looks", name: "Fence", text: "A wooden fence around your farm.", cost: { hay: 25 }, after: 6 },
   { id: "flower_crown", kind: "hat", name: "Flower crown", text: "Daisies and buttercups for Bolt.", cost: { carrot: 5 }, after: 6 },
+  { id: "corn_seeds", kind: "seeds", name: "Corn seeds", text: "Plant corn. It only grows on wet soil, so water() it. Each one gives 2!", cost: { lettuce: 5 }, after: 6, crop: "corn" },
+  { id: "well", kind: "looks", name: "Well", text: "A well in the corner of your farm. Stand on it and refill() the watering can.", cost: { wheat: 15 }, after: 6 },
   { id: "dog", kind: "looks", name: "Farm dog", text: "A puppy that follows Bolt around.", cost: { carrot: 8 }, after: 7 },
+  { id: "sunflower_seeds", kind: "seeds", name: "Sunflower seeds", text: "Plant sunflowers. They're so tall Bolt can see them from anywhere with ripe_at(x, y).", cost: { pumpkin: 4 }, after: 7, crop: "sunflower" },
+  { id: "sunflower_hat", kind: "hat", name: "Sunflower hat", text: "A big sunny flower for Bolt's head.", cost: { sunflower: 5 }, after: 7 },
   { id: "field_10", kind: "growth", name: "Giant field", text: "Your home farm grows to 10 by 10.", cost: { carrot: 20 }, after: 8, size: 10 },
 ];
 
@@ -61,6 +68,10 @@ export const ALMANAC = [
   { item: "lettuce", name: "Lettuce", fact: "Lettuce grows fast, but in hot weather it 'bolts': it shoots up a tall stalk and turns bitter. Farmers pick it while it's crisp." },
   { item: "strawberry", name: "Strawberry", fact: "Strawberries wear their seeds on the outside, about 200 on each berry. The plants send out runners to start new plants nearby." },
   { item: "blueberry", name: "Blueberry", fact: "A blueberry bush can keep giving berries for more than 50 years, and it gives more as it grows bigger." },
+  { item: "pumpkin", name: "Pumpkin", fact: "A pumpkin is really a fruit, with seeds inside. The biggest ones ever grown weighed more than a small car." },
+  { item: "mushroom", name: "Mushroom", fact: "A mushroom isn't a plant. It's a fungus, and it loves damp, foggy places. Never eat a wild one unless a grown-up who knows says it's safe." },
+  { item: "corn", name: "Corn", fact: "Each strand of corn silk leads to one kernel. A cob has about 800 kernels, always an even number." },
+  { item: "sunflower", name: "Sunflower", fact: "Young sunflowers turn to follow the sun across the sky. Their seeds are a favorite snack for birds." },
 ];
 
 // ---- Saving ----
@@ -106,6 +117,20 @@ export const MIGRATIONS = [
       }
       // They finished the festival before there was a scene, so they've seen it.
       if ((saved.finished ?? []).includes(8)) saved.festivalSeen = true;
+    },
+  },
+  {
+    // Version 4 makes room for new core quests (Pip's Pumpkin Patch, Mushroom
+    // in the Fog, Thirsty Corn) by giving the bonus quests after them new IDs.
+    version: 4,
+    run(saved) {
+      const moved = { "4-5": "4-6", "5-6": "5-7", "6-5": "6-6" };
+      for (const key of ["stars", "best"]) {
+        const old = saved[key] ?? {};
+        const out = {};
+        for (const [id, n] of Object.entries(old)) out[moved[id] ?? id] = n;
+        saved[key] = out;
+      }
     },
   },
 ];
@@ -287,6 +312,7 @@ export function looks(p) {
     scarecrow: p.owned.includes("scarecrow"),
     fence: p.owned.includes("fence"),
     dog: p.owned.includes("dog"),
+    jackOLantern: p.owned.includes("jack_o_lantern"),
   };
 }
 

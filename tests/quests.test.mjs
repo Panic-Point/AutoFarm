@@ -241,3 +241,42 @@ test("test plots: a program can read facts about its plot", () => {
   assert.equal(bridge.module.plot_data("size"), "4");
   assert.equal(bridge.module.plot_data("nothing"), "null");
 });
+
+test("every Fix Bolt's code quest starts with code that needs fixing", () => {
+  for (const quest of QUESTS.filter((q) => q.starter)) {
+    const code = typeof quest.starter === "string" ? quest.starter : quest.starter.code;
+    const { result } = play(quest, code);
+    assert.ok(result.stars < 3, `${quest.id}: the starter already earns ${result.stars} stars`);
+  }
+});
+
+test("pumpkins need else if: a rotten one has to be tilled", () => {
+  const quest = QUESTS.find((q) => q.id === "4-5");
+  const { result } = play(quest, "repeat 4 times:\n    if is_ripe():\n        harvest()\n    move(EAST)\nif is_ripe():\n    harvest()\n");
+  assert.equal(result.met, false);
+  assert.match(result.problems.join(" "), /2 tiles still aren't right/);
+});
+
+test("test plots catch a program that only knows where the first mushroom is", () => {
+  const quest = QUESTS.find((q) => q.id === "5-6");
+  const fixed = "repeat forever:\n    if position() == (3, 0):\n        harvest()\n        break\n    move(EAST)\nrepeat 3 times:\n    move(WEST)\n";
+  const { result } = play(quest, fixed);
+  assert.equal(result.met, false);
+  assert.equal(result.problems[0], "Your program worked on plot 1, but not on plot 2.");
+});
+
+test("watering every dry tile wastes water on the ripe corn", () => {
+  const quest = QUESTS.find((q) => q.id === "6-5");
+  const careless = "repeat 5 times:\n    if is_dry():\n        water()\n    if is_ripe():\n        harvest()\n    if can_move(EAST):\n        move(EAST)\n";
+  const { result } = play(quest, careless);
+  assert.equal(result.met, false);
+  assert.match(result.problems.join(" "), /Bolt poured water where it wasn't needed 2 times/);
+  assert.match(result.problems.join(" "), /This quest is about and, or and not/);
+});
+
+test("skipping the young corn leaves it thirsty", () => {
+  const quest = QUESTS.find((q) => q.id === "6-5");
+  const lazy = "repeat 5 times:\n    if is_ripe() and true:\n        harvest()\n    if can_move(EAST):\n        move(EAST)\n";
+  const { result } = play(quest, lazy);
+  assert.deepEqual(result.problems, ["2 corn on dry soil didn't get any water."]);
+});
