@@ -261,8 +261,9 @@ export function isQuestOpen(p, id) {
   if (p.practice) return true;
   const list = CHAPTERS[quest.chapter - 1].quests;
   const i = list.findIndex((q) => q.id === id);
-  // A quest that already has stars stays open, even if a new quest is added before it.
-  return i === 0 || p.stars[id] >= 1 || p.stars[list[i - 1].id] >= 1;
+  // A quest that already has stars stays open, even if a new quest is added
+  // before it, and so does every quest in a chapter the player has finished.
+  return i === 0 || p.stars[id] >= 1 || p.stars[list[i - 1].id] >= 1 || isChapterDone(p, quest.chapter);
 }
 
 // What to play next, and why: { id, why }, or null when every quest has 3

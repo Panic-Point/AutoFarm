@@ -367,6 +367,12 @@ class WordsTest(unittest.TestCase):
         status, msg = farm_api.run("if ripe_at:\n    wait()\n")
         self.assertIn("Write `ripe_at(2, 3)`", msg)
 
+    def test_order_needs_a_market_field(self):
+        status, msg = farm_api.run("print(order())\n")
+        self.assertEqual(msg, "Line 1: There's no market order on this field. order() is for Mayor Maple's market quests.")
+        status, msg = farm_api.run("for each c in order:\n    pass\n")
+        self.assertIn("`order` needs brackets", msg)
+
     def test_new_words(self):
         self.assertIn("elif", self.words("if is_ripe():\n    wait()\nelse if is_rotten():\n    till()\n"))
         self.assertIn("elif", self.words("if is_ripe():\n    wait()\nelif is_rotten():\n    till()\n"))

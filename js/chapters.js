@@ -876,6 +876,32 @@ export const CHAPTERS = [
           "Walk back west and step north after each row.",
         ],
       },
+      {
+        id: "8-4",
+        title: "The Mayor's Order",
+        who: "Mayor Maple",
+        story: "Market day! order() tells you what I want today, one of each. Bring exactly that, and nothing extra!",
+        goalText: "On both test plots: walk the row and harvest one of each crop in order(). Keep a basket list of what you've picked, and stop when the basket is full.",
+        field: [
+          {
+            map: ["......", "......", "......", "......", "......", "WCPWFC"],
+            data: { order: ["carrot", "sunflower"] },
+            goal: { exactly: { carrot: 1, sunflower: 1, wheat: 0, pumpkin: 0 } },
+          },
+          {
+            map: ["......", "......", "......", "......", "......", "PWFCWP"],
+            data: { order: ["wheat", "pumpkin", "carrot"] },
+            goal: { exactly: { wheat: 1, pumpkin: 1, carrot: 1, sunflower: 0 } },
+          },
+        ],
+        goal: { needs: [["add"]] },
+        stars: { two: 15, three: 12 },
+        hints: [
+          "set basket to [] makes an empty list. add crop to basket puts a crop on the end of it.",
+          "On each tile: if crop_here() in order() and crop_here() not in basket: harvest it and add it to the basket.",
+          "When len(basket) == len(order()), the order is done: break out of your loop instead of walking to the end.",
+        ],
+      },
       // Festival Day: three events in a row, each on test plots and judged
       // by a neighbor. The chapter is done when all three have a star.
       {

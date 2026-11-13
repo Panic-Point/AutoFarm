@@ -226,6 +226,15 @@ def design():
     return rows
 
 
+def order():
+    """The mayor's market order for this plot: a list of the crops to bring,
+    like [Crop.CARROT, Crop.SUNFLOWER]. Each crop is in it once."""
+    wanted = _plot_data("order")
+    if wanted is None:
+        raise FarmError("There's no market order on this field. order() is for Mayor Maple's market quests.")
+    return list(wanted)
+
+
 def _print(*args, sep=" ", end=""):
     _farm.log(sep.join(str(a) for a in args) + end)
 
@@ -237,7 +246,7 @@ API = {
     "ripe_at": ripe_at, "crop_here": crop_here, "ground_here": ground_here, "can_move": can_move,
     "position": position, "field_size": field_size, "count": count, "ticks": ticks,
     "NORTH": NORTH, "SOUTH": SOUTH, "EAST": EAST, "WEST": WEST, "Crop": Crop,
-    "print": _print, "design": design,
+    "print": _print, "design": design, "order": order,
 }
 
 # Every code window the player writes compiles under a filename like

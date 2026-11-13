@@ -475,6 +475,16 @@ move(NORTH)
 plant_row(b, WEST)
 move(NORTH)
 plant_row(a, EAST)`,
+  "8-4": `
+set basket to []
+repeat forever:
+    set crop to crop_here()
+    if crop in order() and crop not in basket:
+        harvest()
+        add crop to basket
+    if len(basket) == len(order()):
+        break
+    move(EAST)`,
   "8-5": `
 set size to field_size()
 
