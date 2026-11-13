@@ -17,6 +17,7 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
 | 7 | Teach Bolt | `define`, `use helper`, `give back` |
 | 8 | Big Farm Plans | lists and `for each`, ending with Festival Day |
 
+- **The title screen** opens with the page, and the **Title** button brings it back. **Continue** picks up the quest, contract or home farm you were on. **New game** asks first when there's anything to lose, then erases stars, the barn, shop items and code windows and starts at quest 1-1. **Replay a chapter** lists the finished chapters: picking one starts its first quest, and Next goes through every quest in it, bonus ones too. Stars are only ever raised, so replaying can't lose any.
 - **Quests** run on their own field, which starts over on every try. Finishing a quest gives 1 star; finishing within a tick (cycle) limit gives 2, and within a tighter one 3. Quests in a chapter open one after another.
 - **Chapters** open when the one before is finished and you have enough stars.
 - **Locked words:** a coding word stays locked until its chapter opens. Using it early stops the run with a note like "Bolt doesn't know repeat yet. You'll learn it in chapter 2!", and the command list greys it out. Anything no chapter teaches (classes, lambdas, try...) opens after the festival.

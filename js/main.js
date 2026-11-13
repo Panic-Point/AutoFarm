@@ -10,6 +10,7 @@ import {
   checkPlot, gains, plural, judgeQuest, patternMisses, plotData, plotProblem, questField, questPlots, starTargets, tickLimit,
 } from "./quests.js";
 import { WORDS, wordsInChapter } from "./words.js";
+import { continueText, hasSave, replayChapters, replayNext } from "./title.js";
 import {
   ALMANAC, CROWNS, HAT_NAMES, SHOP, badges, checkContract, contractBoard, contractText, crownsOwned, goldenStars,
   nextStep, recordContract, saleLockText, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
@@ -112,7 +113,11 @@ function loadHome(saved) {
 }
 
 function loadMode(saved) {
-  if (saved?.quest && isQuestOpen(progress, saved.quest)) return { quest: saved.quest };
+  if (saved?.quest && isQuestOpen(progress, saved.quest)) {
+    // Replaying a finished chapter carries on after a reload.
+    const replay = saved.replay && findQuest(saved.quest).chapter === saved.replay ? saved.replay : null;
+    return replay ? { quest: saved.quest, replay } : { quest: saved.quest };
+  }
   if (saved?.contract && contractBoard(progress).some((c) => c.id === saved.contract)) {
     return { quest: null, contract: saved.contract };
   }
@@ -175,7 +180,7 @@ function renderQuestCard(bubble) {
     const best = progress.stars[quest.id] ?? 0;
     if (quest.golden) $("quest-place").textContent = `After the Festival · Golden quest ${quest.id} · chapter ${quest.from}'s idea`;
     else if (quest.festival) $("quest-place").textContent = `Festival Day · Event ${quest.festival.event} of 3 · Quest ${quest.id}`;
-    else $("quest-place").textContent = `Chapter ${ch.n}: ${ch.title} · ${quest.bonus ? "Bonus quest" : "Quest"} ${quest.id}`;
+    else $("quest-place").textContent = `${mode.replay ? "Replaying chapter" : "Chapter"} ${ch.n}: ${ch.title} · ${quest.bonus ? "Bonus quest" : "Quest"} ${quest.id}`;
     $("quest-title").textContent = `${quest.title} ${best ? starText(best) : ""}`.trim();
     $("quest-who").textContent = quest.who;
     $("quest-bubble").textContent = bubble ?? quest.story;
@@ -190,7 +195,7 @@ function renderQuestCard(bubble) {
     hintEl.hidden = hintsShown === 0;
     hintEl.textContent = quest.hints.slice(0, hintsShown).map((h, i) => `Hint ${i + 1}: ${h}`).join("\n");
     $("mode-btn").textContent = "Home farm";
-    const step = nextStep(progress);
+    const step = upNext();
     nextBtn.hidden = !(best && step && step.id !== quest.id);
     nextBtn.textContent = step?.why ? "What's next?" : "Next quest";
     $("contract-btn").hidden = true;
@@ -301,12 +306,13 @@ function renderAll(bubble) {
 
 // ---- Switching between quests and the home farm ----
 
-function playQuest(id) {
+// replay: the finished chapter being played again, so Next stays in it.
+function playQuest(id, replay = null) {
   if (run) stopRun();
   cancelNextPlot();
   if (!id || !isQuestOpen(progress, id)) return;
   if (mode.quest !== id) hintsShown = 0;
-  mode = { quest: id };
+  mode = replay ? { quest: id, replay } : { quest: id };
   plot = 0;
   farm = questField(findQuest(id));
   openStarter(findQuest(id));
@@ -332,9 +338,19 @@ function showFestivalBanner(quest) {
 
 // Play whatever What's next suggests: a quest or a contract.
 function goNext() {
-  const step = nextStep(progress);
+  const step = upNext();
   if (step?.contract) takeContract(step.contract);
-  else if (step) playQuest(step.id);
+  else if (step) playQuest(step.id, step.replay ?? null);
+}
+
+// What Next plays. While replaying a chapter it's the next quest in that
+// chapter, bonus quests too. At the end of it, back to What's next.
+function upNext() {
+  if (mode.replay && mode.quest) {
+    const id = replayNext(mode.replay, mode.quest);
+    if (id) return { id, why: null, replay: mode.replay };
+  }
+  return nextStep(progress);
 }
 
 function takeContract(id) {
@@ -859,7 +875,8 @@ function showReward({ quest, stars, ticks, gained, rewards, pages = [], title, i
     lines.push(...extra);
   }
   for (const page of pages) lines.push(`New almanac page: ${page.name}. ${page.fact}`);
-  const step = nextStep(progress);
+  if (quest && mode.replay && !replayNext(mode.replay, quest.id)) lines.push(`That's every quest in chapter ${mode.replay}. You replayed the whole chapter!`);
+  const step = upNext();
   const goOn = Boolean(step) && Boolean(quest || extra.length) && !(quest && step.id === quest.id);
   if (goOn && step.why) lines.push(`What's next: ${step.why}`);
   $("reward-lines").replaceChildren(...lines.map((l) => el("li", {}, l)));
@@ -1060,3 +1077,108 @@ saveAll();
 renderAll();
 startWorker();
 requestAnimationFrame(loop);
+
+// ---- The title screen ----
+// Shown when the page opens: Continue where you were, start a New game, or
+// Replay a finished chapter. The Title button brings it back.
+
+const STORE_SKIP_TITLE = "autofarm.skipTitle"; // set for the reload after a new game
+
+function showTitle(view = "main") {
+  if (view === "main") {
+    if (run || nextPlotTimer) stopRun();
+    for (const d of document.querySelectorAll("dialog[open]")) d.close();
+    drawBoltIcon($("title-bolt").getContext("2d"), progress.hat);
+    const saved = hasSave(progress, home.inventory);
+    const stars = totalStars(progress);
+    $("title-continue").hidden = !saved;
+    $("title-continue").classList.add("main");
+    $("title-new").classList.toggle("main", !saved);
+    $("title-continue-note").textContent = `${continueText(mode)}${stars ? ` · ★ ${stars}` : ""}`;
+    const chapters = replayChapters(progress);
+    $("title-replay").disabled = !chapters.length;
+    $("title-replay-note").textContent = chapters.length
+      ? `Play any of your ${chapters.length} finished ${chapters.length === 1 ? "chapter" : "chapters"} again.`
+      : "Finish a chapter to play it again.";
+  }
+  if (view === "confirm") {
+    const done = replayChapters(progress).length;
+    const bought = progress.owned.filter((id) => SHOP.some((item) => item.id === id)).length;
+    $("title-confirm-summary").textContent = `Right now you have ★ ${totalStars(progress)}, `
+      + `${plural(done, "finished chapter")} and ${plural(bought, "thing")} from the shop.`;
+  }
+  if (view === "chapters") renderReplayList();
+  for (const [name, id] of [["main", "title-main"], ["confirm", "title-confirm"], ["chapters", "title-chapters"]]) {
+    $(id).hidden = name !== view;
+  }
+  $("title-screen").hidden = false;
+  document.querySelector("header").inert = true;
+  document.querySelector("main").inert = true;
+  const first = { main: $("title-continue").hidden ? "title-new" : "title-continue", confirm: "title-confirm-no", chapters: "title-chapters-back" }[view];
+  $(first).focus();
+}
+
+function hideTitle() {
+  $("title-screen").hidden = true;
+  document.querySelector("header").inert = false;
+  document.querySelector("main").inert = false;
+  renderAll();
+}
+
+function renderReplayList() {
+  $("title-chapter-list").replaceChildren(...replayChapters(progress).map((ch) => el("li", {},
+    el("button", { type: "button", title: `Play chapter ${ch.n} again from quest ${ch.quests[0].id}`, onclick: () => {
+      hideTitle();
+      playQuest(ch.quests[0].id, ch.n);
+      log(`Replaying chapter ${ch.n}, ${ch.title}. Next takes you through every quest in it.`, "note");
+    } },
+    el("span", { class: "chapter-num" }, String(ch.n)),
+    el("span", { class: "ch-title" }, ch.title),
+    el("span", { class: "ch-stars" }, `★ ${chapterStars(progress, ch.n)}/${ch.quests.length * 3}`)))));
+}
+
+function newGame() {
+  if (run) stopRun();
+  progress = newProgress();
+  home = newFarmState(fieldSize(progress));
+  mode = { quest: nextQuest(progress) };
+  saveAll();
+  // Fresh code windows too. Reloading builds them again, with Bolt's first lines.
+  try {
+    localStorage.removeItem(STORE_FILES);
+    localStorage.removeItem(STORE_CODE);
+    sessionStorage.setItem(STORE_SKIP_TITLE, "1");
+  } catch {
+    // Storage unavailable; the reload still starts over.
+  }
+  location.reload();
+}
+
+$("title-continue").addEventListener("click", hideTitle);
+$("title-new").addEventListener("click", () => {
+  if (hasSave(progress, home.inventory)) showTitle("confirm");
+  else hideTitle();
+});
+$("title-confirm-yes").addEventListener("click", newGame);
+$("title-confirm-no").addEventListener("click", () => showTitle("main"));
+$("title-replay").addEventListener("click", () => showTitle("chapters"));
+$("title-chapters-back").addEventListener("click", () => showTitle("main"));
+$("open-title").addEventListener("click", () => showTitle("main"));
+$("title-screen").addEventListener("keydown", (e) => {
+  // Escape goes back from the confirm or chapter list.
+  if (e.key === "Escape" && $("title-main").hidden) showTitle("main");
+});
+
+let skipTitle = false;
+try {
+  skipTitle = sessionStorage.getItem(STORE_SKIP_TITLE) === "1";
+  sessionStorage.removeItem(STORE_SKIP_TITLE);
+} catch {
+  // No session storage: show the title.
+}
+if (skipTitle) {
+  $("title-screen").hidden = true;
+  log("A new game! Bolt is ready for the first day on the farm.", "note");
+} else {
+  showTitle("main");
+}
