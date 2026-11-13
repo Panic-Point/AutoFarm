@@ -5,7 +5,7 @@ import { drawFarm } from "./render.js";
 import { loadWorkspace } from "./files.js";
 import { Desk } from "./windows.js";
 import { CHAPTERS, chapterOf, findQuest } from "./chapters.js";
-import { checkQuest, gains, patternMisses, questField, starTargets } from "./quests.js";
+import { checkQuest, gains, patternMisses, questField, starTargets, tickLimit } from "./quests.js";
 import { WORDS, wordsInChapter } from "./words.js";
 import {
   ALMANAC, HAT_NAMES, SHOP, badges, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
@@ -276,7 +276,8 @@ function startRun(name = desk.active) {
   };
   save(STORE_FILES, desk.workspace);
   const program = desk.program(name);
-  worker.postMessage({ type: "run", runId, ...program, state: farm, locked: locked(progress) });
+  const maxTicks = quest ? tickLimit(quest) : undefined;
+  worker.postMessage({ type: "run", runId, ...program, state: farm, locked: locked(progress), maxTicks });
   desk.setRunning(name);
   desk.showLine(null);
   updateRunButton();

@@ -41,7 +41,9 @@ export class FarmBridge {
     };
   }
 
-  start(state) {
+  // maxTicks: how many ticks this run may use before Bolt gets tired.
+  start(state, maxTicks = MAX_TICKS) {
+    this.maxTicks = Math.min(maxTicks, MAX_TICKS);
     this.game = new Game(state);
     this.startTick = this.game.tick;
     this.events = [];
@@ -53,7 +55,7 @@ export class FarmBridge {
   }
 
   act(fn) {
-    if (this.ticks >= MAX_TICKS) return -1;
+    if (this.ticks >= this.maxTicks) return -1;
     const ok = fn();
     this.events.push({ kind: "frame", state: this.game.snapshot(), at: this.where });
     if (this.events.length >= this.batch) this.flush();
@@ -95,6 +97,7 @@ export class FarmBridge {
       message = `Internal error: ${err}`;
     }
     this.flush();
+    if (status === "out_of_ticks") message = `Bolt got tired and stopped. This run had ${this.maxTicks.toLocaleString("en-US")} ticks.`;
     return { status, message, ticks: this.ticks, words, errorAt };
   }
 }
