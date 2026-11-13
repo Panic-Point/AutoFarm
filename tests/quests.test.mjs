@@ -280,3 +280,11 @@ test("skipping the young corn leaves it thirsty", () => {
   const { result } = play(quest, lazy);
   assert.deepEqual(result.problems, ["2 corn on dry soil didn't get any water."]);
 });
+
+test("the Mayor's Order fails when Bolt picks extra produce", () => {
+  const quest = QUESTS.find((q) => q.id === "8-4");
+  const greedy = "set basket to []\nrepeat 5 times:\n    if crop_here() in order():\n        harvest()\n        add crop_here() to basket\n    move(EAST)\nharvest()\n";
+  const { result } = play(quest, greedy);
+  assert.equal(result.met, false);
+  assert.match(result.problems.join(" "), /You harvested 2 carrots, but the order is exactly 1/);
+});

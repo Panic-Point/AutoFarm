@@ -201,6 +201,7 @@ test("an old save that finished the old 8-4 keeps the festival and its crown", (
   assert.equal(p.hat, "crown_8");
   assert.deepEqual(p.refund, { carrot: 15, wheat: 30 });
   assert.ok(isQuestOpen(p, "8-5"));
+  assert.ok(isQuestOpen(p, "8-4"), "the new Mayor's Order is open too");
 });
 
 test("after the festival, what's next never sends the player back to 1-1", () => {

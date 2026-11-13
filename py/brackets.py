@@ -67,6 +67,8 @@ def find_missing(tree, commands):
             found.append((node.operand, "value"))
         elif isinstance(node, ast.Compare):
             found += [(v, "value") for v in [node.left, *node.comparators] if is_command(v)]
+        elif isinstance(node, ast.For) and is_command(node.iter):
+            found.append((node.iter, "value"))  # `for each crop in order:`
         elif isinstance(node, ast.BinOp):
             found += [(v, "value") for v in (node.left, node.right) if is_command(v)]
         elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
