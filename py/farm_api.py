@@ -32,10 +32,16 @@ class Crop:
     LETTUCE = "lettuce"
     STRAWBERRY = "strawberry"
     BLUEBERRY = "blueberry"
+    PUMPKIN = "pumpkin"
+    MUSHROOM = "mushroom"
+    CORN = "corn"
+    SUNFLOWER = "sunflower"
 
 
-_CROPS = (Crop.GRASS, Crop.WHEAT, Crop.CARROT, Crop.LETTUCE, Crop.STRAWBERRY, Crop.BLUEBERRY)
-_ITEMS = ("hay", "wheat", "carrot", "lettuce", "strawberry", "blueberry")
+_CROPS = (Crop.GRASS, Crop.WHEAT, Crop.CARROT, Crop.LETTUCE, Crop.STRAWBERRY, Crop.BLUEBERRY,
+          Crop.PUMPKIN, Crop.MUSHROOM, Crop.CORN, Crop.SUNFLOWER)
+_ITEMS = ("hay", "wheat", "carrot", "lettuce", "strawberry", "blueberry",
+          "pumpkin", "mushroom", "corn", "sunflower")
 
 
 def _or_list(words):
@@ -98,6 +104,8 @@ def plant(crop):
     """Plant a crop on this tile. Returns False if it cannot be planted here."""
     if crop not in _CROPS:
         raise ValueError("plant() needs " + _CROP_NAMES + ", got " + repr(crop))
+    if crop == Crop.MUSHROOM:
+        raise FarmError("Mushrooms can't be planted. They only grow by themselves, in the fog.")
     if not _farm.has_seed(crop):
         raise FarmError(f"Bolt has no {crop} seeds yet. You can buy them in the shop.")
     _here()
@@ -117,12 +125,50 @@ def wait():
     return _act(_farm.wait())
 
 
+def water():
+    """Wet the soil on this tile for 6 ticks, using 1 drop from the watering
+    can. Corn only grows on wet soil. Returns False if the can is empty."""
+    _here()
+    return _act(_farm.water())
+
+
+def refill():
+    """Fill the watering can. Bolt has to be standing on the well."""
+    _here()
+    return _act(_farm.refill())
+
+
 # ---- Sensing: free ----
 
 def is_ripe():
     """True if this tile has a crop that is ready to harvest. Wilted lettuce
     isn't ripe."""
     return bool(_farm.is_ripe())
+
+
+def is_rotten():
+    """True if the crop on this tile has rotted. A rotten crop can't be
+    picked. till() clears it away."""
+    return bool(_farm.is_rotten())
+
+
+def is_dry():
+    """True if the soil on this tile is dry. Watering makes it wet for a while."""
+    return bool(_farm.is_dry())
+
+
+def water_left():
+    """How many drops of water are left in the watering can (it holds 5)."""
+    return _farm.water_left()
+
+
+def ripe_at(x, y):
+    """True if the tile at (x, y) has a ripe sunflower. Sunflowers are tall,
+    so Bolt can see them from anywhere on the field."""
+    for v in (x, y):
+        if isinstance(v, bool) or not isinstance(v, int):
+            raise ValueError("ripe_at() needs two whole numbers, like ripe_at(2, 3), got " + repr(v))
+    return bool(_farm.ripe_at(x, y))
 
 
 def crop_here():
@@ -154,8 +200,7 @@ def field_size():
 
 
 def count(item):
-    """How many of an item you have: 'hay', 'wheat', 'carrot', 'lettuce',
-    'strawberry' or 'blueberry'."""
+    """How many of an item you have, like count('hay') or count('pumpkin')."""
     if item not in _ITEMS:
         raise ValueError("count() needs " + _ITEM_NAMES + ", got " + repr(item))
     return _farm.count(item)
@@ -187,7 +232,9 @@ def _print(*args, sep=" ", end=""):
 
 API = {
     "move": move, "till": till, "plant": plant, "harvest": harvest, "wait": wait,
-    "is_ripe": is_ripe, "crop_here": crop_here, "ground_here": ground_here, "can_move": can_move,
+    "water": water, "refill": refill,
+    "is_ripe": is_ripe, "is_rotten": is_rotten, "is_dry": is_dry, "water_left": water_left,
+    "ripe_at": ripe_at, "crop_here": crop_here, "ground_here": ground_here, "can_move": can_move,
     "position": position, "field_size": field_size, "count": count, "ticks": ticks,
     "NORTH": NORTH, "SOUTH": SOUTH, "EAST": EAST, "WEST": WEST, "Crop": Crop,
     "print": _print, "design": design,

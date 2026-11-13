@@ -1,7 +1,7 @@
 // The `_farm` module that the player's Python talks to. It runs one program
 // against a copy of the farm and collects a snapshot per action, plus print()
 // output. Used by the worker, and by the tests that run quest solutions.
-import { Game } from "./game.js";
+import { Game, ripeAt } from "./game.js";
 
 export const MAX_TICKS = 5000;
 
@@ -22,7 +22,13 @@ export class FarmBridge {
       plant: (c) => act(() => game().plant(c)),
       harvest: () => act(() => game().harvest()),
       wait: () => act(() => game().wait()),
+      water: () => act(() => game().water()),
+      refill: () => act(() => game().refill()),
       is_ripe: () => game().isRipe(),
+      is_rotten: () => game().isRotten(),
+      is_dry: () => game().isDry(),
+      water_left: () => game().can,
+      ripe_at: (x, y) => ripeAt(game(), x, y),
       crop_here: () => game().here.crop || "",
       ground_here: () => game().here.ground,
       can_move: (d) => game().canMove(d),

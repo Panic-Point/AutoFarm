@@ -81,27 +81,35 @@
         <li data-word="move"><code>move(NORTH)</code> <code>SOUTH</code> <code>EAST</code> <code>WEST</code>. Returns <code>False</code> at the edge.</li>
         <li data-word="harvest"><code>harvest()</code> collects a ripe crop. An unripe crop is lost.</li>
         <li data-word="till"><code>till()</code> turns grass into soil, or soil back into grass.</li>
-        <li data-word="plant"><code>plant(Crop.WHEAT)</code> on soil. <code>Crop.CARROT</code> costs 2 wheat, <code>Crop.LETTUCE</code> 2 hay, <code>Crop.STRAWBERRY</code> 3 wheat and <code>Crop.BLUEBERRY</code> 2 carrots.</li>
+        <li data-word="plant"><code>plant(Crop.WHEAT)</code> on soil. <code>Crop.CARROT</code> costs 2 wheat, <code>Crop.LETTUCE</code> 2 hay, <code>Crop.STRAWBERRY</code> 3 wheat, <code>Crop.BLUEBERRY</code> 2 carrots, <code>Crop.PUMPKIN</code> 1 carrot, <code>Crop.CORN</code> 1 wheat and <code>Crop.SUNFLOWER</code> 2 wheat.</li>
         <li data-word="wait"><code>wait()</code> does nothing for one tick.</li>
+        <li data-word="water"><code>water()</code> wets the soil for 6 ticks and uses 1 drop from the can. <code>refill()</code> fills the can (it holds 5) when Bolt is on the well.</li>
       </ul>
       <h3>Looking</h3>
       <ul>
         <li data-word="is_ripe"><code>is_ripe()</code> is <code>True</code> when the crop under Bolt is ready.</li>
+        <li data-word="is_rotten"><code>is_rotten()</code> is <code>True</code> when the pumpkin under Bolt has rotted.</li>
         <li data-word="crop_here"><code>crop_here()</code> and <code>ground_here()</code> say what's under Bolt.</li>
         <li data-word="can_move"><code>can_move(EAST)</code> is <code>True</code> if Bolt can step that way.</li>
         <li data-word="position"><code>position()</code> gives <code>(x, y)</code>, with <code>(0, 0)</code> in the south-west corner. <code>field_size()</code> is how wide the field is.</li>
         <li data-word="count"><code>count("wheat")</code> says how many Bolt has. <code>ticks()</code> counts ticks used.</li>
+        <li data-word="water"><code>is_dry()</code> is <code>True</code> when the soil under Bolt is dry. <code>water_left()</code> says how much water is in the can.</li>
+        <li data-word="ripe_at"><code>ripe_at(x, y)</code> is <code>True</code> if there's a ripe sunflower at <code>(x, y)</code>. Sunflowers are tall, so Bolt can see them from anywhere.</li>
         <li><code>print(...)</code> writes to the console below your code.</li>
       </ul>
       <h3>Loops and choices</h3>
       <ul>
         <li data-word="repeat"><code>repeat 5 times:</code> runs the indented lines below it that many times.</li>
         <li data-word="nested">A <code>repeat</code> inside a <code>repeat</code> does a whole loop each time round.</li>
-        <li data-word="if"><code>if ...:</code>, <code>else if ...:</code>, <code>else:</code> choose what to do.</li>
+        <li data-word="if"><code>if ...:</code> and <code>else:</code> choose what to do.</li>
+        <li data-word="elif"><code>else if ...:</code> asks another question when the first answer was no.</li>
         <li data-word="repeat_until"><code>repeat until is_ripe():</code> keeps going until something is true. <code>repeat while ...:</code> keeps going while it is true. <code>repeat forever:</code> never stops on its own, and <code>break</code> jumps out.</li>
         <li data-word="variables"><code>set total to 0</code> and <code>change total by 1</code> make and update variables. <code>for x from 1 to 10:</code> counts.</li>
+        <li data-word="logic"><code>and</code>, <code>or</code> and <code>not</code> join questions: <code>if is_dry() and not is_ripe():</code></li>
         <li data-word="define"><code>define sweep_row:</code> makes your own command. Run it with <code>sweep_row()</code>.</li>
+        <li data-word="give_back"><code>give back total</code> ends your command and hands back an answer: <code>set n to ripe_in_row(2)</code>.</li>
         <li data-word="lists"><code>[Crop.WHEAT, Crop.CARROT]</code> is a list. <code>for each crop in plan:</code> goes through it. At the festival, <code>design()</code> gives a list of rows to plant.</li>
+        <li data-word="add"><code>add crop to basket</code> puts something on the end of a list.</li>
         <li>Lines inside a loop, choice or command are indented by 4 spaces.</li>
       </ul>
       <h3>Code windows</h3>
@@ -119,6 +127,10 @@
         <li>Lettuce: costs 2 hay, ripe after 6 ticks, gives a lettuce. It wilts 8 ticks after it's ripe, so pick the first one you planted first!</li>
         <li>Strawberry: costs 3 wheat, ripe after 12 ticks. Gives 1 strawberry, plus 1 more for each strawberry right next to it when it gets ripe.</li>
         <li>Blueberry: costs 2 carrots, ripe after 24 ticks. The bush stays when you pick it and is ripe again 10 ticks later. It gives 2 blueberries, then 1 more each time, up to 5. Picking it early loses the whole bush.</li>
+        <li>Pumpkin: costs 1 carrot, ripe after 16 ticks. It rots 30 ticks after that. A rotten pumpkin can't be picked, but <code>till()</code> clears it away.</li>
+        <li>Mushroom: grows by itself in the fog, and can't be planted.</li>
+        <li>Corn: costs 1 wheat, and only grows while its soil is wet. Ripe after 10 wet ticks, gives 2 corn.</li>
+        <li>Sunflower: costs 2 wheat, ripe after 40 ticks. So tall Bolt can see it from anywhere.</li>
       </ul>
     </section>
   </main>

@@ -96,6 +96,12 @@ function loadHome(saved) {
   state.seeds = seeds(progress);
   state.lost = 0;
   state.wilted = 0;
+  state.wasted = 0;
+  // The well sits in the barn corner once it's bought.
+  if (progress.owned.includes("well") && state.tiles[0].ground !== "well") {
+    Object.assign(state.tiles[0], { ground: "well", crop: null, age: 0 });
+    delete state.tiles[0].wet;
+  }
   return state;
 }
 
@@ -650,7 +656,7 @@ function renderShop(message = "") {
           disabled: !canAfford(home.inventory, item.cost),
           onclick: () => {
             const problem = buy(progress, home.inventory, item.id);
-            if (!problem && item.size) home = loadHome(home);
+            if (!problem && (item.size || item.id === "well")) home = loadHome(home);
             if (!problem && item.crop) home.seeds = seeds(progress);
             if (!problem && !mode.quest) farm = home;
             saveAll();
