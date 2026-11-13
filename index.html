@@ -7,6 +7,46 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <div class="title-screen" id="title-screen" role="dialog" aria-modal="true" aria-labelledby="title-logo">
+    <div class="title-box">
+      <canvas id="title-bolt" width="160" height="160" aria-hidden="true"></canvas>
+      <h1 class="title-logo" id="title-logo">AutoFarm</h1>
+      <p class="title-tag">Teach Bolt to farm Willow Creek, one line of code at a time.</p>
+
+      <div class="title-view" id="title-main">
+        <button id="title-continue" class="title-btn" type="button">
+          <span class="title-btn-label">Continue</span>
+          <span class="title-btn-note" id="title-continue-note"></span>
+        </button>
+        <button id="title-new" class="title-btn" type="button">
+          <span class="title-btn-label">New game</span>
+          <span class="title-btn-note">Start Bolt's first day on the farm.</span>
+        </button>
+        <button id="title-replay" class="title-btn" type="button">
+          <span class="title-btn-label">Replay a chapter</span>
+          <span class="title-btn-note" id="title-replay-note"></span>
+        </button>
+      </div>
+
+      <div class="title-view" id="title-confirm" hidden>
+        <h2>Start a new game?</h2>
+        <p>This erases your stars, badges, crowns, ribbons, shop items, everything in the barn and your code windows. It can't be undone.</p>
+        <p class="title-summary" id="title-confirm-summary"></p>
+        <div class="title-row">
+          <button id="title-confirm-yes" class="danger" type="button">Erase and start over</button>
+          <button id="title-confirm-no" class="secondary" type="button">Keep my farm</button>
+        </div>
+      </div>
+
+      <div class="title-view" id="title-chapters" hidden>
+        <h2>Replay a chapter</h2>
+        <p>Play a finished chapter again from its first quest. Your stars are safe: you can only earn more.</p>
+        <ul class="title-chapters" id="title-chapter-list"></ul>
+        <button id="title-chapters-back" class="secondary" type="button">Back</button>
+      </div>
+    </div>
+  </div>
+
   <header>
     <h1>AutoFarm</h1>
     <span class="title-badge" id="player-title">Farm Helper</span>
@@ -16,6 +56,7 @@
       <button id="open-map" type="button">Map</button>
       <button id="open-shop" type="button">Shop</button>
       <button id="open-shelf" type="button">Shelf</button>
+      <button id="open-title" class="secondary" type="button" title="Back to the title screen">Title</button>
     </div>
   </header>
 
