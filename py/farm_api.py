@@ -13,8 +13,10 @@ import traceback
 import types
 
 import _farm
+from brackets import defined_commands, find_missing, spaced_hint
+from brackets import message as brackets_message
 from plain_words import HELPERS, PlainWordsError, translate
-from words import find_words
+from words import API_WORDS, find_words
 
 NORTH = "north"
 SOUTH = "south"
@@ -60,6 +62,16 @@ class FarmError(Exception):
     """A mistake with a friendly message that needs no error name in front."""
 
 
+def _here():
+    """Tell the game which line of the player's code is doing the next action,
+    so the code window can light it up while Bolt does it."""
+    frame = sys._getframe(2)
+    while frame is not None and not _is_player_file(frame.f_code.co_filename):
+        frame = frame.f_back
+    if frame is not None:
+        _farm.at(frame.f_code.co_filename[len(_FILE_PREFIX):-1], frame.f_lineno)
+
+
 def _act(result):
     if result < 0:
         raise OutOfTicks()
@@ -72,11 +84,13 @@ def move(direction):
     """Step one tile NORTH, SOUTH, EAST or WEST. Returns False at the edge."""
     if direction not in _DIRECTIONS:
         raise ValueError("move() needs NORTH, SOUTH, EAST or WEST, got " + repr(direction))
+    _here()
     return _act(_farm.move(direction))
 
 
 def till():
     """Turn grass into soil, or soil back into grass."""
+    _here()
     return _act(_farm.till())
 
 
@@ -86,17 +100,20 @@ def plant(crop):
         raise ValueError("plant() needs " + _CROP_NAMES + ", got " + repr(crop))
     if not _farm.has_seed(crop):
         raise FarmError(f"Bolt has no {crop} seeds yet. You can buy them in the shop.")
+    _here()
     return _act(_farm.plant(crop))
 
 
 def harvest():
     """Harvest this tile. Returns True if the crop was ripe and collected.
     A blueberry bush stays and grows back; any other crop is gone."""
+    _here()
     return _act(_farm.harvest())
 
 
 def wait():
     """Do nothing for one tick."""
+    _here()
     return _act(_farm.wait())
 
 
@@ -214,9 +231,11 @@ _SAFE_BUILTINS["__build_class__"] = builtins.__build_class__  # allow `class`
 class PlayerError(Exception):
     """A problem in the player's code that already has a friendly message."""
 
-    def __init__(self, message):
+    def __init__(self, message, name=None, line=None):
         super().__init__(message)
         self.message = message
+        self.name = name
+        self.line = line
 
 
 def _where(name, main, line):
@@ -262,6 +281,8 @@ class _Loader:
         self.files = files
         self.main = main
         self.locked = locked or {}
+        # Names that are commands, so `harvest` without brackets is a mistake.
+        self.commands = API_WORDS | {"print"} | defined_commands(files)
         self.used = set()
         self.modules = {}
         self.loading = []
@@ -274,14 +295,24 @@ class _Loader:
             code = translate(self.files[name], tags)
         except PlainWordsError as e:
             if name == self.main:
-                raise PlayerError(e.message) from None
-            raise PlayerError(f"In {name}, l{e.message[1:]}") from None
+                raise PlayerError(e.message, name, e.line) from None
+            raise PlayerError(f"In {name}, l{e.message[1:]}", name, e.line) from None
         try:
             tree = ast.parse(code, _filename(name))
         except SyntaxError as e:
-            raise PlayerError(f"{_where(name, self.main, e.lineno)}: SyntaxError: {e.msg}") from None
+            where = _where(name, self.main, e.lineno)
+            lines = self.files[name].split("\n")
+            hint = None
+            if e.lineno and e.lineno <= len(lines):
+                hint = spaced_hint(lines[e.lineno - 1], self.commands)
+            msg = f"{where}: {hint}" if hint else f"{where}: SyntaxError: {e.msg}"
+            raise PlayerError(msg, name, e.lineno) from None
         _check_sandbox(tree, name, self.main, self.files)
         self._check_words(tree, tags, name)
+        missing = find_missing(tree, self.commands)
+        if missing:
+            line, command, kind = missing
+            raise PlayerError(f"{_where(name, self.main, line)}: {brackets_message(command, kind)}", name, line)
         return compile(tree, _filename(name), "exec")
 
     def _check_words(self, tree, tags, name):
@@ -289,7 +320,7 @@ class _Loader:
         Bolt hasn't learned yet."""
         for word, line in find_words(tree, tags):
             if word in self.locked:
-                raise PlayerError(f"{_where(name, self.main, line)}: {self.locked[word]}")
+                raise PlayerError(f"{_where(name, self.main, line)}: {self.locked[word]}", name, line)
             self.used.add(word)
 
     def run(self, name, env):
@@ -335,6 +366,12 @@ def _parse_files(files):
 
 
 _used = []
+_error_at = []
+
+
+def error_line():
+    """[code window name, line] where the last run stopped with a problem, or []."""
+    return list(_error_at)
 
 
 def used_words():
@@ -351,8 +388,9 @@ def run(code, files=None, name="main", locked=None):
 
     Returns [status, message] where status is 'ok', 'out_of_ticks',
     'too_many_steps' or 'error'."""
-    global _lines, _used
+    global _lines, _used, _error_at
     _lines = 0
+    _error_at = []
     files = _parse_files(files)
     files[name] = code
     loader = _Loader(files, name, {str(k): str(v) for k, v in _parse_json(locked).items()})
@@ -362,6 +400,8 @@ def run(code, files=None, name="main", locked=None):
     try:
         loader.run(name, env)
     except PlayerError as e:
+        if e.name is not None and e.line:
+            _error_at = [e.name, e.line]
         return ["error", e.message]
     except OutOfTicks:
         return ["out_of_ticks", "The farmer ran out of ticks for this run."]
@@ -369,12 +409,15 @@ def run(code, files=None, name="main", locked=None):
         found = _user_frame(e)
         where = ""
         if found:
+            _error_at = list(found)
             where = f" (around line {found[1]}" + ("" if found[0] == name else f" of {found[0]}") + ")"
         return ["too_many_steps",
                 f"Your program ran {LINE_LIMIT:,} lines without finishing{where}. "
                 "Is there a loop that never ends without the farmer doing anything?"]
     except BaseException as e:  # noqa: BLE001 - report every player error
         found = _user_frame(e)
+        if found:
+            _error_at = list(found)
         msg = str(e) if isinstance(e, FarmError) else f"{type(e).__name__}: {e}"
         return ["error", f"{_where(found[0], name, found[1])}: {msg}" if found else msg]
     finally:

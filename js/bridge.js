@@ -31,6 +31,10 @@ export class FarmBridge {
       field_size: () => game().size,
       count: (item) => game().inventory[item] ?? 0,
       ticks: () => game().tick - this.startTick,
+      // The line of the player's code doing the next action: [window, line].
+      at: (name, line) => {
+        this.where = { name: String(name), line: Number(line) };
+      },
       log: (text) => {
         this.events.push({ kind: "log", text: String(text) });
       },
@@ -41,6 +45,7 @@ export class FarmBridge {
     this.game = new Game(state);
     this.startTick = this.game.tick;
     this.events = [];
+    this.where = null;
   }
 
   get ticks() {
@@ -50,7 +55,7 @@ export class FarmBridge {
   act(fn) {
     if (this.ticks >= MAX_TICKS) return -1;
     const ok = fn();
-    this.events.push({ kind: "frame", state: this.game.snapshot() });
+    this.events.push({ kind: "frame", state: this.game.snapshot(), at: this.where });
     if (this.events.length >= this.batch) this.flush();
     return ok ? 1 : 0;
   }
@@ -63,11 +68,13 @@ export class FarmBridge {
   }
 
   // Run a program with farm_api (a Pyodide proxy). msg: { code, files, name, locked }.
-  // Returns { status, message, ticks, words }.
+  // Returns { status, message, ticks, words, errorAt }, where errorAt is
+  // { name, line } for the line a problem stopped on, or null.
   run(api, msg) {
     let status = "error";
     let message = "";
     let words = [];
+    let errorAt = null;
     try {
       const result = api.run(
         msg.code,
@@ -80,13 +87,17 @@ export class FarmBridge {
       const used = api.used_words();
       words = used.toJs();
       used.destroy();
+      const where = api.error_line();
+      const [name, line] = where.toJs();
+      where.destroy();
+      if (name !== undefined) errorAt = { name, line };
     } catch (err) {
       message = `Internal error: ${err}`;
     }
     this.flush();
-    return { status, message, ticks: this.ticks, words };
+    return { status, message, ticks: this.ticks, words, errorAt };
   }
 }
 
 // The Python files the worker loads, in order.
-export const PY_FILES = ["plain_words.py", "words.py", "farm_api.py"];
+export const PY_FILES = ["plain_words.py", "words.py", "brackets.py", "farm_api.py"];
