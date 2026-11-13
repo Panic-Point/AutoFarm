@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { CHAPTERS } from "../js/chapters.js";
 import { emptyInventory } from "../js/game.js";
 import {
-  buy, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, newProgress, nextQuest,
+  MIGRATIONS, SAVE_VERSION, buy, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, migrate, newProgress, nextQuest,
   noteHarvest, recordResult, seeds, titles, totalStars,
 } from "../js/progress.js";
 
@@ -129,4 +129,41 @@ test("the new seeds are sold after the chapter that fits them", () => {
   assert.equal(buy(p, barn, "blueberry_seeds"), null);
   assert.deepEqual(seeds(p), ["grass", "strawberry", "lettuce", "blueberry"]);
   assert.deepEqual(noteHarvest(p, { strawberry: 3 }).map((a) => a.item), ["strawberry"]);
+});
+
+test("old saves remember which chapters were finished", () => {
+  const stars = {};
+  for (const id of ["1-1", "1-2", "1-3", "1-4", "1-5", "2-1"]) stars[id] = 3;
+  const p = loadProgress({ stars });
+  assert.equal(p.version, SAVE_VERSION);
+  assert.deepEqual(p.finished, [1]);
+});
+
+test("a finished chapter stays finished and open when a quest is added to it", () => {
+  const p = newProgress();
+  finishChapter(p, 1);
+  finishChapter(p, 2);
+  assert.deepEqual(p.finished, [1, 2]);
+  // Pretend chapter 2 got a new core quest the player hasn't played.
+  delete p.stars["2-5"];
+  const again = loadProgress(JSON.parse(JSON.stringify(p)));
+  assert.ok(isChapterDone(again, 2));
+  assert.ok(isChapterOpen(again, 3));
+  assert.ok(isQuestOpen(again, "2-5"));
+});
+
+test("a chapter the player has played in stays open if its star gate goes up", () => {
+  const p = newProgress();
+  finishChapter(p, 1, 1);
+  recordResult(p, "1-1", 3, 1);
+  recordResult(p, "2-1", 1, 1);
+  p.stars["1-1"] = 1; // fewer stars than chapter 2 needs now
+  assert.ok(isChapterOpen(p, 2));
+  assert.ok(!isChapterOpen(p, 3));
+});
+
+test("migrations run once, in order, on older saves only", () => {
+  const p = migrate({ version: SAVE_VERSION, stars: { "1-1": 3 }, finished: [5] });
+  assert.deepEqual(p.finished, [5], "a current save is left alone");
+  assert.ok(MIGRATIONS.every((m, i) => i === 0 || m.version > MIGRATIONS[i - 1].version));
 });

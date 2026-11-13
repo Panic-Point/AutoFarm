@@ -46,14 +46,58 @@ export const ALMANAC = [
 
 // ---- Saving ----
 
+// Saves carry a version. When quests are added, moved or given new IDs, a
+// migration below brings older saves up to date, so nothing earned is lost.
+// Each one runs once, on saves older than its version, before anything else
+// is checked. Add new ones at the end with the next version number.
+export const MIGRATIONS = [
+  {
+    // Version 2 remembers finished chapters. The core quests of each chapter
+    // before then, so a chapter finished then stays finished when a new core
+    // quest is added to it.
+    version: 2,
+    run(saved) {
+      const core = [
+        ["1-1", "1-2", "1-3", "1-4", "1-5"],
+        ["2-1", "2-2", "2-3", "2-4", "2-5"],
+        ["3-1", "3-2", "3-3", "3-4"],
+        ["4-1", "4-2", "4-3", "4-4"],
+        ["5-1", "5-2", "5-3", "5-4", "5-5"],
+        ["6-1", "6-2", "6-3", "6-4"],
+        ["7-1", "7-2", "7-3"],
+        ["8-1", "8-2", "8-3", "8-4"],
+      ];
+      const stars = saved.stars ?? {};
+      saved.finished = core.flatMap((ids, i) => (ids.every((id) => stars[id] >= 1) ? [i + 1] : []));
+    },
+  },
+];
+
+export const SAVE_VERSION = MIGRATIONS.reduce((v, m) => Math.max(v, m.version), 1);
+
+// finished: chapters the player has finished. Once finished, a chapter stays
+// finished, even if a new quest is added to it later.
 export function newProgress() {
-  return { stars: {}, best: {}, owned: [STARTING_HAT], hat: STARTING_HAT, almanac: [], practice: false };
+  return {
+    version: SAVE_VERSION, stars: {}, best: {}, owned: [STARTING_HAT], hat: STARTING_HAT,
+    almanac: [], practice: false, finished: [],
+  };
+}
+
+// Bring an older save up to date (see MIGRATIONS). Returns a new object.
+export function migrate(saved) {
+  const out = structuredClone(saved);
+  const from = Number.isInteger(out.version) ? out.version : 1;
+  for (const m of MIGRATIONS) if (m.version > from) m.run(out);
+  out.version = SAVE_VERSION;
+  return out;
 }
 
 // Check saved progress and fill in anything missing.
-export function loadProgress(saved) {
+export function loadProgress(raw) {
   const p = newProgress();
-  if (!saved || typeof saved !== "object") return p;
+  if (!raw || typeof raw !== "object") return p;
+  const saved = migrate(raw);
   for (const [id, n] of Object.entries(saved.stars ?? {})) {
     if (findQuest(id) && Number.isInteger(n) && n >= 1 && n <= 3) p.stars[id] = n;
   }
@@ -68,7 +112,21 @@ export function loadProgress(saved) {
     p.almanac = ALMANAC.map((a) => a.item).filter((item) => saved.almanac.includes(item));
   }
   p.practice = saved.practice === true;
+  if (Array.isArray(saved.finished)) {
+    p.finished = CHAPTERS.map((ch) => ch.n).filter((n) => saved.finished.includes(n));
+  }
+  noteFinished(p);
   return p;
+}
+
+// Remember every chapter whose core quests all have a star.
+function noteFinished(p) {
+  for (const ch of CHAPTERS) {
+    if (!p.finished.includes(ch.n) && ch.quests.every((q) => q.bonus || p.stars[q.id] >= 1)) {
+      p.finished.push(ch.n);
+    }
+  }
+  p.finished.sort((a, b) => a - b);
 }
 
 // ---- Stars and chapters ----
@@ -81,19 +139,24 @@ export function chapterStars(p, n) {
   return CHAPTERS[n - 1].quests.reduce((sum, q) => sum + (p.stars[q.id] ?? 0), 0);
 }
 
-// Bonus quests give stars but aren't needed to finish a chapter.
+// Bonus quests give stars but aren't needed to finish a chapter. A chapter
+// that was finished once stays finished.
 export function isChapterDone(p, n) {
   const ch = CHAPTERS[n - 1];
-  return Boolean(ch) && ch.quests.every((q) => q.bonus || p.stars[q.id] >= 1);
+  if (!ch) return false;
+  return (p.finished ?? []).includes(n) || ch.quests.every((q) => q.bonus || p.stars[q.id] >= 1);
 }
 
 // A chapter opens once the one before it is finished and the player has
-// enough stars. Chapter 9 means "after the Harvest Festival".
+// enough stars. Chapter 9 means "after the Harvest Festival". A chapter the
+// player has already played in stays open, even if more stars are needed
+// to open it now.
 export function isChapterOpen(p, n) {
   if (p.practice || n <= 1) return true;
   if (n === AFTER_FESTIVAL) return isChapterDone(p, CHAPTERS.length);
   const ch = CHAPTERS[n - 1];
   if (!ch) return false;
+  if (isChapterDone(p, n) || ch.quests.some((q) => p.stars[q.id] >= 1)) return true;
   return isChapterDone(p, n - 1) && totalStars(p) >= ch.starsToOpen;
 }
 
@@ -114,7 +177,8 @@ export function isQuestOpen(p, id) {
   if (p.practice) return true;
   const list = CHAPTERS[quest.chapter - 1].quests;
   const i = list.findIndex((q) => q.id === id);
-  return i === 0 || p.stars[list[i - 1].id] >= 1;
+  // A quest that already has stars stays open, even if a new quest is added before it.
+  return i === 0 || p.stars[id] >= 1 || p.stars[list[i - 1].id] >= 1;
 }
 
 // The quest to play next: the first open one not yet finished (bonus quests
@@ -223,6 +287,7 @@ export function recordResult(p, id, stars, ticks) {
   if (better) p.stars[id] = stars;
   const newBest = stars > 0 && !(p.best[id] <= ticks);
   if (newBest) p.best[id] = ticks;
+  noteFinished(p);
   const after = unlockState(p);
   const added = (key) => after[key].filter((x) => !before[key].includes(x));
   const lines = [];

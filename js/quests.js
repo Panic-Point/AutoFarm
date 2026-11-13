@@ -25,9 +25,26 @@ function mapCell(map, x, y) {
   return map[map.length - 1 - y][x];
 }
 
-// A fresh farm state for a quest. Every try starts from this.
-export function questField(quest) {
-  const { map, start = [0, 0], inventory = {} } = quest.field;
+// A quest's test plots. `field` is one plot, or a list of plots that the
+// same program has to work on, one after another.
+export function questPlots(quest) {
+  return Array.isArray(quest.field) ? quest.field : [quest.field];
+}
+
+// The goal for one plot: the quest's goal, with anything the plot changes.
+export function plotGoal(quest, plot = 0) {
+  return { ...quest.goal, ...(questPlots(quest)[plot].goal ?? {}) };
+}
+
+// Facts about a plot the player's program can read (see plot_data in
+// js/bridge.js), like the rows of a design or a market order.
+export function plotData(quest, plot = 0) {
+  return questPlots(quest)[plot].data ?? {};
+}
+
+// A fresh farm state for one of a quest's plots. Every try starts from this.
+export function questField(quest, plot = 0) {
+  const { map, start = [0, 0], inventory = {} } = questPlots(quest)[plot];
   const size = map.length;
   const tiles = [];
   for (let y = 0; y < size; y++) {
@@ -97,20 +114,26 @@ export function tickLimit(quest) {
   return Math.max(60, quest.stars.two * 5);
 }
 
-// Judge a finished run. run: { status, ticks, words }.
-// Returns { met, stars, problems: [text], gained }.
-export function checkQuest(quest, start, end, run) {
-  const goal = quest.goal;
+export function starsFor(quest, ticks) {
+  if (ticks <= quest.stars.three) return 3;
+  if (ticks <= quest.stars.two) return 2;
+  return 1;
+}
+
+// Judge one plot's run. run: { status, ticks, words }.
+// Returns { met, problems: [text], gained }.
+export function checkPlot(quest, plot, start, end, run) {
+  const goal = plotGoal(quest, plot);
   const gained = gains(start, end);
   const problems = [];
   if (run.status === "out_of_ticks") {
     // The program never finished, so the quest isn't done, even if the field
     // happens to look right (like Bolt walking into the fence forever).
     problems.push("Bolt got tired before your program finished. Make your loop stop when the job is done!");
-    return { met: false, stars: 0, problems, gained };
+    return { met: false, problems, gained };
   }
   if (run.status !== "ok") {
-    return { met: false, stars: 0, problems, gained };
+    return { met: false, problems, gained };
   }
   for (const [item, n] of Object.entries(goal.gain ?? {})) {
     const got = gained[item] ?? 0;
@@ -143,18 +166,58 @@ export function checkQuest(quest, start, end, run) {
       problems.push(`This quest is about ${names}. Try it with ${names}!`);
     }
   }
-  const met = problems.length === 0;
-  let stars = 0;
-  if (met) {
-    stars = 1;
-    if (run.ticks <= quest.stars.two) stars = 2;
-    if (run.ticks <= quest.stars.three) stars = 3;
+  return { met: problems.length === 0, problems, gained };
+}
+
+// Judge a finished run on a quest with one plot.
+// Returns { met, stars, problems: [text], gained }.
+export function checkQuest(quest, start, end, run) {
+  const result = checkPlot(quest, 0, start, end, run);
+  return { ...result, stars: result.met ? starsFor(quest, run.ticks) : 0 };
+}
+
+function plotList(n) {
+  const names = Array.from({ length: n }, (_, i) => String(i + 1));
+  if (n === 1) return "plot 1";
+  return `plots ${names.slice(0, -1).join(", ")} and ${names[n - 1]}`;
+}
+
+// What to say when the program worked on the plots before `plot` but not on it.
+export function plotProblem(quest, plot) {
+  const total = questPlots(quest).length;
+  if (total === 1) return null;
+  if (plot === 0) return `It didn't work on plot 1 of ${total}.`;
+  return `Your program worked on ${plotList(plot)}, but not on plot ${plot + 1}.`;
+}
+
+// Judge a whole quest from the runs on its plots, in order:
+// results: [{ start, end, run }]. Plots after the first one that fails
+// aren't needed (and aren't run). Stars count the ticks of every plot.
+// Returns { met, stars, problems, gained, ticks, failedPlot }.
+export function judgeQuest(quest, results) {
+  const total = questPlots(quest).length;
+  const gained = {};
+  let ticks = 0;
+  for (let i = 0; i < results.length; i++) {
+    const { start, end, run } = results[i];
+    const r = checkPlot(quest, i, start, end, run);
+    ticks += run.ticks;
+    for (const [item, n] of Object.entries(r.gained)) gained[item] = (gained[item] ?? 0) + n;
+    if (!r.met) {
+      const lead = plotProblem(quest, i);
+      return { met: false, stars: 0, problems: lead ? [lead, ...r.problems] : r.problems, gained, ticks, failedPlot: i };
+    }
   }
-  return { met, stars, problems, gained };
+  if (results.length < total) {
+    return { met: false, stars: 0, problems: [`Bolt only ran ${plotList(results.length)} of ${total}.`], gained, ticks, failedPlot: results.length };
+  }
+  return { met: true, stars: starsFor(quest, ticks), problems: [], gained, ticks, failedPlot: null };
 }
 
 // One short line about a quest's star targets.
 export function starTargets(quest) {
   const ticks = (n) => `${n} ${n === 1 ? "tick" : "ticks"}`;
-  return `★ finish · ★★ in ${ticks(quest.stars.two)} · ★★★ in ${ticks(quest.stars.three)}`;
+  const plots = questPlots(quest).length;
+  const all = plots > 1 ? ` (all ${plots} plots together)` : "";
+  return `★ finish · ★★ in ${ticks(quest.stars.two)} · ★★★ in ${ticks(quest.stars.three)}${all}`;
 }
