@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { CONTRACTS } from "../js/postgame.js";
 import { CHAPTERS, QUESTS } from "../js/chapters.js";
 import { emptyInventory } from "../js/game.js";
 import {
-  CROWNS, MIGRATIONS, SAVE_VERSION, SHOP, buy, crownsOwned, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, migrate, newProgress, nextQuest, nextStep, wear,
+  CROWNS, MIGRATIONS, checkContract, contractBoard, contractText, goldenStars, recordContract, SAVE_VERSION, SHOP, buy, crownsOwned, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, migrate, newProgress, nextQuest, nextStep, wear,
   noteHarvest, recordResult, seeds, titles, totalStars,
 } from "../js/progress.js";
 
@@ -207,11 +208,56 @@ test("an old save that finished the old 8-4 keeps the festival and its crown", (
 test("after the festival, what's next never sends the player back to 1-1", () => {
   const p = newProgress();
   for (const q of QUESTS) recordResult(p, q.id, 3, 1);
+  p.contracts = CONTRACTS.map((c) => c.id);
   p.stars["4-2"] = 1;
   p.stars["6-1"] = 2;
   assert.deepEqual(nextStep(p), { id: "4-2", why: "Pip's Garden has 1 star. Can you get 3?" });
+  delete p.stars["G-2"];
+  assert.deepEqual(nextStep(p), { id: "G-2", why: "Golden Lunch is a golden quest: chapter 2's idea on new fields." });
+  p.contracts = [];
+  assert.deepEqual(nextStep(p), { contract: "c-1", why: "Daisy has an order on the contract board: 20 hay in 60 ticks." });
   delete p.stars["3-5"];
   assert.deepEqual(nextStep(p), { id: "3-5", why: "Berry Friends is a bonus quest you haven't tried yet." });
+});
+
+test("golden quests open after the festival and give golden stars, not chapter stars", () => {
+  const p = newProgress();
+  for (const ch of CHAPTERS) for (const q of ch.quests) if (!q.bonus) recordResult(p, q.id, 1, 1);
+  assert.ok(isQuestOpen(p, "G-3"));
+  const before = totalStars(p);
+  recordResult(p, "G-1", 3, 1);
+  assert.equal(totalStars(p), before);
+  assert.equal(goldenStars(p), 1);
+  assert.ok(!isQuestOpen(newProgress(), "G-1"));
+});
+
+test("the contract board shows 3 orders at a time and opens rewards in the shop", () => {
+  const p = newProgress();
+  assert.deepEqual(contractBoard(p), [], "nothing before the festival");
+  for (const ch of CHAPTERS) for (const q of ch.quests) if (!q.bonus) recordResult(p, q.id, 1, 1);
+  assert.deepEqual(contractBoard(p).map((c) => c.id), ["c-1", "c-2", "c-3"]);
+  assert.match(buy(p, emptyInventory({ hay: 99 }), "blue_cap"), /contract reward/);
+  const lines = recordContract(p, "c-1");
+  assert.deepEqual(lines, ["Daisy gave Bolt a ribbon! That's 1 of 12.", "New in the shop: Blue cap."]);
+  assert.deepEqual(contractBoard(p).map((c) => c.id), ["c-2", "c-3", "c-4"]);
+  assert.equal(buy(p, emptyInventory({ hay: 99 }), "blue_cap"), null);
+  // The bees order waits until the hive is bought.
+  p.contracts = ["c-1", "c-2", "c-3", "c-4", "c-5", "c-6", "c-7"];
+  assert.deepEqual(contractBoard(p).map((c) => c.id), ["c-9", "c-10", "c-11"]);
+  p.owned.push("bee_hive");
+  assert.deepEqual(contractBoard(p).map((c) => c.id), ["c-8", "c-9", "c-10"]);
+  assert.deepEqual(loadProgress(JSON.parse(JSON.stringify(p))).contracts, p.contracts);
+});
+
+test("a contract checks the order, the tick budget and Daisy's dinner", () => {
+  const c1 = CONTRACTS[0];
+  assert.deepEqual(checkContract(c1, { status: "ok", ticks: 50 }, { hay: 21 }, {}), { met: true, problems: [] });
+  assert.deepEqual(checkContract(c1, { status: "out_of_ticks", ticks: 60 }, { hay: 12 }, {}).problems,
+    ["You harvested 12 hay. Daisy ordered 20."]);
+  const dinner = CONTRACTS.find((c) => c.dinner);
+  assert.equal(contractText(dinner), "15 hay and 10 wheat in 200 ticks, and visit Daisy at the barn at least every 20 ticks");
+  const r = checkContract(dinner, { status: "ok", ticks: 100 }, { hay: 15, wheat: 10 }, { dinner: { missed: 2 } });
+  assert.deepEqual(r.problems, ["Daisy missed 2 meals. Visit her at the barn at least every 20 ticks."]);
 });
 
 test("the harvest is counted for the festival", () => {

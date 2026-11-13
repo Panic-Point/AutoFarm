@@ -28,6 +28,9 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
 - **Festival Day** ends chapter 8 with three events on test plots, each judged by a neighbor: The Big Basket (8-5, Daisy and Hazel: pick every ripe crop on two plot sizes, lettuce first), The Fog Race (8-6, Wren: find a carrot hidden somewhere new in the fog and bring it home), and The Grand Display (8-7, Aunt Juniper: plant the rows `design()` gives, different on each plot). A banner names each event as it starts. Finishing all three plays the festival: each neighbor gives Bolt a ribbon for what was learned, Aunt Juniper gives the festival crown, and the barn shows the season's harvest. It can be watched again from the shelf.
 - **Golden crowns:** every finished chapter gives a free golden crown with its chapter's crop on it, from the Hay Crown to the Festival Crown. Bolt can wear any of them, and the shelf shows the set.
 - **What's next:** after the festival, Next never sends players back to the start. It picks a new quest, then a bonus quest not tried yet, then the quest with the fewest stars, and says why ("Pip's Garden has 1 star. Can you get 3?").
+- **After the festival** the map gets a ninth page, Willow Creek After the Festival, with two things to do:
+  - **Golden quests**, one per chapter (G-1 to G-8): an old quest's idea on 2 or 3 test plots, like the first row in three lengths or the Mayor's order on three market days. Each gives a golden star (they don't count toward chapter stars) and a trophy on the shelf.
+  - **The contract board:** 12 orders from the neighbors, 3 on the board at a time, filled on the home farm with your own seeds within a tick budget ("20 lettuce and 10 strawberries in 300 ticks"). Each gives a ribbon and opens a thank-you in the shop. Daisy's dinner time has Daisy wait at the barn: Bolt has to visit her at least every 20 ticks while farming. Hazel's strawberry order opens the bee hive, which sits in the middle of the home farm: strawberries and blueberries within 1 tile of it give 1 more.
 - **The home farm** is free play. Everything harvested, in quests too, goes to the barn, and the shop sells field upgrades, seeds, hats for Bolt and farm decorations for produce. Each finished chapter puts new things in the shop and a badge on the shelf. The shelf also has the almanac (a page per crop) and titles.
 - **For grown-ups:** the shelf has a practice mode that opens every chapter and word, and a button to start progress over.
 
@@ -114,6 +117,7 @@ Then open http://localhost:8000. Opening `index.html` straight from disk won't w
 
 - `js/game.js`: the farm simulation, with no DOM code.
 - `js/chapters.js`: the story, chapters and quests, as data.
+- `js/postgame.js`: golden quests and the contract board, as data.
 - `js/quests.js`: builds a quest's field and checks its goal and stars.
 - `js/progress.js`: stars, open chapters, the shop, badges, almanac and titles.
 - `js/words.js`: the coding words and which chapter teaches each.

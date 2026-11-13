@@ -43,6 +43,9 @@
 // (cycles) gives 2, and within `stars.three` gives 3. tests/solutions.mjs
 // holds a program for every quest that earns 3 stars.
 
+import { GOLDEN } from "./postgame.js";
+import { AFTER_FESTIVAL } from "./words.js";
+
 export const CHAPTERS = [
   {
     n: 1,
@@ -1006,7 +1009,11 @@ for (const ch of CHAPTERS) {
   }
 }
 
-export const QUESTS = CHAPTERS.flatMap((ch) => ch.quests.map((q) => ({ ...q, chapter: ch.n })));
+// Golden quests (js/postgame.js) come after the festival, as chapter 9.
+export const QUESTS = [
+  ...CHAPTERS.flatMap((ch) => ch.quests.map((q) => ({ ...q, chapter: ch.n }))),
+  ...GOLDEN.map((q) => ({ ...q, chapter: AFTER_FESTIVAL, golden: true })),
+];
 
 export function findQuest(id) {
   return QUESTS.find((q) => q.id === id) ?? null;
