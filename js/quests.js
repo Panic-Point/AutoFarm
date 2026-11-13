@@ -218,6 +218,6 @@ export function judgeQuest(quest, results) {
 export function starTargets(quest) {
   const ticks = (n) => `${n} ${n === 1 ? "tick" : "ticks"}`;
   const plots = questPlots(quest).length;
-  const all = plots > 1 ? ` (all ${plots} plots together)` : "";
+  const all = plots === 2 ? " (both plots together)" : plots > 2 ? ` (all ${plots} plots together)` : "";
   return `★ finish · ★★ in ${ticks(quest.stars.two)} · ★★★ in ${ticks(quest.stars.three)}${all}`;
 }

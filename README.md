@@ -15,7 +15,7 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
 | 5 | Until It's Done | `repeat until`, `repeat while`, `can_move()` |
 | 6 | Keeping Count | `set` / `change`, `count()`, `for x from 1 to 5:` |
 | 7 | Teach Bolt | `define`, `use helper` |
-| 8 | Big Farm Plans | lists and `for each`, ending at the Harvest Festival |
+| 8 | Big Farm Plans | lists and `for each`, ending with Festival Day |
 
 - **Quests** run on their own field, which starts over on every try. Finishing a quest gives 1 star; finishing within a tick (cycle) limit gives 2, and within a tighter one 3. Quests in a chapter open one after another.
 - **Chapters** open when the one before is finished and you have enough stars.
@@ -25,6 +25,9 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
 - **Test plots:** a quest can have 2 or 3 fields, and the same program runs on each in turn, so counting exact steps stops working and the program has to look around. The run stops at the first plot that fails, with a note like "Your program worked on plot 1, but not on plot 2.", and the star targets count the ticks of every plot together. The quest card shows each plot, and clicking one shows it on the field.
 - **Fix Bolt's code:** a quest can start with a program that almost works. It opens in its own code window, and **Put Bolt's code back** restores it.
 - **Finished chapters stay finished.** Once every core quest in a chapter has a star, the save remembers it, so a quest added to that chapter later is new but never locks anything. Saves carry a version, and `js/progress.js` moves older saves forward when quests change.
+- **Festival Day** ends chapter 8 with three events on test plots, each judged by a neighbor: The Big Basket (8-5, Daisy and Hazel: pick every ripe crop on two plot sizes, lettuce first), The Fog Race (8-6, Wren: find a carrot hidden somewhere new in the fog and bring it home), and The Grand Display (8-7, Aunt Juniper: plant the rows `design()` gives, different on each plot). A banner names each event as it starts. Finishing all three plays the festival: each neighbor gives Bolt a ribbon for what was learned, Aunt Juniper gives the festival crown, and the barn shows the season's harvest. It can be watched again from the shelf.
+- **Golden crowns:** every finished chapter gives a free golden crown with its chapter's crop on it, from the Hay Crown to the Festival Crown. Bolt can wear any of them, and the shelf shows the set.
+- **What's next:** after the festival, Next never sends players back to the start. It picks a new quest, then a bonus quest not tried yet, then the quest with the fewest stars, and says why ("Pip's Garden has 1 star. Can you get 3?").
 - **The home farm** is free play. Everything harvested, in quests too, goes to the barn, and the shop sells field upgrades, seeds, hats for Bolt and farm decorations for produce. Each finished chapter puts new things in the shop and a badge on the shelf. The shelf also has the almanac (a page per crop) and titles.
 - **For grown-ups:** the shelf has a practice mode that opens every chapter and word, and a button to start progress over.
 

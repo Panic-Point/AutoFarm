@@ -678,24 +678,109 @@ export const CHAPTERS = [
           "Walk back west and step north after each row.",
         ],
       },
+      // Festival Day: three events in a row, each on test plots and judged
+      // by a neighbor. The chapter is done when all three have a star.
       {
-        id: "8-4",
-        title: "The Harvest Festival",
-        who: "Aunt Juniper",
-        story: "It's festival day! Bring in the whole harvest and win first prize.",
-        goalText: "Harvest every crop on the field and lose none.",
-        field: { map: ["GWCWG", "WCGCW", "CGWGC", "WCGCW", "GWCWG"] },
-        goal: { gain: { hay: 8, wheat: 9, carrot: 8 }, noLoss: true },
-        stars: { two: 70, three: 49 },
+        id: "8-5",
+        title: "The Big Basket",
+        who: "Daisy and Hazel",
+        festival: { event: 1, name: "The Big Basket" },
+        story: "Moo! Welcome to Festival Day! Fill our basket with every ripe crop. Pick the lettuce first, before it wilts!",
+        goalText: "On both plots, harvest every ripe crop. Leave the young ones, and don't let the lettuce wilt.",
+        field: [
+          {
+            map: ["CwcW", "wCWc", "cWwC", "LLLL"],
+            goal: { gain: { lettuce: 4, wheat: 3, carrot: 3 } },
+          },
+          {
+            map: ["WcCwWc", "cWwCcW", "CcWwCW", "wWcCcw", "WCwcWC", "LLLLcW"],
+            goal: { gain: { lettuce: 4, wheat: 10, carrot: 7 } },
+          },
+        ],
+        goal: { noLoss: true, fresh: true, needs: [["if"]] },
+        stars: { two: 130, three: 101 },
         hints: [
-          "Everything on the field is ripe.",
-          "Use the zig-zag from the Big Hay Sweep.",
-          "Make it your own command so it's easy to read.",
+          "The plots are different sizes. field_size() tells Bolt how big this one is.",
+          "Make a command that only harvests when is_ripe(), and use it on every tile.",
+          "Zig-zag: a row east, step north, a row west, step north. The lettuce row is first, so it gets picked in time.",
+        ],
+      },
+      {
+        id: "8-6",
+        title: "The Fog Race",
+        who: "Wren",
+        festival: { event: 2, name: "The Fog Race" },
+        story: "Hoo! A golden carrot is hidden in the fog, somewhere new on each plot. Find it and race it home to the barn!",
+        goalText: "On all 3 plots, find the carrot, harvest it, and end back at the barn where Bolt started.",
+        field: [
+          { map: [".....", ".....", ".....", ".....", "...C."], fog: true },
+          { map: [".....", ".....", ".C...", ".....", "....."], fog: true },
+          { map: [".....", "..C..", ".....", ".....", "....."], fog: true },
+        ],
+        goal: { gain: { carrot: 1 }, at: [0, 0], needs: [["repeat_until", "repeat_while", "repeat_forever"]] },
+        stars: { two: 60, three: 45 },
+        hints: [
+          "The carrot moves on every plot, so Bolt has to look: repeat until crop_here() == Crop.CARROT:",
+          "Walk east along a row. When can_move(EAST) is False, step north and walk back west.",
+          "To get home, repeat until position() == (0, 0): step west or south.",
+        ],
+      },
+      {
+        id: "8-7",
+        title: "The Grand Display",
+        who: "Aunt Juniper",
+        festival: { event: 3, name: "The Grand Display" },
+        story: "The last event! design() gives you my plan for each plot: a list of rows, each a list of crops, south row first.",
+        goalText: "On both plots, plant the rows from design(), starting at the south row.",
+        field: [
+          {
+            map: ["....", "....", "....", "...."],
+            inventory: { wheat: 12 },
+            data: { design: [["wheat", "carrot", "wheat", "carrot"], ["carrot", "wheat", "carrot", "wheat"]] },
+          },
+          {
+            map: [".....", ".....", ".....", ".....", "....."],
+            inventory: { wheat: 12 },
+            data: {
+              design: [
+                ["carrot", "carrot", "wheat", "wheat", "carrot"],
+                ["wheat", "wheat", "wheat", "wheat", "wheat"],
+                ["carrot", "wheat", "carrot", "wheat", "carrot"],
+              ],
+            },
+          },
+        ],
+        goal: { needs: [["lists"]] },
+        stars: { two: 60, three: 46 },
+        hints: [
+          "set plan to design() gives the rows. for each row in plan: goes through them, south first.",
+          "for each crop in row: plant(crop), then step on. A helper window is a good home for a plant_row command.",
+          "Rows going west need the crops the other way round: reversed(row).",
         ],
       },
     ],
   },
 ];
+
+// A plot whose data has a `design` (rows of crops, south row first) must
+// end up planted like it.
+const CROP_LETTERS = { grass: "G", wheat: "W", carrot: "C", lettuce: "L", strawberry: "R", blueberry: "B" };
+for (const ch of CHAPTERS) {
+  for (const q of ch.quests) {
+    for (const plot of Array.isArray(q.field) ? q.field : [q.field]) {
+      const rows = plot.data?.design;
+      if (!rows) continue;
+      const size = plot.map.length;
+      const pattern = [];
+      for (let y = size - 1; y >= 0; y--) {
+        let line = "";
+        for (let x = 0; x < size; x++) line += rows[y]?.[x] ? CROP_LETTERS[rows[y][x]] : "?";
+        pattern.push(line);
+      }
+      plot.goal = { ...plot.goal, pattern };
+    }
+  }
+}
 
 export const QUESTS = CHAPTERS.flatMap((ch) => ch.quests.map((q) => ({ ...q, chapter: ch.n })));
 

@@ -1,16 +1,16 @@
 // Page controller: quests and the home farm, run/stop, playback of the
 // worker's snapshots, and the map, shop and shelf.
 import { ITEMS, emptyInventory, newFarmState } from "./game.js";
-import { drawFarm } from "./render.js";
+import { drawBoltIcon, drawFarm } from "./render.js";
 import { loadWorkspace } from "./files.js";
 import { Desk } from "./windows.js";
 import { CHAPTERS, chapterOf, findQuest } from "./chapters.js";
 import {
-  checkPlot, gains, judgeQuest, patternMisses, plotData, plotProblem, questField, questPlots, starTargets, tickLimit,
+  checkPlot, gains, plural, judgeQuest, patternMisses, plotData, plotProblem, questField, questPlots, starTargets, tickLimit,
 } from "./quests.js";
 import { WORDS, wordsInChapter } from "./words.js";
 import {
-  ALMANAC, HAT_NAMES, SHOP, badges, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
+  ALMANAC, CROWNS, HAT_NAMES, SHOP, badges, crownsOwned, nextStep, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
   isChapterDone, isChapterOpen, isForSale, isQuestOpen, loadProgress, locked, looks, newProgress,
   nextQuest, noteHarvest, recordResult, seeds, titles, totalStars, wear,
 } from "./progress.js";
@@ -33,6 +33,15 @@ const consoleEl = $("console");
 
 let progress = loadProgress(load(STORE_PROGRESS));
 let home = loadHome(load(STORE_FARM));
+// The golden crown used to be sold in the shop. It's a gift now, so pay it back.
+if (progress.refund) {
+  for (const [item, n] of Object.entries(progress.refund)) home.inventory[item] = (home.inventory[item] ?? 0) + n;
+  progress.refund = null;
+}
+// Older saves didn't count the season's harvest, so start from what's in the barn.
+if (!Object.keys(progress.harvested).length) {
+  for (const [item, n] of Object.entries(home.inventory)) if (n > 0) progress.harvested[item] = n;
+}
 // What the player is doing: the home farm (free play) or a quest.
 let mode = loadMode(load(STORE_MODE));
 // The quest plot on the field: the one Bolt is running, or the one picked to look at.
@@ -145,7 +154,9 @@ function renderQuestCard(bubble) {
   if (quest) {
     const ch = chapterOf(quest.id);
     const best = progress.stars[quest.id] ?? 0;
-    $("quest-place").textContent = `Chapter ${ch.n}: ${ch.title} · ${quest.bonus ? "Bonus quest" : "Quest"} ${quest.id}`;
+    $("quest-place").textContent = quest.festival
+      ? `Festival Day · Event ${quest.festival.event} of 3 · Quest ${quest.id}`
+      : `Chapter ${ch.n}: ${ch.title} · ${quest.bonus ? "Bonus quest" : "Quest"} ${quest.id}`;
     $("quest-title").textContent = `${quest.title} ${best ? starText(best) : ""}`.trim();
     $("quest-who").textContent = quest.who;
     $("quest-bubble").textContent = bubble ?? quest.story;
@@ -164,12 +175,15 @@ function renderQuestCard(bubble) {
     nextBtn.hidden = !(best && next && next !== quest.id);
     nextBtn.textContent = "Next quest";
   } else {
-    const next = nextQuest(progress);
+    const step = nextStep(progress);
+    const next = step?.id ?? null;
     $("quest-place").textContent = "Home farm";
     $("quest-title").textContent = "Your farm";
     $("quest-who").textContent = "Bolt";
     $("quest-bubble").textContent = bubble ?? "This is your own farm. Everything I harvest goes in the barn, and you can spend it in the shop.";
-    $("quest-goal").textContent = next ? `Next quest: ${findQuest(next).title}` : "Every quest has 3 stars. What a farmer!";
+    $("quest-goal").textContent = next
+      ? `What's next: ${findQuest(next).title}${step.why ? `. ${step.why}` : ""}`
+      : "Every quest has 3 stars. What a farmer!";
     $("quest-targets").hidden = true;
     $("quest-plots").hidden = true;
     $("starter-btn").hidden = true;
@@ -177,7 +191,7 @@ function renderQuestCard(bubble) {
     hintEl.hidden = true;
     $("mode-btn").textContent = "Map";
     nextBtn.hidden = !next;
-    nextBtn.textContent = "Play the next quest";
+    nextBtn.textContent = isChapterDone(progress, CHAPTERS.length) ? "What's next?" : "Play the next quest";
   }
   $("reset").textContent = quest ? "Reset field" : "Reset farm";
   $("reset").title = quest ? "Put the quest field back how it started" : "Start the farm over (the barn keeps its produce)";
@@ -259,6 +273,21 @@ function playQuest(id) {
   save(STORE_MODE, mode);
   consoleEl.textContent = "";
   renderAll();
+  showFestivalBanner(findQuest(id));
+}
+
+// Between festival events: "Event 2 of 3: The Fog Race!"
+let bannerTimer = null;
+function showFestivalBanner(quest) {
+  const banner = $("festival-banner");
+  clearTimeout(bannerTimer);
+  banner.hidden = !quest?.festival;
+  if (banner.hidden) return;
+  banner.replaceChildren(
+    el("small", {}, `Festival Day · judged by ${quest.who}`),
+    `Event ${quest.festival.event} of 3: ${quest.festival.name}!`,
+  );
+  bannerTimer = setTimeout(() => (banner.hidden = true), 2600);
 }
 
 function goHome() {
@@ -429,10 +458,15 @@ function completeRun(done) {
     return;
   }
   const rewards = recordResult(progress, questId, result.stars, result.ticks);
+  const festival = isChapterDone(progress, CHAPTERS.length) && !progress.festivalSeen;
+  if (festival) progress.festivalSeen = true;
   saveAll();
   renderAll(`Beep boop! ${starText(result.stars)}`);
   beep(true);
-  showReward({ quest, stars: result.stars, ticks: result.ticks, gained: result.gained, rewards, pages });
+  const reward = () => showReward({ quest, stars: result.stars, ticks: result.ticks, gained: result.gained, rewards, pages });
+  // Finishing Festival Day for the first time plays the festival, then the stars.
+  if (festival) playFestival(reward);
+  else reward();
 }
 
 // Apply queued events: logs immediately, frames at the chosen speed.
@@ -645,6 +679,32 @@ function renderShelf() {
       return el("li", { class: has ? "earned" : "", title: has ? ch.badge : `Finish chapter ${ch.n}` },
         el("span", { class: "badge-icon" }, has ? "🏅" : "?"), el("span", {}, has ? ch.badge : `Chapter ${ch.n}`));
     })),
+    el("h3", {}, `Golden crowns ${crownsOwned(progress).length}/${CROWNS.length}`),
+    el("ul", { class: "crowns" }, CROWNS.map((crown) => {
+      const has = progress.owned.includes(crown.id);
+      const icon = el("canvas", { width: 112, height: 112, "aria-hidden": "true" });
+      drawBoltIcon(icon.getContext("2d"), crown.id);
+      let action = null;
+      if (has) {
+        action = progress.hat === crown.id
+          ? el("span", { class: "owned" }, "Wearing")
+          : el("button", { type: "button", class: "small", onclick: () => {
+            wear(progress, crown.id);
+            saveAll();
+            renderShelf();
+            render();
+          } }, "Wear");
+      }
+      const label = crown.chapter === CHAPTERS.length ? "Win the festival" : `Finish chapter ${crown.chapter}`;
+      return el("li", { class: has ? "earned" : "", title: has ? crown.name : label },
+        icon, el("span", {}, has ? crown.name : label), action);
+    })),
+    isChapterDone(progress, CHAPTERS.length)
+      ? el("button", { type: "button", class: "secondary small replay", onclick: () => {
+        $("shelf-dialog").close();
+        playFestival();
+      } }, "Watch the festival again")
+      : null,
     el("h3", {}, "Titles"),
     el("p", {}, titles(progress).join(" · ")),
     el("h3", {}, "Almanac"),
@@ -664,20 +724,26 @@ function showReward({ quest, stars, ticks, gained, rewards, pages = [], title })
   const lines = [];
   if (quest) {
     const plots = questPlots(quest).length;
-    let text = `Bolt finished in ${ticks} ${ticks === 1 ? "tick" : "ticks"}${plots > 1 ? ` on all ${plots} plots` : ""}.`;
+    let text = `Bolt finished in ${ticks} ${ticks === 1 ? "tick" : "ticks"}${plots === 2 ? " on both plots" : plots > 2 ? ` on all ${plots} plots` : ""}.`;
     if (stars < 3) text += ` Can you do it in ${stars === 1 ? quest.stars.two : quest.stars.three} for another star?`;
     $("reward-text").textContent = text;
-    const got = Object.entries(gained).map(([item, n]) => `${n} ${item}`).join(", ");
+    const got = Object.entries(gained).map(([item, n]) => plural(n, item)).join(", ");
     if (got) lines.push(`Your barn got ${got}.`);
     lines.push(...rewards.lines);
   } else {
     $("reward-text").textContent = "";
   }
   for (const page of pages) lines.push(`New almanac page: ${page.name}. ${page.fact}`);
+  const step = nextStep(progress);
+  const next = step?.id ?? null;
+  if (quest && next && next !== quest.id && step.why) lines.push(`What's next: ${step.why}`);
   $("reward-lines").replaceChildren(...lines.map((l) => el("li", {}, l)));
-  const next = nextQuest(progress);
   $("reward-again").hidden = !quest;
-  $("reward-next").textContent = next && next !== quest?.id ? "Next quest" : "OK";
+  const nextQ = next ? findQuest(next) : null;
+  let nextText = "Next quest";
+  if (nextQ?.festival) nextText = `Event ${nextQ.festival.event} of 3: ${nextQ.festival.name}!`;
+  else if (step?.why) nextText = "What's next?";
+  $("reward-next").textContent = next && next !== quest?.id ? nextText : "OK";
   $("reward-next").onclick = () => {
     $("reward-dialog").close();
     if (quest && next && next !== quest.id) playQuest(next);
@@ -685,6 +751,89 @@ function showReward({ quest, stars, ticks, gained, rewards, pages = [], title })
   $("reward-again").onclick = () => $("reward-dialog").close();
   $("reward-dialog").showModal();
 }
+
+// ---- The festival scene ----
+// After the last festival event: each neighbor gives Bolt a ribbon for what
+// was learned, Aunt Juniper gives the festival crown, and the barn shows the
+// season's harvest. About 10 seconds, and it can be skipped.
+
+const FESTIVAL_LINES = [
+  ["Daisy", "Moo! You learned to repeat!"],
+  ["Hazel", "Loops inside loops!"],
+  ["Pip", "Look before you act!"],
+  ["Wren", "Hoo! You keep going until it's done!"],
+  ["Mayor Maple", "You learned to keep count!"],
+  ["Bolt", "And I learned new words you taught me!"],
+  ["Aunt Juniper", "Lists and big plans! For the best farmer in Willow Creek: the Festival Crown!"],
+];
+const FESTIVAL_STEP_MS = 1300;
+let festivalTimer = null;
+let festivalDone = null;
+
+function playFestival(onDone = null) {
+  const dialog = $("festival-dialog");
+  festivalDone = onDone;
+  clearTimeout(festivalTimer);
+  const boltCtx = $("festival-bolt").getContext("2d");
+  const before = progress.hat === "crown_8" ? "straw_hat" : progress.hat;
+  drawBoltIcon(boltCtx, before);
+  $("festival-ribbons").textContent = "";
+  $("festival-total").hidden = true;
+  $("festival-next").hidden = true;
+  $("festival-skip").hidden = false;
+  let i = 0;
+  const step = () => {
+    if (i < FESTIVAL_LINES.length) {
+      const [who, line] = FESTIVAL_LINES[i];
+      $("festival-who").textContent = who;
+      // Start the bubble's pop-in again for each new line.
+      const bubble = $("festival-line");
+      bubble.textContent = line;
+      bubble.style.animation = "none";
+      void bubble.offsetWidth;
+      bubble.style.animation = "";
+      if (i < FESTIVAL_LINES.length - 1) $("festival-ribbons").textContent += "🎀";
+      else drawBoltIcon(boltCtx, "crown_8");
+      i += 1;
+      festivalTimer = setTimeout(step, FESTIVAL_STEP_MS);
+    } else {
+      endFestival();
+    }
+  };
+  dialog.showModal();
+  beep(true);
+  step();
+}
+
+function endFestival() {
+  clearTimeout(festivalTimer);
+  drawBoltIcon($("festival-bolt").getContext("2d"), "crown_8");
+  $("festival-ribbons").textContent = "🎀".repeat(FESTIVAL_LINES.length - 1);
+  const total = ITEMS.filter((item) => progress.harvested[item] > 0)
+    .map((item) => plural(progress.harvested[item], item)).join(", ");
+  $("festival-total").textContent = `This season the barn took in ${total || "lots of crops"}.`;
+  $("festival-total").hidden = false;
+  $("festival-who").textContent = "Bolt";
+  $("festival-line").textContent = "I want to learn more. What's next?";
+  $("festival-skip").hidden = true;
+  $("festival-next").hidden = false;
+  $("festival-next").focus();
+}
+
+$("festival-skip").addEventListener("click", endFestival);
+$("festival-next").addEventListener("click", () => $("festival-dialog").close());
+$("festival-dialog").addEventListener("close", () => {
+  clearTimeout(festivalTimer);
+  // Bolt wears the festival crown home.
+  if (progress.owned.includes("crown_8") && progress.hat !== "crown_8" && festivalDone) {
+    wear(progress, "crown_8");
+    saveAll();
+    render();
+  }
+  const done = festivalDone;
+  festivalDone = null;
+  done?.();
+});
 
 $("open-map").addEventListener("click", () => {
   renderMap();

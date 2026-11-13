@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { CHAPTERS } from "../js/chapters.js";
 import { emptyInventory } from "../js/game.js";
 import {
-  MIGRATIONS, SAVE_VERSION, buy, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, migrate, newProgress, nextQuest,
+  CROWNS, MIGRATIONS, SAVE_VERSION, SHOP, buy, crownsOwned, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, migrate, newProgress, nextQuest, nextStep, wear,
   noteHarvest, recordResult, seeds, titles, totalStars,
 } from "../js/progress.js";
 
@@ -78,7 +78,7 @@ test("finishing the festival opens all of Python and the Master Farmer title", (
 test("practice mode opens everything", () => {
   const p = newProgress();
   p.practice = true;
-  assert.ok(isQuestOpen(p, "8-4"));
+  assert.ok(isQuestOpen(p, "8-7"));
   assert.deepEqual(locked(p), {});
 });
 
@@ -167,3 +167,61 @@ test("migrations run once, in order, on older saves only", () => {
   assert.deepEqual(p.finished, [5], "a current save is left alone");
   assert.ok(MIGRATIONS.every((m, i) => i === 0 || m.version > MIGRATIONS[i - 1].version));
 });
+
+test("each finished chapter gives a golden crown Bolt can wear", () => {
+  const p = newProgress();
+  const r = finishChapterResult(p, 1);
+  assert.ok(r.lines.includes("A gift: the Hay Crown! Bolt can wear it. Find it on the shelf."));
+  assert.deepEqual(crownsOwned(p).map((c) => c.id), ["crown_1"]);
+  wear(p, "crown_1");
+  assert.equal(p.hat, "crown_1");
+  wear(p, "crown_5");
+  assert.equal(p.hat, "crown_1", "a crown not earned yet can't be worn");
+  assert.equal(CROWNS.length, 8);
+  assert.ok(!SHOP.some((item) => item.id === "gold_crown"), "the crown isn't sold any more");
+});
+
+test("finishing Festival Day gives the eighth crown", () => {
+  const p = newProgress();
+  for (const ch of CHAPTERS) finishChapter(p, ch.n);
+  assert.equal(crownsOwned(p).length, 8);
+  assert.ok(isChapterDone(p, 8));
+});
+
+test("an old save that finished the old 8-4 keeps the festival and its crown", () => {
+  const stars = {};
+  for (const ch of CHAPTERS.slice(0, 7)) for (const q of ch.quests) stars[q.id] = 2;
+  for (const id of ["8-1", "8-2", "8-3", "8-4"]) stars[id] = 3;
+  const p = loadProgress({ stars, best: { "8-4": 49 }, owned: ["straw_hat", "gold_crown"], hat: "gold_crown" });
+  assert.equal(p.stars["8-4"], undefined);
+  assert.equal(p.best["8-4"], undefined);
+  assert.ok(isChapterDone(p, 8));
+  assert.ok(p.festivalSeen);
+  assert.equal(p.hat, "crown_8");
+  assert.deepEqual(p.refund, { carrot: 15, wheat: 30 });
+  assert.ok(isQuestOpen(p, "8-5"));
+});
+
+test("after the festival, what's next never sends the player back to 1-1", () => {
+  const p = newProgress();
+  for (const ch of CHAPTERS) finishChapter(p, ch.n, 3);
+  p.stars["4-2"] = 1;
+  p.stars["6-1"] = 2;
+  assert.deepEqual(nextStep(p), { id: "4-2", why: "Pip's Garden has 1 star. Can you get 3?" });
+  delete p.stars["3-5"];
+  assert.deepEqual(nextStep(p), { id: "3-5", why: "Berry Friends is a bonus quest you haven't tried yet." });
+});
+
+test("the harvest is counted for the festival", () => {
+  const p = newProgress();
+  noteHarvest(p, { hay: 2, wheat: 1 });
+  noteHarvest(p, { hay: 3 });
+  assert.deepEqual(p.harvested, { hay: 5, wheat: 1 });
+  assert.deepEqual(loadProgress(JSON.parse(JSON.stringify(p))).harvested, { hay: 5, wheat: 1 });
+});
+
+function finishChapterResult(p, n) {
+  let last;
+  for (const q of CHAPTERS[n - 1].quests) last = recordResult(p, q.id, 3, 1);
+  return last;
+}

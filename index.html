@@ -41,7 +41,10 @@
           <button id="next-btn" class="small" type="button" hidden></button>
         </div>
       </div>
-      <canvas id="farm" width="480" height="480" aria-label="The farm field"></canvas>
+      <div class="farm-stage">
+        <canvas id="farm" width="480" height="480" aria-label="The farm field"></canvas>
+        <div class="festival-banner" id="festival-banner" hidden></div>
+      </div>
       <div class="stats">
         <div class="inventory"><span class="inv-label" id="inv-label">Barn</span><span id="inventory"></span></div>
         <div class="tick">Tick <span id="tick">0</span></div>
@@ -98,7 +101,7 @@
         <li data-word="repeat_until"><code>repeat until is_ripe():</code> keeps going until something is true. <code>repeat while ...:</code> keeps going while it is true. <code>repeat forever:</code> never stops on its own, and <code>break</code> jumps out.</li>
         <li data-word="variables"><code>set total to 0</code> and <code>change total by 1</code> make and update variables. <code>for x from 1 to 10:</code> counts.</li>
         <li data-word="define"><code>define sweep_row:</code> makes your own command. Run it with <code>sweep_row()</code>.</li>
-        <li data-word="lists"><code>[Crop.WHEAT, Crop.CARROT]</code> is a list. <code>for each crop in plan:</code> goes through it.</li>
+        <li data-word="lists"><code>[Crop.WHEAT, Crop.CARROT]</code> is a list. <code>for each crop in plan:</code> goes through it. At the festival, <code>design()</code> gives a list of rows to plant.</li>
         <li>Lines inside a loop, choice or command are indented by 4 spaces.</li>
       </ul>
       <h3>Code windows</h3>
@@ -156,6 +159,28 @@
     <div class="reward-actions">
       <button id="reward-again" class="secondary" type="button">Try again</button>
       <button id="reward-next" type="button">Next quest</button>
+    </div>
+  </dialog>
+
+  <dialog id="festival-dialog" class="festival" aria-labelledby="festival-heading">
+    <div class="bunting" aria-hidden="true"></div>
+    <h2 id="festival-heading">The Harvest Festival</h2>
+    <div class="fair">
+      <div class="stall stall-left" aria-hidden="true"><span>Pies</span></div>
+      <div class="fair-middle">
+        <canvas id="festival-bolt" width="160" height="160" aria-label="Bolt at the festival"></canvas>
+        <p class="ribbons" id="festival-ribbons" aria-label="Ribbons"></p>
+      </div>
+      <div class="stall stall-right" aria-hidden="true"><span>Barn 🎀</span></div>
+    </div>
+    <div class="speech festival-speech">
+      <span class="who" id="festival-who"></span>
+      <p class="bubble" id="festival-line"></p>
+    </div>
+    <p class="festival-total" id="festival-total" hidden></p>
+    <div class="reward-actions">
+      <button id="festival-skip" class="secondary" type="button">Skip</button>
+      <button id="festival-next" type="button" hidden>What's next?</button>
     </div>
   </dialog>
 

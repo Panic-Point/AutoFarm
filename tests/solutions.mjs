@@ -338,17 +338,58 @@ move(NORTH)
 plant_row(b, WEST)
 move(NORTH)
 plant_row(a, EAST)`,
-  "8-4": `
-define row(way):
-    repeat 4 times:
-        harvest()
-        move(way)
-    harvest()
+  "8-5": `
+set size to field_size()
 
-repeat 2 times:
+define pick:
+    if is_ripe():
+        harvest()
+
+define row(way):
+    repeat size - 1 times:
+        pick()
+        move(way)
+    pick()
+
+repeat size / 2 times:
     row(EAST)
     move(NORTH)
     row(WEST)
-    move(NORTH)
-row(EAST)`,
+    if can_move(NORTH):
+        move(NORTH)`,
+  "8-6": `
+set way to EAST
+repeat until crop_here() == Crop.CARROT:
+    if can_move(way):
+        move(way)
+    else:
+        move(NORTH)
+        if way == EAST:
+            set way to WEST
+        else:
+            set way to EAST
+harvest()
+repeat until position()[0] == 0:
+    move(WEST)
+repeat until position()[1] == 0:
+    move(SOUTH)`,
+  "8-7": {
+    main: `
+use helper
+set way to EAST
+for each row in design():
+    if way == EAST:
+        plant_row(row, EAST)
+        set way to WEST
+    else:
+        plant_row(reversed(row), WEST)
+        set way to EAST
+    move(NORTH)`,
+    helper: `
+define plant_row(row, way):
+    for each crop in row:
+        plant(crop)
+        if can_move(way):
+            move(way)`,
+  },
 };

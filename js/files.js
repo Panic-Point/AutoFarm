@@ -14,7 +14,7 @@ const RESERVED = new Set(
     "global if import in is lambda nonlocal not or pass raise return try while with yield " +
     "None True False true false repeat forever until times each define set change use to by " +
     "move till plant harvest wait is_ripe crop_here ground_here position field_size count ticks " +
-    "can_move print NORTH SOUTH EAST WEST Crop farm_api plain_words words"
+    "can_move print design NORTH SOUTH EAST WEST Crop farm_api plain_words words"
   ).split(" "),
 );
 
