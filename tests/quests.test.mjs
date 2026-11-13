@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { CHAPTERS, QUESTS } from "../js/chapters.js";
 import { FarmBridge, PY_FILES } from "../js/bridge.js";
-import { checkQuest, questField } from "../js/quests.js";
+import { checkQuest, questField, tickLimit } from "../js/quests.js";
 import { WORDS, lockedWords } from "../js/words.js";
 import { SOLUTIONS } from "./solutions.mjs";
 
@@ -27,7 +27,7 @@ before(async () => {
 function play(quest, solution, chapter = quest.chapter) {
   const { main, ...files } = typeof solution === "string" ? { main: solution } : solution;
   const start = questField(quest);
-  bridge.start(start);
+  bridge.start(start, tickLimit(quest));
   const locked = lockedWords((n) => n <= chapter);
   const run = bridge.run(api, { code: main.trim() + "\n", files, name: "main", locked });
   return { run, result: checkQuest(quest, start, bridge.game.snapshot(), run) };
@@ -117,4 +117,25 @@ test("losing an unripe crop fails a careful quest", () => {
   const { result } = play(quest, "repeat 4 times:\n    harvest()\n    move(EAST)\nharvest()\n");
   assert.equal(result.met, false);
   assert.match(result.problems.join(" "), /picked 2 crops before they were ripe/);
+});
+
+test("a loop that never ends is a loss, even if Bolt ends up in the right place", () => {
+  const quest = QUESTS.find((q) => q.id === "5-1");
+  const { run, result } = play(quest, "repeat forever:\n    move(EAST)\n");
+  assert.equal(run.status, "out_of_ticks");
+  // Bolt stops soon instead of walking into the fence for 5,000 ticks.
+  assert.equal(run.ticks, tickLimit(quest));
+  assert.ok(run.ticks < 100);
+  assert.match(run.message, /^Bolt got tired/);
+  assert.equal(result.met, false);
+  assert.equal(result.stars, 0);
+  assert.deepEqual(result.problems, [
+    "Bolt got tired before your program finished. Make your loop stop when the job is done!",
+  ]);
+});
+
+test("every quest's tick limit leaves room for slow answers", () => {
+  for (const quest of QUESTS) {
+    assert.ok(tickLimit(quest) >= quest.stars.two * 3, `${quest.id}: tick limit is too tight`);
+  }
 });
