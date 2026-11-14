@@ -1,137 +1,55 @@
 # AutoFarm
 
+## Overview
+
 A browser farming game where you write code to automate Bolt, a little farm robot. It's made for kids (6 and up, with a grown-up to help read) learning to program: loops and choices read like plain words, closer to Scratch, but you type them.
 
-## Chapters, quests and stars
+The game is 8 chapters at Willow Creek Farm, and each one teaches one coding idea (doing things in order, repeating, loops in loops, choices, loops that stop, counting, your own commands, and lists) through short quests from the neighbors, ending with Festival Day. After the festival there are golden quests, a contract board and a home farm to play on. Players write plain-word code like `repeat 5 times:` or `set total to 0`, which turns into Python, and it all runs in the browser.
 
-The game is 8 chapters at Willow Creek Farm, and each one teaches one coding idea through short quests from a neighbor:
+More in [`docs/`](docs/README.md):
 
-| # | Chapter | Bolt learns |
-| --- | --- | --- |
-| 1 | First Steps | `move`, `harvest` |
-| 2 | Do It Again | `repeat 5 times:` (plus `till`, `plant`, `wait`) |
-| 3 | Loops in Loops | a repeat inside a repeat |
-| 4 | Look Before You Act | `if` / `else` / `else if`, `is_ripe()`, `ground_here()` |
-| 5 | Until It's Done | `repeat until`, `repeat while`, `repeat forever` and `break`, `can_move()` |
-| 6 | Keeping Count | `set` / `change`, `count()`, `for x from 1 to 5:`, `and` / `or` / `not` |
-| 7 | Teach Bolt | `define`, `use helper`, `give back` |
-| 8 | Big Farm Plans | lists and `for each`, ending with Festival Day |
+- [Game design](docs/design.md): chapters, quests and stars, crops, plain-word code and code windows.
+- [How it works](docs/how-it-works.md): what each source file does, run limits, the sandbox and saving.
 
-- **The title screen** opens with the page, and the **Title** button brings it back. **Continue** picks up the quest, contract or home farm you were on. **New game** asks first when there's anything to lose, then erases stars, the barn, shop items and code windows and starts at quest 1-1. **Replay a chapter** lists the finished chapters: picking one starts its first quest, and Next goes through every quest in it, bonus ones too. Stars are only ever raised, so replaying can't lose any.
-- **Quests** run on their own field, which starts over on every try. Finishing a quest gives 1 star; finishing within a tick (cycle) limit gives 2, and within a tighter one 3. Quests in a chapter open one after another.
-- **Chapters** open when the one before is finished and you have enough stars.
-- **Locked words:** a coding word stays locked until its chapter opens. Using it early stops the run with a note like "Bolt doesn't know repeat yet. You'll learn it in chapter 2!", and the command list greys it out. Anything no chapter teaches (classes, lambdas, try...) opens after the festival.
-- **Missing brackets:** a command written without its brackets, like `harvest` on its own, `if is_ripe:` (always yes, so Bolt picks unripe crops) or `move EAST`, stops the run before it starts with a hint like "`is_ripe` needs brackets to check. Write `is_ripe()`." Commands you `define` count too, in any window.
-- **Following along:** while Bolt runs, the line doing each action lights up, in whichever code window it's in, and that window comes to the front. When a run stops on a problem, its line turns red until you change the code.
-- **Test plots:** a quest can have 2 or 3 fields, and the same program runs on each in turn, so counting exact steps stops working and the program has to look around. The run stops at the first plot that fails, with a note like "Your program worked on plot 1, but not on plot 2.", and the star targets count the ticks of every plot together. The quest card shows each plot, and clicking one shows it on the field.
-- **Fix Bolt's code:** a quest can start with a program that almost works. It opens in its own code window, and **Put Bolt's code back** restores it.
-- **Finished chapters stay finished.** Once every core quest in a chapter has a star, the save remembers it, so a quest added to that chapter later is new but never locks anything. Saves carry a version, and `js/progress.js` moves older saves forward when quests change.
-- **Festival Day** ends chapter 8 with three events on test plots, each judged by a neighbor: The Big Basket (8-5, Daisy and Hazel: pick every ripe crop on two plot sizes, lettuce first), The Fog Race (8-6, Wren: find a carrot hidden somewhere new in the fog and bring it home), and The Grand Display (8-7, Aunt Juniper: plant the rows `design()` gives, different on each plot). A banner names each event as it starts. Finishing all three plays the festival: each neighbor gives Bolt a ribbon for what was learned, Aunt Juniper gives the festival crown, and the barn shows the season's harvest. It can be watched again from the shelf.
-- **Golden crowns:** every finished chapter gives a free golden crown with its chapter's crop on it, from the Hay Crown to the Festival Crown. Bolt can wear any of them, and the shelf shows the set.
-- **What's next:** after the festival, Next never sends players back to the start. It picks a new quest, then a bonus quest not tried yet, then the quest with the fewest stars, and says why ("Pip's Garden has 1 star. Can you get 3?").
-- **After the festival** the map gets a ninth page, Willow Creek After the Festival, with two things to do:
-  - **Golden quests**, one per chapter (G-1 to G-8): an old quest's idea on 2 or 3 test plots, like the first row in three lengths or the Mayor's order on three market days. Each gives a golden star (they don't count toward chapter stars) and a trophy on the shelf.
-  - **The contract board:** 12 orders from the neighbors, 3 on the board at a time, filled on the home farm with your own seeds within a tick budget ("20 lettuce and 10 strawberries in 300 ticks"). Each gives a ribbon and opens a thank-you in the shop. Daisy's dinner time has Daisy wait at the barn: Bolt has to visit her at least every 20 ticks while farming. Hazel's strawberry order opens the bee hive, which sits in the middle of the home farm: strawberries and blueberries within 1 tile of it give 1 more.
-- **The home farm** is free play. Everything harvested, in quests too, goes to the barn, and the shop sells field upgrades, seeds, hats for Bolt and farm decorations for produce. Each finished chapter puts new things in the shop and a badge on the shelf. The shelf also has the almanac (a page per crop) and titles.
-- **For grown-ups:** the shelf has a practice mode that opens every chapter and word, and a button to start progress over.
+## Architecture
 
-## Crops
-
-| Crop | Costs | Ripe after | Gives | Special rule |
-| --- | --- | --- | --- | --- |
-| Grass | free | 4 ticks | 1 hay | Grows back by itself. |
-| Wheat | free | 8 ticks | 1 wheat | |
-| Carrot | 2 wheat | 14 ticks | 1, or 2 after wheat | **Crop swap:** planted on soil where wheat was just picked, it gives 2. A *take-turns puzzle*: a field has to swap between wheat and carrots, so the program has to know what comes next. |
-| Strawberry | 3 wheat | 12 ticks | 1 + 1 per friend | **Friends:** when it ripens it counts the strawberries right next to it, and gives 1 more for each. A *layout puzzle*: 4 in a row make 10, a 2 by 2 square makes 12, and picking one before its neighbours ripen leaves them fewer friends. |
-| Lettuce | 2 hay | 6 ticks | 1 lettuce | **Wilts:** it stays crisp for 8 ticks, then wilts and gives nothing. A *scheduling puzzle*: first planted, first picked, so the order Bolt walks matters (a queue). |
-| Blueberry | 2 carrots | 24 ticks | 2, 3, 4, 5, 5... | **Bush:** stays after a ripe harvest and is ripe again 10 ticks later, giving 1 more each time up to 5. Picking it early loses the whole bush. A *keep-it-running puzzle*: a patrol loop with `repeat until count(...)` beats replanting. |
-| Pumpkin | 1 carrot | 16 ticks | 1 pumpkin | **Rots:** 30 ticks after it's ripe it rots. A rotten pumpkin can't be picked, and `till()` clears it (`is_rotten()` checks). A *three-way choice*: ripe → pick, rotten → till, young → leave it, with `else if`. |
-| Mushroom | can't be planted | | 1 mushroom | **Wild:** grows by itself in the fog, in a different spot on each test plot. A *search puzzle*: `repeat forever` until you find it, then `break`. |
-| Corn | 1 wheat | 10 wet ticks | 2 corn | **Thirsty:** only grows while its soil is wet. `water()` wets a tile for 6 ticks and uses 1 drop of the 5 in the can, and `refill()` fills it at the well. Water on wet soil, ripe corn or nothing is wasted. A *both-things-true puzzle*: `if is_dry() and not is_ripe():`. |
-| Sunflower | 2 wheat | 40 ticks | 1 sunflower | **Tall:** Bolt can see it from anywhere, with `ripe_at(x, y)`. A *count-it-first puzzle*: a command that gives back how many are ripe in a row. |
-
-Each special rule has a quest built around it (3-5 Berry Friends, 4-6 Crunchy Lettuce, 5-7 Wheat Then Carrots, 6-6 Two Old Bushes, 4-5 Pip's Pumpkin Patch, 5-6 Mushroom in the Fog, 6-5 Thirsty Corn, 7-4 Sunflower Rows), and the new seeds go in the shop after the chapter that fits them. The pumpkin, mushroom, corn and sunflower quests are core quests because they teach a coding word (`else if`, `break`, `and`/`or`/`not`, `give back`), and each has a harder bonus quest after it. Bonus quests give stars but aren't needed to finish a chapter. Chapter 8 opens with **The Mayor's Order** (8-4): `order()` gives a different list of crops on each test plot, and Bolt keeps a basket list with `add crop to basket` so it picks exactly one of each and stops when the basket is full. Chapters 1 to 3 each end with a bonus **Fix Bolt's code** quest (1-6, 2-6, 3-6) that starts with a program that almost works.
-
-Quests are plain data in `js/chapters.js`, so adding one needs no new code. `tests/solutions.mjs` holds a 3-star program for every quest, and the tests run them all with the real game and Python, so the star targets always stay within reach.
-
-Your program runs in the browser with [Pyodide](https://pyodide.org). The farm is a grid of tiles. Every farmer action (`move`, `till`, `plant`, `harvest`, `wait`) takes one tick, crops grow every tick, and looking around (`is_ripe()`, `position()` and so on) is free. The full command list is on the game page.
-
-## Plain-word code
-
-Alongside regular Python, programs can use plain-word statements:
+AutoFarm is a static site: HTML, CSS and ES modules, with no build step and no server code. Player programs run in the browser with [Pyodide](https://pyodide.org) 0.26.4 (Python compiled to WebAssembly), loaded from the jsDelivr CDN.
 
 ```
-set size to field_size()
-
-define harvest_if_ripe:
-    if is_ripe():
-        harvest()
-
-repeat size times:
-    harvest_if_ripe()
-    move(EAST)
-
-repeat until position() == (0, 0):
-    move(WEST)
+ page (js/main.js)                              web worker (js/worker.js)
+ ┌───────────────────────────┐   code windows   ┌──────────────────────────────┐
+ │ code windows, map, shop   │ ───────────────▶ │ Pyodide runs the program     │
+ │ replays snapshots at the  │                  │ against a copy of the farm   │
+ │ chosen speed, judges the  │ ◀─────────────── │ (js/game.js via bridge.js)   │
+ │ quest, draws the canvas   │  one snapshot    │ plain words → Python first   │
+ └───────────────────────────┘  per tick        │ (py/plain_words.py)          │
+            │                   + print output   └──────────────────────────────┘
+            ▼
+     local storage (progress, home farm, code windows)
 ```
 
-| Plain words | Python it stands for |
-| --- | --- |
-| `repeat 5 times:` or `for amount times:` | `for _ in range(5):` |
-| `repeat forever:` | `while True:` |
-| `repeat until done:` | `while not done:` |
-| `repeat while busy:` | `while busy:` |
-| `for x from 1 to 10:` (includes 10, counts down if needed) | `for x in range(1, 11):` |
-| `for each item in things:` | `for item in things:` |
-| `else if ...:` | `elif ...:` |
-| `define sweep_row:` / `define go(steps):` | `def sweep_row():` / `def go(steps):` |
-| `set total to 0` / `change total by 1` | `total = 0` / `total += 1` |
-| `true` / `false` | `True` / `False` |
-| `give back total` | `return total` |
-| `add crop to basket` | `basket.append(crop)` |
+When the player presses Run, the page (`js/main.js`) sends the code windows to a web worker (`js/worker.js`). The worker turns plain-word lines into Python, runs the program with Pyodide at full speed against a copy of the farm simulation (`js/game.js`), and streams one snapshot per tick, plus any `print()` output, back to the page. The page replays the snapshots at the chosen speed, checks the quest's goal and stars (`js/quests.js`), and draws the farm. The farm, the quests and the progress rules are plain JavaScript with no DOM code, so the tests run them directly in Node.
 
-## Code windows
+The per-file breakdown, the 5,000-tick limit and the sandbox rules are in [How it works](docs/how-it-works.md).
 
-Code can be split across several named windows, like files. Make one with **+ New window**, drag windows around by their title bar, and double-click a name to rename it. Any window can use the commands and classes another window makes:
+## Install and run locally
 
-```
-use helper                  # everything from the helper window
-use helper, crops           # two windows at once
-use go_home from helper     # just one command
-```
+You need:
 
-Python's `from helper import *` and `import helper` work too. Every window has its own run button, and **Run** at the top runs the window used last. A window you use runs once per run, the first time it's used, and an error inside it says which window and line it came from. Windows can't import anything except each other.
+- Python 3, to serve the folder (any static file server works),
+- Node.js and npm, only for the tests.
 
-`py/plain_words.py` rewrites these lines into Python before the program runs, one line for one line, so error messages keep the player's line numbers. A line that starts like a plain-word statement but isn't written right gets a hint instead of a Python syntax error.
-
-## Run it locally
-
-It's a static site with no build step. Serve the folder with any static server:
+Start a local server from the repo folder:
 
 ```sh
+npm start
+# or, without npm:
 python3 -m http.server 8000
 ```
 
 Then open http://localhost:8000. Opening `index.html` straight from disk won't work, because browsers block web workers on `file://` URLs.
 
-## How it works
-
-- `js/game.js`: the farm simulation, with no DOM code.
-- `js/chapters.js`: the story, chapters and quests, as data.
-- `js/postgame.js`: golden quests and the contract board, as data.
-- `js/quests.js`: builds a quest's field and checks its goal and stars.
-- `js/progress.js`: stars, open chapters, the shop, badges, almanac and titles.
-- `js/words.js`: the coding words and which chapter teaches each.
-- `py/words.py`: finds the coding words a program uses, for the locks.
-- `py/plain_words.py`: turns plain-word lines like `repeat 5 times:` into Python.
-- `py/farm_api.py`: the Python commands players use, plus the sandbox. It only lets programs import the player's own code windows, and blocks dunder names and file or eval builtins, and limits runaway loops.
-- `js/worker.js` and `js/bridge.js`: a web worker that loads Pyodide and runs the player's program at full speed against a copy of the farm. It streams one snapshot per tick, plus `print()` output, back to the page.
-- `js/files.js`: window names, the starter windows, and loading saved windows.
-- `js/windows.js`: the desk of code windows (move, resize, rename, hide, delete, run).
-- `js/main.js`: the page. It replays the snapshots at the chosen speed, handles Run, Stop and Reset, judges quests, and draws the map, shop and shelf.
-- `js/render.js`: canvas drawing.
-
-Each run can use up to 5,000 ticks. Progress, the home farm and your code windows are saved in the browser's local storage for now. Accounts and cloud saves are planned.
+To put it online for free, serve the repo folder from any static host. For example, with GitHub Pages: Settings → Pages → Deploy from a branch → `main`, folder `/ (root)`.
 
 ## Tests
 
@@ -140,4 +58,19 @@ npm install
 npm test
 ```
 
-This runs the simulation, progress and quest tests with Node, including every quest solution with Pyodide from `node_modules`, and the Python API and sandbox tests with CPython, using a fake farm module.
+`npm install` fetches Pyodide 0.26.4 into `node_modules`, so the quest tests run the same Python the browser does. `npm test` runs:
+
+- **Node tests** (`tests/*.test.mjs`, with `node --test`):
+  - `game.test.mjs`: the farm simulation and the crop rules.
+  - `quests.test.mjs`: the quest data, and every quest's 3-star solution from `tests/solutions.mjs`, run with the real game and Pyodide, so the star targets always stay within reach.
+  - `progress.test.mjs`: stars, open chapters, the shop, badges, golden quests and contracts.
+  - `files.test.mjs`: code window names and loading saved windows.
+  - `title.test.mjs`: the title screen's Continue and Replay a chapter.
+- **Python tests** (`tests/test_farm_api.py`, with CPython): the player commands, plain-word code and the sandbox, against a fake farm module.
+
+To run one file on its own:
+
+```sh
+node --test tests/game.test.mjs
+python3 tests/test_farm_api.py
+```
