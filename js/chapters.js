@@ -39,6 +39,9 @@
 // A quest with `bonus: true` gives stars, but isn't needed to finish its
 // chapter. Each new crop has a bonus quest built around its special rule.
 //
+// Lessons: the first quest to need a coding word shows its lesson card first.
+// That's set in js/concepts.js (each entry's `learned`), not here.
+//
 // Stars: finishing the goal gives 1 star. Finishing within `stars.two` ticks
 // (cycles) gives 2, and within `stars.three` gives 3. tests/solutions.mjs
 // holds a program for every quest that earns 3 stars.

@@ -5,6 +5,7 @@ import { CONTRACTS, GOLDEN, findContract } from "./postgame.js";
 import { ITEMS } from "./game.js";
 import { plural } from "./quests.js";
 import { AFTER_FESTIVAL, WORDS, lockedWords } from "./words.js";
+import { CONCEPTS, conceptChapter } from "./concepts.js";
 
 // ---- The shop ----
 // `after`: the chapter that has to be finished before it can be bought.
@@ -163,10 +164,12 @@ export const SAVE_VERSION = MIGRATIONS.reduce((v, m) => Math.max(v, m.version), 
 // contracts: contracts finished on the contract board (each gives a ribbon).
 // festivalSeen: the festival scene has played once.
 // refund: produce to give back to the barn once (see version 3).
+// seen: Farm Book entries the player has read (as a lesson or in the book).
 export function newProgress() {
   return {
     version: SAVE_VERSION, stars: {}, best: {}, owned: [STARTING_HAT], hat: STARTING_HAT,
     almanac: [], practice: false, finished: [], harvested: {}, festivalSeen: false, refund: null, contracts: [],
+    seen: [],
   };
 }
 
@@ -208,6 +211,7 @@ export function loadProgress(raw) {
   p.festivalSeen = saved.festivalSeen === true;
   if (Array.isArray(saved.contracts)) p.contracts = CONTRACTS.map((c) => c.id).filter((id) => saved.contracts.includes(id));
   if (saved.refund && typeof saved.refund === "object") p.refund = saved.refund;
+  if (Array.isArray(saved.seen)) p.seen = CONCEPTS.map((c) => c.id).filter((id) => saved.seen.includes(id));
   noteFinished(p);
   if (p.owned.includes(saved.hat) && HAT_NAMES[saved.hat]) p.hat = saved.hat;
   return p;
@@ -332,6 +336,30 @@ export function nextQuest(p) {
 
 export function locked(p) {
   return lockedWords((n) => isChapterOpen(p, n));
+}
+
+// ---- The Farm Book ----
+
+// A Farm Book entry is open once its chapter is. A crop opens when the player
+// reaches the quest that first has it, or picks one.
+export function isConceptOpen(p, c) {
+  if (p.practice) return true;
+  if (c.crop) {
+    const item = c.crop === "grass" ? "hay" : c.crop;
+    return isQuestOpen(p, c.learned) || p.almanac.includes(item);
+  }
+  return isChapterOpen(p, conceptChapter(c, (id) => findQuest(id).chapter));
+}
+
+// Open entries the player hasn't read yet, to mark as new. Practice mode opens
+// every page at once, so nothing is marked there.
+export function unreadConcepts(p) {
+  if (p.practice) return [];
+  return CONCEPTS.filter((c) => isConceptOpen(p, c) && !p.seen.includes(c.id));
+}
+
+export function markSeen(p, id) {
+  if (!p.seen.includes(id)) p.seen.push(id);
 }
 
 // ---- Home farm ----

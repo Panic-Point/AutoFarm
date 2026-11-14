@@ -68,6 +68,7 @@ npm test
   - `progress.test.mjs`: stars, open chapters, the shop, badges, golden quests and contracts.
   - `files.test.mjs`: code window names and loading saved windows.
   - `title.test.mjs`: the title screen's Continue and Replay a chapter.
+  - `concepts.test.mjs`: the Farm Book entries in `js/concepts.js`. Every example runs, in plain words and in Python, with only the words open in its chapter, and none of them solves the quest it comes before.
   - `docs.test.mjs`: `docs/chapters.md` and `docs/solutions.md` match the game's data and the solutions.
 - **Python tests** (`tests/test_farm_api.py`, with CPython): the player commands, plain-word code and the sandbox, against a fake farm module.
 

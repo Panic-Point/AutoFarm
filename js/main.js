@@ -10,12 +10,13 @@ import {
   checkPlot, gains, plural, judgeQuest, patternMisses, plotData, plotProblem, questField, questPlots, starTargets, tickLimit,
 } from "./quests.js";
 import { WORDS, wordsInChapter } from "./words.js";
+import { CONCEPTS, GROUPS, TIPS, exampleData, exampleField, findConcept, lessonsFor, richText } from "./concepts.js";
 import { continueText, hasSave, replayChapters, replayNext } from "./title.js";
 import {
   ALMANAC, CROWNS, HAT_NAMES, SHOP, badges, checkContract, contractBoard, contractText, crownsOwned, goldenStars,
   nextStep, recordContract, saleLockText, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
-  isChapterDone, isChapterOpen, isForSale, isQuestOpen, loadProgress, locked, looks, newProgress,
-  nextQuest, noteHarvest, recordResult, seeds, titles, totalStars, wear,
+  isChapterDone, isChapterOpen, isConceptOpen, isForSale, isQuestOpen, loadProgress, locked, looks, markSeen, newProgress,
+  nextQuest, noteHarvest, recordResult, seeds, titles, totalStars, unreadConcepts, wear,
 } from "./progress.js";
 
 // Watchdog: if Python goes quiet this long, restart it.
@@ -166,6 +167,10 @@ function render() {
 
 function renderHeader() {
   $("star-total").textContent = totalStars(progress);
+  const unread = unreadConcepts(progress).length;
+  $("book-new").hidden = !unread;
+  $("book-new").textContent = unread;
+  $("open-book").title = unread ? `Everything Bolt has learned. ${unread} new ${unread === 1 ? "page" : "pages"}!` : "Everything Bolt has learned";
   const all = titles(progress);
   $("player-title").textContent = all[all.length - 1];
 }
@@ -189,6 +194,7 @@ function renderQuestCard(bubble) {
     $("quest-targets").hidden = false;
     renderPlots(quest);
     $("starter-btn").hidden = !quest.starter;
+    $("lesson-btn").hidden = !lessonsFor(quest.id).length;
     $("hint-btn").hidden = false;
     $("hint-btn").textContent = hintsShown >= quest.hints.length ? "No more hints" : "Hint";
     $("hint-btn").disabled = hintsShown >= quest.hints.length;
@@ -212,6 +218,7 @@ function renderQuestCard(bubble) {
     $("quest-targets").hidden = false;
     $("quest-plots").hidden = true;
     $("starter-btn").hidden = true;
+    $("lesson-btn").hidden = true;
     $("hint-btn").hidden = true;
     hintEl.hidden = true;
     $("mode-btn").textContent = "Map";
@@ -232,6 +239,7 @@ function renderQuestCard(bubble) {
     $("quest-targets").hidden = true;
     $("quest-plots").hidden = true;
     $("starter-btn").hidden = true;
+    $("lesson-btn").hidden = true;
     $("hint-btn").hidden = true;
     hintEl.hidden = true;
     $("mode-btn").textContent = "Map";
@@ -280,20 +288,34 @@ function openStarter(quest, fresh = false) {
   desk.openWindow(starterName(quest), code.trim() + "\n", fresh);
 }
 
-// Grey out commands Bolt hasn't learned yet.
+// Text with `code` and **bold** in it, as page nodes.
+function rich(text) {
+  return richText(text).map((p) => {
+    if (p.code) return el("code", {}, p.text);
+    if (p.bold) return el("b", {}, p.text);
+    return p.text;
+  });
+}
+
+// The Commands panel, built from the same entries as the Farm Book. Words
+// Bolt hasn't learned yet are greyed out with the chapter that teaches them.
 function renderReference() {
   const lockedNow = locked(progress);
-  for (const li of document.querySelectorAll(".reference li[data-word]")) {
-    const word = li.dataset.word;
-    const isLocked = word in lockedNow;
-    li.classList.toggle("locked", isLocked);
-    li.querySelector(".lock-note")?.remove();
-    if (isLocked) {
-      const note = document.createElement("span");
-      note.className = "lock-note";
-      note.textContent = `🔒 Chapter ${WORDS[word].chapter}`;
-      li.prepend(note);
+  const body = $("reference-body");
+  body.textContent = "";
+  for (const group of GROUPS) {
+    const items = (TIPS[group.id] ?? []).map((tip) => el("li", {}, rich(tip)));
+    for (const c of CONCEPTS.filter((x) => x.group === group.id)) {
+      const isLocked = Boolean(c.word && c.word in lockedNow);
+      items.push(el("li", { class: isLocked ? "locked" : "", "data-word": c.word ?? false },
+        isLocked ? el("span", { class: "lock-note" }, `🔒 Chapter ${WORDS[c.word].chapter}`) : null,
+        rich(c.short),
+        isConceptOpen(progress, c)
+          ? el("button", { type: "button", class: "ref-more", title: `Read about ${c.name} in the Farm Book`,
+            "aria-label": `Read about ${c.name} in the Farm Book`, onclick: () => openBook(c.id) }, "📖")
+          : null));
     }
+    body.append(el("h3", {}, group.title), el("ul", {}, items));
   }
 }
 
@@ -320,6 +342,7 @@ function playQuest(id, replay = null) {
   consoleEl.textContent = "";
   renderAll();
   showFestivalBanner(findQuest(id));
+  offerLessons();
 }
 
 // Between festival events: "Event 2 of 3: The Fog Race!"
@@ -393,6 +416,11 @@ function onWorkerMessage(e) {
   if (msg.type === "fatal") {
     runBtn.textContent = "Python failed to load";
     log(`Could not load Python: ${msg.message}`, "error");
+    return;
+  }
+  if (demo && msg.runId === demo.id) {
+    if (msg.type === "events") demo.queue.push(...msg.events);
+    if (msg.type === "done") demo.done = msg;
     return;
   }
   if (!run || msg.runId !== run.id) return; // stale message from a stopped run
@@ -587,6 +615,7 @@ function pump(maxFrames) {
 function loop(now) {
   const dt = Math.min(0.25, (now - lastFrameTime) / 1000 || 0);
   lastFrameTime = now;
+  if (demo) stepDemo(dt);
   if (run) {
     const speed = Number(speedEl.value);
     let budget;
@@ -894,6 +923,236 @@ function showReward({ quest, stars, ticks, gained, rewards, pages = [], title, i
   $("reward-dialog").showModal();
 }
 
+// ---- Example programs ----
+// Each Farm Book entry has a short example. Bolt acts it out on the entry's
+// own little field, in the lesson card and in the book.
+
+const DEMO_STEPS_PER_SECOND = 3;
+let demo = null; // { id, ctx, out, btn, queue, pos, done, acc, state }
+
+function codePane(label, code) {
+  return el("figure", { class: "code-pane" }, el("figcaption", {}, label), el("pre", {}, el("code", {}, code)));
+}
+
+function exampleView(c) {
+  const ex = c.example;
+  const canvas = el("canvas", { width: 216, height: 216, class: "demo-field", "aria-label": `Bolt's field for the ${c.name} example` });
+  const out = el("pre", { class: "demo-out", "aria-live": "polite" });
+  const btn = el("button", { type: "button", class: "small" }, "▶ Watch Bolt do it");
+  btn.addEventListener("click", () => playExample(c, canvas, out, btn));
+  const panes = [];
+  const windows = Object.keys(ex.files ?? {});
+  panes.push(codePane(windows.length ? "main window" : ex.python ? "Plain words" : "Example", ex.code));
+  if (ex.python) panes.push(codePane(windows.length ? "main window, in Python" : "Python", ex.python));
+  for (const name of windows) panes.push(codePane(`${name} window`, ex.files[name]));
+  drawFarm(canvas.getContext("2d"), exampleField(c), { looks: looks(progress) });
+  return el("div", { class: "example" },
+    el("div", { class: "example-code" }, panes),
+    el("div", { class: "example-stage" }, canvas, btn, out));
+}
+
+function playExample(c, canvas, out, btn) {
+  if (run || nextPlotTimer) {
+    out.textContent = "Bolt is busy with your program. Watch again when it stops.";
+    return;
+  }
+  if (!workerReady) {
+    out.textContent = "Python is still loading. Try again in a moment.";
+    return;
+  }
+  stopDemo();
+  runId += 1;
+  const state = exampleField(c);
+  demo = { id: runId, ctx: canvas.getContext("2d"), out, btn, queue: [], pos: 0, done: null, acc: 1, state };
+  out.textContent = "";
+  btn.disabled = true;
+  drawFarm(demo.ctx, state, { looks: looks(progress) });
+  worker.postMessage({
+    type: "run", runId, code: c.example.code.trim() + "\n", files: c.example.files ?? {}, name: "main",
+    state, locked: {}, maxTicks: 100, data: exampleData(c),
+  });
+}
+
+// Play the example's steps a few a second. print() lines show right away.
+function stepDemo(dt) {
+  demo.acc += dt * DEMO_STEPS_PER_SECOND;
+  let drew = false;
+  while (demo.pos < demo.queue.length) {
+    const ev = demo.queue[demo.pos];
+    if (ev.kind === "frame") {
+      if (demo.acc < 1) break;
+      demo.acc -= 1;
+      demo.state = ev.state;
+      drew = true;
+    } else {
+      demo.out.textContent += `${ev.text}\n`;
+    }
+    demo.pos += 1;
+  }
+  if (drew) drawFarm(demo.ctx, demo.state, { looks: looks(progress) });
+  if (demo.done && demo.pos >= demo.queue.length && demo.acc >= 1) {
+    if (demo.done.status !== "ok") demo.out.textContent += demo.done.message;
+    demo.btn.disabled = false;
+    demo.btn.textContent = "▶ Watch again";
+    demo = null;
+  } else if (demo.pos >= demo.queue.length) {
+    demo.acc = Math.min(demo.acc, 1);
+  }
+}
+
+function stopDemo() {
+  if (!demo) return;
+  demo.btn.disabled = false;
+  demo = null;
+}
+
+// ---- Lessons ----
+// The first time a quest needs a new word, a card shows what it does with a
+// short example, before the player starts. The quest card's "What's new"
+// button shows it again.
+
+let lessonPages = [];
+let lessonAt = 0;
+
+function showLessons(questId) {
+  lessonPages = lessonsFor(questId);
+  if (!lessonPages.length) return;
+  lessonAt = 0;
+  renderLesson();
+  if (!$("lesson-dialog").open) $("lesson-dialog").showModal();
+}
+
+// Show the lessons for the quest being played, if any are new.
+function offerLessons() {
+  const quest = currentQuest();
+  if (!quest || !$("title-screen").hidden) return;
+  if (lessonsFor(quest.id).some((c) => !progress.seen.includes(c.id))) showLessons(quest.id);
+}
+
+function renderLesson() {
+  stopDemo();
+  const c = lessonPages[lessonAt];
+  markSeen(progress, c.id);
+  saveAll();
+  renderHeader();
+  const many = lessonPages.length > 1;
+  $("lesson-heading").textContent = `New: ${c.name}`;
+  $("lesson-step").textContent = many ? `${lessonAt + 1} of ${lessonPages.length} new things in this quest` : "Something new in this quest";
+  $("lesson-body").replaceChildren(...[
+    el("p", { class: "lesson-does" }, rich(c.does)),
+    c.forms.length > 1 ? el("p", { class: "lesson-forms" }, "You can write it ", formList(c.forms), ".") : null,
+    exampleView(c),
+    el("p", { class: "lesson-more" }, "Find it again any time in the ",
+      el("button", { type: "button", class: "link", onclick: () => openBook(c.id) }, "Farm Book"), "."),
+  ].filter(Boolean));
+  $("lesson-back").hidden = lessonAt === 0;
+  $("lesson-next").textContent = lessonAt < lessonPages.length - 1 ? "Next" : "Let's go!";
+}
+
+// "a, b or c" with each form as code.
+function formList(forms) {
+  const parts = [];
+  forms.forEach((f, i) => {
+    if (i) parts.push(i === forms.length - 1 ? " or " : ", ");
+    parts.push(el("code", {}, f));
+  });
+  return parts;
+}
+
+$("lesson-next").addEventListener("click", () => {
+  if (lessonAt < lessonPages.length - 1) {
+    lessonAt += 1;
+    renderLesson();
+  } else {
+    $("lesson-dialog").close();
+  }
+});
+$("lesson-back").addEventListener("click", () => {
+  lessonAt = Math.max(0, lessonAt - 1);
+  renderLesson();
+});
+$("lesson-dialog").addEventListener("close", stopDemo);
+$("lesson-btn").addEventListener("click", () => {
+  const quest = currentQuest();
+  if (quest) showLessons(quest.id);
+});
+
+// ---- The Farm Book ----
+// Every command, idea and crop the player has opened, grouped like the
+// Commands panel. New pages are marked until they're read.
+
+let bookPage = null;
+
+function openBook(id = null) {
+  if ($("lesson-dialog").open) $("lesson-dialog").close();
+  const open = CONCEPTS.filter((c) => isConceptOpen(progress, c));
+  const wanted = id && open.find((c) => c.id === id);
+  bookPage = (wanted ?? open.find((c) => c.id === bookPage) ?? unreadConcepts(progress)[0] ?? open[0]).id;
+  renderBook();
+  if (!$("book-dialog").open) $("book-dialog").showModal();
+}
+
+function renderBook() {
+  stopDemo();
+  const open = CONCEPTS.filter((c) => isConceptOpen(progress, c));
+  const c = findConcept(bookPage);
+  markSeen(progress, c.id);
+  saveAll();
+  renderHeader();
+  $("book-note").textContent = progress.practice
+    ? "Practice mode: every page is open."
+    : `${open.length} of ${CONCEPTS.length} pages. More open as Bolt learns.`;
+  const unread = new Set(unreadConcepts(progress).map((x) => x.id));
+  const index = [];
+  for (const group of GROUPS) {
+    const entries = open.filter((x) => x.group === group.id);
+    if (!entries.length) continue;
+    index.push(el("h3", {}, group.title), el("ul", {}, entries.map((x) => el("li", {},
+      el("button", {
+        type: "button",
+        class: `book-link${x.id === c.id ? " current" : ""}`,
+        "aria-current": x.id === c.id ? "page" : false,
+        onclick: () => {
+          bookPage = x.id;
+          renderBook();
+        },
+      }, x.name, unread.has(x.id) ? el("span", { class: "new-tag" }, "New") : null)))));
+  }
+  $("book-index").replaceChildren(...index);
+  $("book-entry").replaceChildren(...bookEntry(c));
+  $("book-index").querySelector(".current")?.scrollIntoView({ block: "nearest" });
+}
+
+function bookEntry(c) {
+  const parts = [el("h3", { class: "entry-name" }, c.name), el("p", {}, rich(c.does))];
+  if (c.gives) parts.push(el("h4", {}, "Gives back"), el("p", {}, rich(c.gives)));
+  parts.push(el("h4", {}, c.forms.length > 1 ? "Ways to write it" : "How to write it"),
+    el("ul", { class: "forms" }, c.forms.map((f) => el("li", {}, el("pre", {}, el("code", {}, f))))));
+  parts.push(el("h4", {}, "Watch out"), el("ul", {}, c.watch.map((w) => el("li", {}, rich(w)))));
+  if (c.example) parts.push(el("h4", {}, "Example"), exampleView(c));
+  parts.push(el("h4", {}, c.crop ? "Where Bolt met it" : "Where Bolt learned it"), learnedLine(c));
+  return parts;
+}
+
+function learnedLine(c) {
+  if (!c.learned) return el("p", {}, `It opens in chapter ${WORDS[c.word].chapter}. No quest needs it, but it's there when you want it.`);
+  const quest = findQuest(c.learned);
+  const playable = isQuestOpen(progress, quest.id);
+  let action;
+  if (mode.quest === quest.id) action = el("span", { class: "muted" }, "You're playing it now.");
+  else if (!playable) action = el("span", { class: "muted" }, "Finish the quests before it to play it.");
+  else {
+    action = el("button", { type: "button", class: "small secondary", onclick: () => {
+      $("book-dialog").close();
+      playQuest(quest.id);
+    } }, progress.stars[quest.id] ? "Play it again" : "Play it");
+  }
+  return el("p", {}, `Quest ${quest.id}, ${quest.title}. `, action);
+}
+
+$("book-dialog").addEventListener("close", stopDemo);
+$("open-book").addEventListener("click", () => openBook());
+
 // ---- The festival scene ----
 // After the last festival event: each neighbor gives Bolt a ribbon for what
 // was learned, Aunt Juniper gives the festival crown, and the barn shows the
@@ -1154,10 +1413,16 @@ function newGame() {
   location.reload();
 }
 
-$("title-continue").addEventListener("click", hideTitle);
+$("title-continue").addEventListener("click", () => {
+  hideTitle();
+  offerLessons();
+});
 $("title-new").addEventListener("click", () => {
   if (hasSave(progress, home.inventory)) showTitle("confirm");
-  else hideTitle();
+  else {
+    hideTitle();
+    offerLessons();
+  }
 });
 $("title-confirm-yes").addEventListener("click", newGame);
 $("title-confirm-no").addEventListener("click", () => showTitle("main"));
@@ -1179,6 +1444,7 @@ try {
 if (skipTitle) {
   $("title-screen").hidden = true;
   log("A new game! Bolt is ready for the first day on the farm.", "note");
+  offerLessons();
 } else {
   showTitle("main");
 }
