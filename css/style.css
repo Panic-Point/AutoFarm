@@ -618,3 +618,114 @@ dialog h3 { margin: 14px 0 6px; font-size: 16px; }
 .title-chapters .chapter-num { flex: none; }
 .title-chapters .ch-title { flex: 1; font-weight: 600; }
 .title-chapters .ch-stars { color: var(--star); white-space: nowrap; }
+
+/* ---- Commands panel, lessons and the Farm Book ---- */
+
+.reference li { margin: 2px 0; }
+.ref-more {
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  vertical-align: baseline;
+}
+.ref-more:hover { border-color: var(--accent); }
+.book-new {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #2b2a26;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.book-new[hidden] { display: none; }
+.new-tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #2b2a26;
+  font-size: 11px;
+  font-weight: 700;
+}
+.muted { color: var(--muted); }
+button.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+}
+
+dialog.book-dialog, dialog.lesson-dialog { max-width: min(860px, calc(100vw - 32px)); }
+.lesson-step { margin: 0 0 6px; color: var(--muted); font-size: 14px; }
+.lesson-does { font-size: 17px; margin: 0 0 8px; }
+.lesson-forms, .lesson-more { margin: 8px 0; }
+.lesson-forms code { white-space: nowrap; }
+
+.book { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; }
+.book-index { position: sticky; top: 0; max-height: calc(100vh - 160px); overflow-y: auto; padding-right: 4px; }
+.book-index h3 { margin: 10px 0 4px; font-size: 14px; color: var(--muted); }
+.book-index h3:first-child { margin-top: 0; }
+.book-index ul { list-style: none; margin: 0; padding: 0; }
+.book-link {
+  width: 100%;
+  text-align: left;
+  padding: 3px 8px;
+  font-size: 14px;
+  background: transparent;
+  color: var(--ink);
+  border-color: transparent;
+}
+.book-link:hover { border-color: var(--line); }
+.book-link.current { background: var(--accent); color: var(--accent-ink); }
+.book-entry { min-width: 0; }
+.book-entry .entry-name { margin-top: 0; font-size: 20px; }
+.book-entry h4 { margin: 14px 0 4px; font-size: 15px; }
+.book-entry p { margin: 0; }
+.book-entry ul { margin: 0; padding-left: 20px; }
+.book-entry ul.forms { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.forms pre { margin: 0; padding: 3px 8px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); }
+
+.example { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.example-code { flex: 1 1 260px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.code-pane { margin: 0; }
+.code-pane figcaption { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.code-pane pre {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.example-stage { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; align-items: center; width: 216px; }
+canvas.demo-field { width: 216px; height: 216px; }
+.demo-out {
+  width: 100%;
+  min-height: 1.5em;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.demo-out:empty { display: none; }
+
+@media (max-width: 640px) {
+  .book { grid-template-columns: 1fr; }
+  .book-index { position: static; max-height: 180px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  .example-stage { width: 100%; }
+}
