@@ -22,3 +22,7 @@ AutoFarm is a static site: plain HTML, CSS and ES modules, with no build step an
 ## Limits and saving
 
 Each run can use up to 5,000 ticks. Progress, the home farm and your code windows are saved in the browser's local storage for now. Accounts and cloud saves are planned.
+
+## Docs
+
+`scripts/build-docs.mjs` builds `docs/chapters.md` and `docs/solutions.md` from `js/chapters.js`, `js/postgame.js`, `js/words.js` and `tests/solutions.mjs`, plus the hand-written notes in `scripts/docs-notes.mjs`. It uses `py/words.py` (with CPython) to find which coding words each solution practices. `tests/docs.test.mjs` fails when the files are out of date, or when a word or quest has no note.
