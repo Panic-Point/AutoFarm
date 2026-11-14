@@ -10,7 +10,7 @@ More in [`docs/`](docs/README.md):
 
 - [Game design](docs/design.md): chapters, quests and stars, crops, plain-word code and code windows.
 - [How it works](docs/how-it-works.md): what each source file does, run limits, the sandbox and saving.
-- [Chapter guide](docs/chapters.md): each chapter, what it teaches and its quests.
+- [Chapter guide](docs/chapters.md): each chapter, the programming concepts and coding words it teaches, and its quests.
 - [Quest solutions](docs/solutions.md): a 3-star program for every quest. **Spoilers.**
 
 ## Architecture

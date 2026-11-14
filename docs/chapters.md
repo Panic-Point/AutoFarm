@@ -4,21 +4,23 @@
 
 A walkthrough of each chapter of AutoFarm and what it teaches, for grown-ups helping a child, teachers, and anyone working on the game. Every chapter teaches one coding idea through short quests from a neighbor at Willow Creek Farm. For working programs, see [Quest solutions](solutions.md) (spoilers). For how quests and stars work in general, see [Game design](design.md).
 
+Each chapter has two layers. **Programming concepts** are the general ideas it teaches, the ones a child will meet again in any programming language: sequencing, loops, conditionals, variables, functions and lists. **Coding words** are how AutoFarm writes those ideas, in plain words and in Python. The game's own lessons and the Farm Book (`js/concepts.js`) teach the words to the player; this guide is for the grown-ups.
+
 A quest gives 1 star for meeting its goal, 2 stars within one tick limit and 3 within a tighter one. Bonus quests give stars but aren't needed to finish a chapter. A coding word stays locked until its chapter opens.
 
 ## Chapters
 
-| # | Chapter | Neighbor | Teaches | Quests | Opens with |
-| --- | --- | --- | --- | --- | --- |
-| 1 | [First Steps](#chapter-1-first-steps) | Aunt Juniper | move, harvest | 1-1 to 1-6 | 0 stars |
-| 2 | [Do It Again](#chapter-2-do-it-again) | Daisy | till, plant, wait, repeat | 2-1 to 2-6 | 6 stars |
-| 3 | [Loops in Loops](#chapter-3-loops-in-loops) | Hazel | a loop inside a loop | 3-1 to 3-6 | 12 stars |
-| 4 | [Look Before You Act](#chapter-4-look-before-you-act) | Pip | if and else, else if, comparing with == and <, is_ripe, is_rotten, crop_here, ground_here | 4-1 to 4-7 | 17 stars |
-| 5 | [Until It's Done](#chapter-5-until-its-done) | Wren | repeat until, repeat while, repeat forever, break, can_move, position, field_size | 5-1 to 5-8 | 24 stars |
-| 6 | [Keeping Count](#chapter-6-keeping-count) | Mayor Maple | set and change, count, ticks, for ... from ... to, and, or and not, the watering can | 6-1 to 6-7 | 32 stars |
-| 7 | [Teach Bolt](#chapter-7-teach-bolt) | Bolt | define, use, give back, ripe_at | 7-1 to 7-5 | 38 stars |
-| 8 | [Big Farm Plans](#chapter-8-big-farm-plans) | Aunt Juniper | lists, add ... to, order | 8-1 to 8-7 | 44 stars |
-| | [After the Festival](#after-the-festival) | everyone | old ideas on new fields | G-1 to G-8, c-1 to c-12 | finishing chapter 8 |
+| # | Chapter | Neighbor | Programming concepts | Coding words | Quests | Opens with |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | [First Steps](#chapter-1-first-steps) | Aunt Juniper | sequencing, commands (function calls), algorithms, debugging | move, harvest | 1-1 to 1-6 | 0 stars |
+| 2 | [Do It Again](#chapter-2-do-it-again) | Daisy | loops, the loop body and indentation, off-by-one, state changes over time | till, plant, wait, repeat | 2-1 to 2-6 | 6 stars |
+| 3 | [Loops in Loops](#chapter-3-loops-in-loops) | Hazel | nested loops, finding the pattern, coordinates and grids | a loop inside a loop | 3-1 to 3-6 | 12 stars |
+| 4 | [Look Before You Act](#chapter-4-look-before-you-act) | Pip | conditionals, Booleans, comparison, sensing (input) | if and else, else if, comparing with == and <, is_ripe, is_rotten, crop_here, ground_here | 4-1 to 4-7 | 17 stars |
+| 5 | [Until It's Done](#chapter-5-until-its-done) | Wren | loops that stop on a condition, infinite loops and `break`, searching, generalising | repeat until, repeat while, repeat forever, break, can_move, position, field_size | 5-1 to 5-8 | 24 stars |
+| 6 | [Keeping Count](#chapter-6-keeping-count) | Mayor Maple | variables, counters and accumulators, counting loops, Boolean logic, resources and constraints | set and change, count, ticks, for ... from ... to, and, or and not, the watering can | 6-1 to 6-7 | 32 stars |
+| 7 | [Teach Bolt](#chapter-7-teach-bolt) | Bolt | functions, parameters and arguments, return values, abstraction, modules | define, use, give back, ripe_at | 7-1 to 7-5 | 38 stars |
+| 8 | [Big Farm Plans](#chapter-8-big-farm-plans) | Aunt Juniper | lists, iterating over a list, building and checking lists, data-driven programs, putting it together | lists, add ... to, order | 8-1 to 8-7 | 44 stars |
+| | [After the Festival](#after-the-festival) | everyone | generalisation and testing, optimisation and planning, more Python | old words on new fields | G-1 to G-8, c-1 to c-12 | finishing chapter 8 |
 
 ## Chapter 1: First Steps
 
@@ -26,7 +28,17 @@ A quest gives 1 star for meeting its goal, 2 stars within one tick limit and 3 w
 
 Open from the start. Finishing its 5 core quests earns the **Step Badge**.
 
-### What it teaches
+### Programming concepts
+
+**Sequencing.** A program is a list of instructions that run one at a time, top to bottom, in exactly the order they're written. The computer doesn't guess what you meant: if `harvest()` comes before `move(EAST)`, Bolt picks before it walks. This is the first and most important idea in programming.
+
+**Commands (function calls).** `move(EAST)` and `harvest()` are *calls*: the name says what to do, and the brackets hold any extra information the command needs, called an *argument*. `EAST` is the argument to `move`. Even a command with nothing to say still needs its brackets, which is why `harvest` on its own doesn't run.
+
+**Algorithms.** Getting the grass in the fewest ticks means planning the shortest path before writing it. A step-by-step plan for solving a problem is an *algorithm*, and the star targets reward a good one.
+
+**Debugging.** Quest 1-6 starts with code that's wrong, and the player finds and fixes the mistakes. Reading code to find where it goes wrong is a skill of its own, and the game helps by lighting up each line as it runs.
+
+### Coding words
 
 #### move
 
@@ -65,7 +77,17 @@ Grass is the first crop: it's ripe after 4 ticks and gives 1 hay. Each line runs
 
 Opens when chapter 1 is finished and the player has 6 stars. Finishing its 5 core quests earns the **Loop Badge**.
 
-### What it teaches
+### Programming concepts
+
+**Loops.** Instead of writing `harvest()` and `move(EAST)` five times, `repeat 5 times:` runs the lines under it again and again. A loop that runs a known number of times is called *definite iteration*; in Python it's `for _ in range(5):`. Loops are how short programs do big jobs.
+
+**The loop body and indentation.** The lines that belong to a loop are indented under it (4 spaces). Indentation is how Python knows where a block starts and ends, so a line indented by mistake is inside the loop, and a line not indented is after it.
+
+**Off-by-one.** Five tiles need five picks but only four steps between them, which is why the solutions repeat 4 times and pick once more after the loop. Being one too many or one too few is one of the most common bugs in programming, and quest 2-6 is built around it.
+
+**State changes over time.** `wait()` does nothing, but the world keeps changing: crops grow every tick. A program runs against a world that has *state*, and the same line can do different things depending on when it runs.
+
+### Coding words
 
 #### till
 
@@ -126,7 +148,15 @@ Grass grows back by itself after it's picked, and wheat (free, ripe after 8 tick
 
 Opens when chapter 2 is finished and the player has 12 stars. Finishing its 4 core quests earns the **Nest Badge**.
 
-### What it teaches
+### Programming concepts
+
+**Nested loops.** A loop can hold another loop. The inside loop runs all the way through every time the outside loop goes round once, so 2 times round the outside and 3 times round the inside does the inside lines 6 times. This is how programs work through anything with rows and columns: a grid, a table, an image.
+
+**Finding the pattern.** A whole field is rows, and a row is tiles. Breaking a big job into a repeated smaller job (*decomposition*) and spotting the part that repeats (*pattern recognition*) is how the solutions get from 25 tiles to a few lines of code.
+
+**Coordinates and grids.** The field is a 2D grid: east-west is x, north-south is y. Walking it row by row and turning at each end (a *snake*) is a classic way to visit every cell of a grid.
+
+### Coding words
 
 #### a loop inside a loop
 
@@ -160,7 +190,17 @@ Strawberries (3 wheat, ripe after 12 ticks) arrive with the **Friends** rule: ea
 
 Opens when chapter 3 is finished and the player has 17 stars. Finishing its 5 core quests earns the **If Badge**.
 
-### What it teaches
+### Programming concepts
+
+**Conditionals.** `if` lets a program make a choice: the lines under it only run when the check is true, and the lines under `else` run when it's false. `else if` (Python's `elif`) adds more choices, tried in order until one is true. Until now Bolt did the same thing every time; now it can react.
+
+**Booleans.** A check like `is_ripe()` gives back one of two values: `True` or `False`. These are called *Boolean* values, and every `if` and every loop condition is a Boolean in the end.
+
+**Comparison.** `==` asks whether two things are the same (`crop_here() == CARROT`), and `!=`, `<`, `>`, `<=` and `>=` compare in other ways. Each comparison gives back a Boolean. Note that `==` compares, while a single `=` (in Python) stores a value.
+
+**Sensing (input).** `is_ripe()`, `crop_here()` and `ground_here()` let the program look at the world before it acts. Reading input and deciding what to do with it is how programs handle situations the programmer didn't see in advance. Test plots (4-7) prove it: the same program has to work on fields it's never seen.
+
+### Coding words
 
 #### if and else
 
@@ -257,7 +297,17 @@ Crops can now be picked too early, so `noLoss` quests fail if Bolt picks an unri
 
 Opens when chapter 4 is finished and the player has 24 stars. Finishing its 6 core quests earns the **Fog Badge**.
 
-### What it teaches
+### Programming concepts
+
+**Loops that stop on a condition.** `repeat until` and `repeat while` (Python's `while`) keep going until something becomes true, rather than a set number of times. This is *indefinite iteration*: you use it when you don't know in advance how many steps it will take, like walking to the edge in the fog.
+
+**Infinite loops and `break`.** `repeat forever` (`while True:`) never stops on its own. `break` jumps straight out of the loop when the job is done. Forgetting the way out is the classic *infinite loop* bug, and the game stops a run that goes too long.
+
+**Searching.** Finding the mushroom in the fog means checking places one at a time until it turns up: a *search*. Walking every tile in order is a *linear search*, and the golden version (G-5) searches a whole grid.
+
+**Generalising.** `can_move()`, `position()` and `field_size()` replace fixed numbers with things the program finds out for itself, so one program fits any field. Code that doesn't hard-code its numbers is more general and easier to reuse.
+
+### Coding words
 
 #### repeat until
 
@@ -357,7 +407,19 @@ repeat field_size() - 1 times:
 
 Opens when chapter 5 is finished and the player has 32 stars. Finishing its 5 core quests earns the **Counter Badge**.
 
-### What it teaches
+### Programming concepts
+
+**Variables.** A variable is a name that remembers a value. `set planted to 0` (`planted = 0`) creates it, and `change planted by 1` (`planted += 1`) updates it. Variables let a program keep track of things: how many, which way, what's best so far.
+
+**Counters and accumulators.** Starting at 0 and adding 1 each time something happens is a *counter*, one of the most common patterns in programming. `count("hay")` and `ticks()` are counters the game keeps for you.
+
+**Counting loops.** `for x from 1 to 5:` (`for x in range(1, 6):`) is a loop with a variable that changes each time round, so the loop body can use the number. The wheat staircase (6-3) plants a longer row each time because the row number grows.
+
+**Boolean logic.** `and`, `or` and `not` combine checks: `is_dry() and not is_ripe()` is only true when both parts are. These are the *logical operators*, and with them one `if` can express a precise rule.
+
+**Resources and constraints.** The watering can holds 5 drops. Planning around a limited resource (refilling before you run out, never wasting a drop) is a small version of what real programs do with memory, time and money.
+
+### Coding words
 
 #### set and change
 
@@ -445,7 +507,19 @@ Some goals now ask for an *exact* number. **Corn** only grows while its soil is 
 
 Opens when chapter 6 is finished and the player has 38 stars. Finishing its 4 core quests earns the **Teacher Badge**.
 
-### What it teaches
+### Programming concepts
+
+**Functions.** `define harvest_row:` (Python's `def`) teaches Bolt a new command made from other commands. Writing it once and using it many times keeps programs short, avoids copy-and-paste mistakes, and gives a chunk of code a name that says what it does.
+
+**Parameters and arguments.** `define go(way, steps):` takes inputs. `way` and `steps` are *parameters*, placeholders inside the function, and `go(EAST, 3)` passes *arguments*, the actual values. One function can then do many similar jobs.
+
+**Return values.** `give back n` (`return n`) hands an answer back to the code that called the function, so `ripe_in_row(2)` can be used like a number: `if ripe_in_row(2) >= 3:`. Functions that work something out and return it are the building blocks of bigger programs.
+
+**Abstraction.** Once `ripe_in_row` works, the rest of the program can use it without thinking about how it counts. Hiding the details behind a good name is called *abstraction*, and it's how programmers manage big programs.
+
+**Modules.** `use helper` (`import helper`) lets one code window use the functions from another. Splitting code into files, or *modules*, is how real projects are organised.
+
+### Coding words
 
 #### define
 
@@ -512,7 +586,19 @@ Code can be split across several named **code windows**, and one window can use 
 
 Opens when chapter 7 is finished and the player has 44 stars. Finishing its 7 core quests earns the **Festival Ribbon**.
 
-### What it teaches
+### Programming concepts
+
+**Lists.** A list keeps several values in order: `[WHEAT, CARROT, WHEAT]`. Lists (called *arrays* in many languages) are the most common way to hold a collection of things in a program.
+
+**Iterating over a list.** `for each crop in plan:` (`for crop in plan:`) runs the loop once per item, with the variable holding each item in turn. No counting is needed: the list says how many times.
+
+**Building and checking lists.** `add crop to basket` (`basket.append(crop)`) grows a list as the program runs. `crop in basket` checks whether something is already there, and `len(basket)` says how many items it holds. The Mayor's Order (8-4) uses all three to pick exactly one of each crop.
+
+**Data-driven programs.** `order()` and `design()` hand the program a list that's different on each plot. The program's job is to follow the data, not to know the answer in advance. Separating *what to do* (the data) from *how to do it* (the code) is how most real software works.
+
+**Putting it together.** Festival Day combines everything: loops, choices, variables, functions and lists in one program that has to work on several fields.
+
+### Coding words
 
 #### lists
 
@@ -565,6 +651,14 @@ Chapter 8 ends with **Festival Day**: The Big Basket (8-5), The Fog Race (8-6) a
 ## After the Festival
 
 After chapter 8 the map gets a ninth page. No new words are taught here, but anything no chapter teaches (classes, `lambda`, `try` and so on) opens. Golden quests take one old quest's idea per chapter and run it on 2 or 3 test plots the player hasn't seen, so the program has to look around rather than count. Each gives a golden star (they don't count toward chapter stars) and a trophy. The contract board has 12 orders from the neighbors, 3 at a time, filled on the home farm with the player's own seeds within a tick budget. Contracts have no fixed answer, so they aren't in the solutions doc.
+
+### Programming concepts
+
+**Generalisation and testing.** Golden quests run an old idea on 2 or 3 fields the player hasn't seen. A program that only works on one field is fragile; one that looks around works everywhere. Running the same code on several inputs is exactly how programmers *test* their work.
+
+**Optimisation and planning.** Contracts give a goal and a tick budget with no fixed answer, on the player's own farm. Choosing what to plant, where and in what order, then making the program fast enough, is open-ended problem solving, like a real programming project.
+
+**More Python.** Everything no chapter teaches (classes, `lambda`, `try`, dictionaries) opens after the festival, as the next step towards writing ordinary Python.
 
 ### Golden quests
 
