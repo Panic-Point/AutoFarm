@@ -1,6 +1,6 @@
 # Game design
 
-How AutoFarm is put together as a game: the chapters and quests, the crops and their rules, the plain-word code players write, and code windows. For how the code is laid out, see [How it works](how-it-works.md). Quests themselves are data in [`js/chapters.js`](../js/chapters.js) (the comment at the top describes every quest field) and [`js/postgame.js`](../js/postgame.js).
+How AutoFarm is put together as a game: the chapters and quests, the crops and their rules, the plain-word code players write, and code windows. For how the code is laid out, see [How it works](how-it-works.md), and for each chapter in turn, the [Chapter guide](chapters.md). Quests themselves are data in [`js/chapters.js`](../js/chapters.js) (the comment at the top describes every quest field) and [`js/postgame.js`](../js/postgame.js).
 
 ## Chapters, quests and stars
 
@@ -20,7 +20,7 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
 - **The title screen** opens with the page, and the **Title** button brings it back. **Continue** picks up the quest, contract or home farm you were on. **New game** asks first when there's anything to lose, then erases stars, the barn, shop items and code windows and starts at quest 1-1. **Replay a chapter** lists the finished chapters: picking one starts its first quest, and Next goes through every quest in it, bonus ones too. Stars are only ever raised, so replaying can't lose any.
 - **Quests** run on their own field, which starts over on every try. Finishing a quest gives 1 star; finishing within a tick (cycle) limit gives 2, and within a tighter one 3. Quests in a chapter open one after another.
 - **Chapters** open when the one before is finished and you have enough stars.
-- **Locked words:** a coding word stays locked until its chapter opens. Using it early stops the run with a note like "Bolt doesn't know repeat yet. You'll learn it in chapter 2!", and the command list greys it out. Anything no chapter teaches (classes, lambdas, try...) opens after the festival.
+- **Locked words:** a coding word stays locked until its chapter opens. Using it early stops the run with a note like "Bolt doesn't know repeat yet. You'll learn it in chapter 2!", and the command list greys it out. Every way of writing an idea unlocks together: `for _ in range(5):` is `repeat` (chapter 2) when the loop doesn't use its variable, and `for i in range(...)` that does is `for ... from ... to` (chapter 6); `==`, `<` and the other comparisons open with `if` in chapter 4; and `in`, `len()`, `reversed()` and list comprehensions open with lists in chapter 8. The [Chapter guide](chapters.md) lists every form. Anything no chapter teaches (classes, lambdas, try...) opens after the festival.
 - **Missing brackets:** a command written without its brackets, like `harvest` on its own, `if is_ripe:` (always yes, so Bolt picks unripe crops) or `move EAST`, stops the run before it starts with a hint like "`is_ripe` needs brackets to check. Write `is_ripe()`." Commands you `define` count too, in any window.
 - **Following along:** while Bolt runs, the line doing each action lights up, in whichever code window it's in, and that window comes to the front. When a run stops on a problem, its line turns red until you change the code.
 - **Test plots:** a quest can have 2 or 3 fields, and the same program runs on each in turn, so counting exact steps stops working and the program has to look around. The run stops at the first plot that fails, with a note like "Your program worked on plot 1, but not on plot 2.", and the star targets count the ticks of every plot together. The quest card shows each plot, and clicking one shows it on the field.
@@ -89,6 +89,8 @@ repeat until position() == (0, 0):
 | `true` / `false` | `True` / `False` |
 | `give back total` | `return total` |
 | `add crop to basket` | `basket.append(crop)` |
+
+Crops are written by name, like directions: `plant(WHEAT)`, `crop_here() == MUSHROOM`, `count(CARROT)` (`count(GRASS)` counts hay). `Crop.WHEAT` works too, and `ground_here()` gives back `GRASS` or `SOIL`.
 
 ## Code windows
 
