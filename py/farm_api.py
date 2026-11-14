@@ -26,6 +26,8 @@ _DIRECTIONS = (NORTH, SOUTH, EAST, WEST)
 
 
 class Crop:
+    """Every crop. Players write the names on their own (WHEAT), like the
+    directions; `Crop.WHEAT` still works for programs that use it."""
     GRASS = "grass"
     WHEAT = "wheat"
     CARROT = "carrot"
@@ -40,6 +42,11 @@ class Crop:
 
 _CROPS = (Crop.GRASS, Crop.WHEAT, Crop.CARROT, Crop.LETTUCE, Crop.STRAWBERRY, Crop.BLUEBERRY,
           Crop.PUMPKIN, Crop.MUSHROOM, Crop.CORN, Crop.SUNFLOWER)
+# Each crop by its own name, like NORTH: plant(WHEAT).
+_CROP_CONSTANTS = {c.upper(): c for c in _CROPS}
+# The two kinds of ground, for ground_here() == SOIL.
+SOIL = "soil"
+
 _ITEMS = ("hay", "wheat", "carrot", "lettuce", "strawberry", "blueberry",
           "pumpkin", "mushroom", "corn", "sunflower")
 
@@ -48,8 +55,9 @@ def _or_list(words):
     return ", ".join(words[:-1]) + " or " + words[-1]
 
 
-_CROP_NAMES = _or_list(["Crop." + c.upper() for c in _CROPS])
-_ITEM_NAMES = _or_list([repr(i) for i in _ITEMS])
+_CROP_NAMES = _or_list([c.upper() for c in _CROPS])
+# Grass gives hay, so count(GRASS) means count("hay").
+_ITEM_NAMES = _or_list([c.upper() for c in _CROPS if c != "grass"] + ['"hay"'])
 
 # Safety limits so a runaway program cannot freeze the game.
 LINE_LIMIT = 300_000
@@ -172,13 +180,13 @@ def ripe_at(x, y):
 
 
 def crop_here():
-    """The crop on this tile (for example Crop.WHEAT), or None."""
+    """The crop on this tile (for example WHEAT), or None."""
     c = _farm.crop_here()
     return c if c else None
 
 
 def ground_here():
-    """'grass' or 'soil'."""
+    """GRASS or SOIL."""
     return _farm.ground_here()
 
 
@@ -200,7 +208,10 @@ def field_size():
 
 
 def count(item):
-    """How many of an item you have, like count('hay') or count('pumpkin')."""
+    """How many of an item you have, like count(WHEAT) or count("hay").
+    count(GRASS) counts hay, since that's what grass gives."""
+    if item == Crop.GRASS:
+        item = "hay"
     if item not in _ITEMS:
         raise ValueError("count() needs " + _ITEM_NAMES + ", got " + repr(item))
     return _farm.count(item)
@@ -219,7 +230,7 @@ def _plot_data(key):
 
 def design():
     """The festival design for this plot: a list of rows, south row first,
-    each a list of crops like Crop.WHEAT."""
+    each a list of crops like WHEAT."""
     rows = _plot_data("design")
     if rows is None:
         raise FarmError("There's no design for this field. design() is for Aunt Juniper's Grand Display.")
@@ -228,7 +239,7 @@ def design():
 
 def order():
     """The mayor's market order for this plot: a list of the crops to bring,
-    like [Crop.CARROT, Crop.SUNFLOWER]. Each crop is in it once."""
+    like [CARROT, SUNFLOWER]. Each crop is in it once."""
     wanted = _plot_data("order")
     if wanted is None:
         raise FarmError("There's no market order on this field. order() is for Mayor Maple's market quests.")
@@ -246,6 +257,7 @@ API = {
     "ripe_at": ripe_at, "crop_here": crop_here, "ground_here": ground_here, "can_move": can_move,
     "position": position, "field_size": field_size, "count": count, "ticks": ticks,
     "NORTH": NORTH, "SOUTH": SOUTH, "EAST": EAST, "WEST": WEST, "Crop": Crop,
+    **_CROP_CONSTANTS, "SOIL": SOIL,
     "print": _print, "design": design, "order": order,
 }
 
