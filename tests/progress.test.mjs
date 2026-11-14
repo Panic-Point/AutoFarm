@@ -5,7 +5,7 @@ import { CHAPTERS, QUESTS } from "../js/chapters.js";
 import { emptyInventory } from "../js/game.js";
 import {
   CROWNS, MIGRATIONS, checkContract, contractBoard, contractText, goldenStars, recordContract, SAVE_VERSION, SHOP, buy, crownsOwned, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, migrate, newProgress, nextQuest, nextStep, wear,
-  noteHarvest, recordResult, seeds, titles, totalStars,
+  noteHarvest, recordResult, seeds, titles, totalStars, unlockAll,
 } from "../js/progress.js";
 
 // Finish a chapter's core quests (bonus quests aren't needed).
@@ -82,6 +82,28 @@ test("practice mode opens everything", () => {
   p.practice = true;
   assert.ok(isQuestOpen(p, "8-7"));
   assert.deepEqual(locked(p), {});
+});
+
+test("unlock everything opens it all but keeps stars and contracts", () => {
+  const p = newProgress();
+  p.stars["1-1"] = 2;
+  unlockAll(p);
+  for (const q of QUESTS) assert.ok(isQuestOpen(p, q.id), q.id);
+  for (const ch of CHAPTERS) assert.ok(isChapterDone(p, ch.n));
+  assert.deepEqual(locked(p), {});
+  assert.equal(fieldSize(p), 10);
+  assert.ok(SHOP.every((item) => p.owned.includes(item.id)));
+  assert.equal(crownsOwned(p).length, CROWNS.length);
+  assert.ok(seeds(p).includes("sunflower"));
+  assert.equal(p.almanac.length, 10);
+  assert.ok(p.festivalSeen);
+  assert.deepEqual(p.stars, { "1-1": 2 });
+  assert.deepEqual(p.contracts, []);
+  assert.equal(contractBoard(p).length, 3);
+  // It survives a save and load.
+  const again = loadProgress(JSON.parse(JSON.stringify(p)));
+  assert.ok(isChapterDone(again, CHAPTERS.length));
+  assert.ok(again.owned.includes("field_10"));
 });
 
 test("the almanac fills in on a crop's first harvest", () => {

@@ -16,7 +16,7 @@ import {
   ALMANAC, CROWNS, HAT_NAMES, SHOP, badges, checkContract, contractBoard, contractText, crownsOwned, goldenStars,
   nextStep, recordContract, saleLockText, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
   isChapterDone, isChapterOpen, isConceptOpen, isForSale, isQuestOpen, loadProgress, locked, looks, markSeen, newProgress,
-  nextQuest, noteHarvest, recordResult, seeds, titles, totalStars, unreadConcepts, wear,
+  nextQuest, noteHarvest, recordResult, seeds, titles, totalStars, unlockAll, unreadConcepts, wear,
 } from "./progress.js";
 
 // Watchdog: if Python goes quiet this long, restart it.
@@ -1247,12 +1247,30 @@ $("open-shop").addEventListener("click", () => {
 $("open-shelf").addEventListener("click", () => {
   renderShelf();
   $("start-over-confirm").hidden = true;
+  $("unlock-all-confirm").hidden = true;
   $("shelf-dialog").showModal();
 });
 $("practice").addEventListener("change", (e) => {
   progress.practice = e.target.checked;
   saveAll();
   renderAll();
+});
+// The unlock-everything button is for testing, so it only shows when the page
+// is opened with ?testing at the end of the address.
+$("unlock-all-row").hidden = !new URLSearchParams(location.search).has("testing");
+$("unlock-all").addEventListener("click", () => ($("unlock-all-confirm").hidden = false));
+$("unlock-all-no").addEventListener("click", () => ($("unlock-all-confirm").hidden = true));
+$("unlock-all-yes").addEventListener("click", () => {
+  if (run) stopRun();
+  unlockAll(progress);
+  // The field grows, and the well and bee hive appear. The barn keeps its produce.
+  home = loadHome(home);
+  if (!mode.quest) farm = home;
+  $("unlock-all-confirm").hidden = true;
+  saveAll();
+  renderShelf();
+  renderAll();
+  log("Everything is unlocked: every chapter, quest, coding word, crop, shop item and Farm Book page.", "note");
 });
 $("start-over").addEventListener("click", () => ($("start-over-confirm").hidden = false));
 $("start-over-no").addEventListener("click", () => ($("start-over-confirm").hidden = true));
