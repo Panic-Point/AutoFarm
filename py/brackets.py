@@ -15,8 +15,8 @@ import re
 _EXAMPLES = {
     "move": "move(EAST)",
     "can_move": "can_move(EAST)",
-    "plant": "plant(Crop.WHEAT)",
-    "count": 'count("wheat")',
+    "plant": "plant(WHEAT)",
+    "count": "count(WHEAT)",
     "print": 'print("hello")',
     "ripe_at": "ripe_at(2, 3)",
 }

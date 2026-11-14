@@ -15,6 +15,7 @@ export const WORDS = {
   nested: { chapter: 3, label: "a loop inside a loop" },
   if: { chapter: 4, label: "if and else" },
   elif: { chapter: 4, label: "else if" },
+  compare: { chapter: 4, label: "comparing with == and <" },
   is_ripe: { chapter: 4, label: "is_ripe" },
   is_rotten: { chapter: 4, label: "is_rotten" },
   crop_here: { chapter: 4, label: "crop_here" },

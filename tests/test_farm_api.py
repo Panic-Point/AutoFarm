@@ -302,8 +302,58 @@ class WordsTest(unittest.TestCase):
         self.assertEqual(self.words("while not is_ripe():\n    wait()\n"), ["is_ripe", "repeat_while", "wait"])
         self.assertEqual(self.words("set n to 1\nchange n by 1\n"), ["variables"])
         self.assertEqual(self.words("n = 1\n"), ["variables"])
-        self.assertEqual(self.words("for x from 1 to 2:\n    pass\nfor i in range(2):\n    pass\n"), ["count_from"])
+        self.assertEqual(self.words("for x from 1 to 2:\n    pass\nfor i in range(1, 3):\n    print(i)\n"), ["count_from"])
         self.assertEqual(self.words("for each c in [1]:\n    pass\n"), ["lists"])
+
+    # Every way of writing one idea, and the word it counts as. All the forms
+    # of a word unlock in the same chapter, so each must count as that word
+    # and nothing else (besides the farm commands it uses).
+    FORMS = {
+        "repeat": [
+            "repeat 3 times:\n    move(EAST)\n",
+            "for 3 times:\n    move(EAST)\n",
+            "for _ in range(3):\n    move(EAST)\n",
+            "for i in range(3):\n    move(EAST)\n",
+        ],
+        "count_from": [
+            "for x from 1 to 3:\n    print(x)\n",
+            "for x in range(1, 4):\n    print(x)\n",
+            "for i in range(3):\n    print(i)\n",
+        ],
+        "lists": [
+            "plan = [WHEAT]\n",
+            "for each crop in [WHEAT, CARROT]:\n    print(crop)\n",
+            "for crop in [WHEAT, CARROT]:\n    print(crop)\n",
+            "print([c for c in [WHEAT]])\n",
+            "print([WHEAT][0])\n",
+            "print(len([WHEAT]))\n",
+            "print(reversed([WHEAT]))\n",
+            "print(WHEAT in [WHEAT])\n",
+            "print(WHEAT not in [WHEAT])\n",
+        ],
+        "compare": [
+            "print(1 == 1)\n", "print(1 != 1)\n", "print(1 < 2)\n", "print(1 >= 2)\n",
+            "print(crop_here() is None)\n",
+        ],
+        "if": ["if true:\n    pass\nelse:\n    pass\n"],
+        "repeat_until": ["repeat until true:\n    pass\n"],
+        "repeat_while": ["repeat while false:\n    pass\n", "while false:\n    pass\n", "while not true:\n    pass\n"],
+        "repeat_forever": ["repeat forever:\n    break\n", "while True:\n    break\n"],
+        "define": ["define go:\n    pass\n", "def go():\n    pass\n"],
+        "add": ["add 1 to basket\n", "basket.append(1)\n"],
+    }
+    # Words a form needs besides its own: the variable it fills or the command
+    # it calls.
+    ALLOWED = {"move", "crop_here", "variables", "lists", "stop"}
+
+    def test_every_form_of_an_idea_is_the_same_word(self):
+        for word, forms in self.FORMS.items():
+            for code in forms:
+                if "basket" in code:
+                    code = "basket = []\n" + code
+                used = set(self.words(code))
+                self.assertIn(word, used, code)
+                self.assertEqual(used - {word} - self.ALLOWED, set(), code)
 
     def test_loop_inside_loop(self):
         self.assertIn("nested", self.words("repeat 2 times:\n    repeat 2 times:\n        wait()\n"))
@@ -349,9 +399,31 @@ class WordsTest(unittest.TestCase):
                          [("plant", ("lettuce",)), ("plant", ("strawberry",)), ("plant", ("blueberry",))])
         status, msg = farm_api.run("print(count('blueberry'))\ncount('apple')\n")
         self.assertEqual(logs, ["0"])
-        self.assertIn("'lettuce', 'strawberry', 'blueberry', 'pumpkin', 'mushroom', 'corn' or 'sunflower'", msg)
+        self.assertIn("LETTUCE, STRAWBERRY, BLUEBERRY, PUMPKIN, MUSHROOM, CORN, SUNFLOWER or \"hay\"", msg)
         status, msg = farm_api.run("plant('apple')\n")
-        self.assertIn("Crop.BLUEBERRY, Crop.PUMPKIN, Crop.MUSHROOM, Crop.CORN or Crop.SUNFLOWER", msg)
+        self.assertIn("plant() needs GRASS, WHEAT, CARROT, LETTUCE, STRAWBERRY, BLUEBERRY, PUMPKIN, MUSHROOM, CORN or SUNFLOWER", msg)
+
+    def test_crops_have_their_own_names(self):
+        # plant(WHEAT) and plant(Crop.WHEAT) are the same, for every crop.
+        for crop in ("grass", "wheat", "carrot", "lettuce", "strawberry", "blueberry", "pumpkin", "corn", "sunflower"):
+            for code in (f"plant({crop.upper()})\n", f"plant(Crop.{crop.upper()})\n"):
+                calls.clear()
+                self.assertEqual(farm_api.run(code), ["ok", "Program finished."], code)
+                self.assertEqual(calls, [("plant", (crop,))], code)
+        self.assertEqual(farm_api.run("print(WHEAT == Crop.WHEAT, MUSHROOM, SOIL)\n")[0], "ok")
+        self.assertEqual(logs[-1], "True mushroom soil")
+        status, msg = farm_api.run("plant(MUSHROOM)\n")
+        self.assertEqual(msg, "Line 1: Mushrooms can't be planted. They only grow by themselves, in the fog.")
+
+    def test_count_takes_crop_names(self):
+        asked = []
+        old, fake.count = fake.count, lambda item: asked.append(item) or 0
+        try:
+            status, msg = farm_api.run("print(count(WHEAT), count(GRASS), count('hay'))\n")
+        finally:
+            fake.count = old
+        self.assertEqual(status, "ok", msg)
+        self.assertEqual(asked, ["wheat", "hay", "hay"])
 
     def test_concept_crops(self):
         calls.clear()
@@ -404,7 +476,7 @@ class WordsTest(unittest.TestCase):
                 "Without them Bolt doesn't look, and gets the wrong answer.",
             "define go:\n    move(EAST)\ngo\n": "Line 3: `go` needs brackets to work. Write `go()` so Bolt knows to do it.",
             "move EAST\n": "Line 1: `move` needs brackets around what goes in it. Write `move(EAST)`.",
-            "plant Crop.WHEAT\n": "Line 1: `plant` needs brackets around what goes in it. Write `plant(Crop.WHEAT)`.",
+            "plant WHEAT\n": "Line 1: `plant` needs brackets around what goes in it. Write `plant(WHEAT)`.",
         }
         for code, expected in cases.items():
             status, msg = farm_api.run(code)

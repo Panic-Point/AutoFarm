@@ -102,7 +102,7 @@ export const GOLDEN = [
     stars: { two: 155, three: 117 },
     hints: [
       "Sweep row by row: east to the fence, step north, west to the fence...",
-      "repeat forever: and break the moment crop_here() == Crop.MUSHROOM.",
+      "repeat forever: and break the moment crop_here() == MUSHROOM.",
       "Then walk west until x is 0, and south until y is 0.",
     ],
   },

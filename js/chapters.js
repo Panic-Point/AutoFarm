@@ -168,7 +168,7 @@ export const CHAPTERS = [
         stars: { two: 10, three: 9 },
         hints: [
           "Do you see something you're doing over and over?",
-          "repeat 4 times: runs the lines under it 4 times. Indent them with 4 spaces.",
+          "repeat 4 times: runs the lines under it 4 times. Indent them with 4 spaces. In Python it's for i in range(4):",
           "repeat 4 times: harvest() and move(EAST), then one more harvest().",
         ],
       },
@@ -213,7 +213,7 @@ export const CHAPTERS = [
         stars: { two: 18, three: 14 },
         hints: [
           "Wheat needs soil. till() turns grass into soil.",
-          "On each tile: till(), then plant(Crop.WHEAT).",
+          "On each tile: till(), then plant(WHEAT).",
           "repeat 4 times: till, plant, move(EAST). Then till and plant once more.",
         ],
       },
@@ -418,7 +418,7 @@ export const CHAPTERS = [
         stars: { two: 10, three: 7 },
         hints: [
           "else: runs when the if was not true.",
-          "if is_ripe(): harvest(), else: plant(Crop.WHEAT)",
+          "if is_ripe(): harvest(), else: plant(WHEAT)",
           "Do that on each tile of the first row, stepping east between them.",
         ],
       },
@@ -578,7 +578,7 @@ export const CHAPTERS = [
         stars: { two: 30, three: 23 },
         hints: [
           "repeat forever: never stops by itself. break jumps out of the loop right away.",
-          "Inside repeat forever: if crop_here() == Crop.MUSHROOM: harvest() and break. Otherwise move(EAST).",
+          "Inside repeat forever: if crop_here() == MUSHROOM: harvest() and break. Otherwise move(EAST).",
           "After the loop, walk west until position() == (0, 0). Walking to the fence first wastes ticks!",
         ],
       },
@@ -594,7 +594,7 @@ export const CHAPTERS = [
         stars: { two: 32, three: 25 },
         hints: [
           "After you pick wheat, the soil remembers. A carrot planted there right away gives 2.",
-          "On each tile: harvest() the wheat, then plant(Crop.CARROT) in the same spot.",
+          "On each tile: harvest() the wheat, then plant(CARROT) in the same spot.",
           "The first carrot you planted is ripe first. Walk back to it, then repeat until is_ripe(): wait() before each harvest.",
         ],
       },
@@ -615,7 +615,7 @@ export const CHAPTERS = [
         hints: [
           "One repeat forever: loop can do the whole search. Check for the mushroom first, every step.",
           "If you can move east, step east. If you can't, walk back west and step north to the next row.",
-          "When crop_here() == Crop.MUSHROOM, harvest() and break.",
+          "When crop_here() == MUSHROOM, harvest() and break.",
         ],
       },
     ],
@@ -716,7 +716,7 @@ export const CHAPTERS = [
         hints: [
           "A bush is ripe again 10 ticks after you pick it. Picking it early loses the whole bush.",
           "Walk back and forth between the bushes. Only harvest when is_ripe() says yes.",
-          "repeat until count(\"blueberry\") >= 14: then harvest if ripe, or walk to the other bush.",
+          "repeat until count(BLUEBERRY) >= 14: then harvest if ripe, or walk to the other bush.",
         ],
       },
       {
@@ -841,7 +841,7 @@ export const CHAPTERS = [
         goal: { pattern: ["?????", "?????", "?????", "?????", "WCWCW"], needs: [["lists"]] },
         stars: { two: 10, three: 9 },
         hints: [
-          "A list is written in square brackets: [Crop.WHEAT, Crop.CARROT].",
+          "A list is written in square brackets: [WHEAT, CARROT].",
           "for each crop in plan: runs once for every crop in the list.",
           "Plant the crop, then move east.",
         ],
@@ -947,7 +947,7 @@ export const CHAPTERS = [
         goal: { gain: { carrot: 1 }, at: [0, 0], needs: [["repeat_until", "repeat_while", "repeat_forever"]] },
         stars: { two: 60, three: 45 },
         hints: [
-          "The carrot moves on every plot, so Bolt has to look: repeat until crop_here() == Crop.CARROT:",
+          "The carrot moves on every plot, so Bolt has to look: repeat until crop_here() == CARROT:",
           "Walk east along a row. When can_move(EAST) is False, step north and walk back west.",
           "To get home, repeat until position() == (0, 0): step west or south.",
         ],

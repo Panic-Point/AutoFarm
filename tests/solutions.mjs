@@ -31,10 +31,10 @@ harvest()`,
   "2-4": `
 repeat 4 times:
     till()
-    plant(Crop.WHEAT)
+    plant(WHEAT)
     move(EAST)
 till()
-plant(Crop.WHEAT)`,
+plant(WHEAT)`,
   "2-5": `
 repeat 4 times:
     harvest()
@@ -53,14 +53,14 @@ harvest()`,
   "3-1": `
 repeat 2 times:
     repeat 3 times:
-        plant(Crop.WHEAT)
+        plant(WHEAT)
         move(EAST)
-    plant(Crop.WHEAT)
+    plant(WHEAT)
     move(NORTH)
     repeat 3 times:
-        plant(Crop.WHEAT)
+        plant(WHEAT)
         move(WEST)
-    plant(Crop.WHEAT)
+    plant(WHEAT)
     move(NORTH)`,
   "3-2": `
 repeat 2 times:
@@ -93,28 +93,28 @@ harvest()`,
   "3-4": `
 repeat 2 times:
     repeat 4 times:
-        plant(Crop.WHEAT)
+        plant(WHEAT)
         move(EAST)
-    plant(Crop.WHEAT)
+    plant(WHEAT)
     move(NORTH)
     repeat 4 times:
-        plant(Crop.WHEAT)
+        plant(WHEAT)
         move(WEST)
-    plant(Crop.WHEAT)
+    plant(WHEAT)
     move(NORTH)
 repeat 4 times:
-    plant(Crop.WHEAT)
+    plant(WHEAT)
     move(EAST)
-plant(Crop.WHEAT)`,
+plant(WHEAT)`,
 
   "3-5": `
-plant(Crop.STRAWBERRY)
+plant(STRAWBERRY)
 move(EAST)
-plant(Crop.STRAWBERRY)
+plant(STRAWBERRY)
 move(NORTH)
-plant(Crop.STRAWBERRY)
+plant(STRAWBERRY)
 move(WEST)
-plant(Crop.STRAWBERRY)
+plant(STRAWBERRY)
 repeat 11 times:
     wait()
 harvest()
@@ -179,9 +179,9 @@ repeat 3 times:
     if is_ripe():
         harvest()
     else:
-        plant(Crop.WHEAT)
+        plant(WHEAT)
     move(EAST)
-plant(Crop.WHEAT)`,
+plant(WHEAT)`,
 
   "4-5": `
 repeat 4 times:
@@ -196,9 +196,9 @@ else if is_rotten():
     till()`,
   "4-6": `
 repeat 4 times:
-    plant(Crop.LETTUCE)
+    plant(LETTUCE)
     move(EAST)
-plant(Crop.LETTUCE)
+plant(LETTUCE)
 repeat 4 times:
     move(WEST)
 repeat 4 times:
@@ -258,7 +258,7 @@ repeat while can_move(SOUTH):
 
   "5-6": `
 repeat forever:
-    if crop_here() == Crop.MUSHROOM:
+    if crop_here() == MUSHROOM:
         harvest()
         break
     move(EAST)
@@ -267,10 +267,10 @@ repeat until position() == (0, 0):
   "5-7": `
 repeat 3 times:
     harvest()
-    plant(Crop.CARROT)
+    plant(CARROT)
     move(EAST)
 harvest()
-plant(Crop.CARROT)
+plant(CARROT)
 repeat 3 times:
     move(WEST)
 repeat 3 times:
@@ -284,7 +284,7 @@ harvest()`,
 
   "5-8": `
 repeat forever:
-    if crop_here() == Crop.MUSHROOM:
+    if crop_here() == MUSHROOM:
         harvest()
         break
     if can_move(EAST):
@@ -301,7 +301,7 @@ repeat until count("hay") == 7:
   "6-2": `
 set planted to 0
 repeat forever:
-    plant(Crop.CARROT)
+    plant(CARROT)
     change planted by 1
     if planted == 10:
         break
@@ -309,9 +309,9 @@ repeat forever:
   "6-3": `
 for row from 1 to 5:
     repeat row - 1 times:
-        plant(Crop.WHEAT)
+        plant(WHEAT)
         move(EAST)
-    plant(Crop.WHEAT)
+    plant(WHEAT)
     repeat row - 1 times:
         move(WEST)
     move(NORTH)`,
@@ -322,7 +322,7 @@ repeat until count("hay") == 3:
     harvest()
 move(NORTH)
 harvest()
-repeat until count("wheat") == 4:
+repeat until count(WHEAT) == 4:
     move(EAST)
     harvest()`,
 
@@ -336,7 +336,7 @@ repeat 5 times:
         move(EAST)`,
   "6-6": `
 set way to EAST
-repeat until count("blueberry") >= 14:
+repeat until count(BLUEBERRY) >= 14:
     if is_ripe():
         harvest()
     else if can_move(way):
@@ -390,9 +390,9 @@ plant_row(WEST)`,
     helper: `
 define plant_row(way):
     repeat 4 times:
-        plant(Crop.WHEAT)
+        plant(WHEAT)
         move(way)
-    plant(Crop.WHEAT)`,
+    plant(WHEAT)`,
   },
   "7-3": `
 define go(way, steps):
@@ -450,7 +450,7 @@ repeat 4 times:
 if is_ripe():
     harvest()`,
   "8-1": `
-set plan to [Crop.WHEAT, Crop.CARROT, Crop.WHEAT, Crop.CARROT, Crop.WHEAT]
+set plan to [WHEAT, CARROT, WHEAT, CARROT, WHEAT]
 for each crop in plan:
     plant(crop)
     if can_move(EAST):
@@ -461,8 +461,8 @@ for each n in [1, 2, 1]:
         move(EAST)
     harvest()`,
   "8-3": `
-set a to [Crop.WHEAT, Crop.CARROT, Crop.WHEAT, Crop.CARROT, Crop.WHEAT]
-set b to [Crop.CARROT, Crop.WHEAT, Crop.CARROT, Crop.WHEAT, Crop.CARROT]
+set a to [WHEAT, CARROT, WHEAT, CARROT, WHEAT]
+set b to [CARROT, WHEAT, CARROT, WHEAT, CARROT]
 
 define plant_row(plan, way):
     for each crop in plan:
@@ -506,7 +506,7 @@ repeat size / 2 times:
         move(NORTH)`,
   "8-6": `
 set way to EAST
-repeat until crop_here() == Crop.CARROT:
+repeat until crop_here() == CARROT:
     if can_move(way):
         move(way)
     else:
@@ -598,7 +598,7 @@ repeat size / 2 times:
   "G-5": `
 set way to EAST
 repeat forever:
-    if crop_here() == Crop.MUSHROOM:
+    if crop_here() == MUSHROOM:
         harvest()
         break
     if can_move(way):
