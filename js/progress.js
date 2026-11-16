@@ -239,6 +239,24 @@ function noteFinished(p) {
   giveCrowns(p);
 }
 
+// For testing: open everything a whole season would. Every chapter counts as
+// finished (so every quest, coding word, Farm Book page, golden quest and the
+// contract board open, and every crown is given), every shop item is owned
+// (so every crop can be planted and the field is as big as it gets), and every
+// almanac page is filled. Farm Book pages are marked read so lessons don't pop
+// up on every quest. Stars and contracts aren't touched, so quests and orders
+// can still be played and earned. Start progress over to undo it.
+export function unlockAll(p) {
+  for (const ch of CHAPTERS) if (!p.finished.includes(ch.n)) p.finished.push(ch.n);
+  p.finished.sort((a, b) => a - b);
+  for (const item of SHOP) if (!p.owned.includes(item.id)) p.owned.push(item.id);
+  giveCrowns(p);
+  for (const page of ALMANAC) if (!p.almanac.includes(page.item)) p.almanac.push(page.item);
+  for (const c of CONCEPTS) markSeen(p, c.id);
+  // The festival scene plays when chapter 8 is first finished by playing it.
+  p.festivalSeen = true;
+}
+
 // ---- Stars and chapters ----
 
 // Stars from chapter quests. Golden quests give golden stars instead, which

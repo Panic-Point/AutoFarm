@@ -35,7 +35,7 @@ The game is 8 chapters at Willow Creek Farm, and each one teaches one coding ide
   - **Golden quests**, one per chapter (G-1 to G-8): an old quest's idea on 2 or 3 test plots, like the first row in three lengths or the Mayor's order on three market days. Each gives a golden star (they don't count toward chapter stars) and a trophy on the shelf.
   - **The contract board:** 12 orders from the neighbors, 3 on the board at a time, filled on the home farm with your own seeds within a tick budget ("20 lettuce and 10 strawberries in 300 ticks"). Each gives a ribbon and opens a thank-you in the shop. Daisy's dinner time has Daisy wait at the barn: Bolt has to visit her at least every 20 ticks while farming. Hazel's strawberry order opens the bee hive, which sits in the middle of the home farm: strawberries and blueberries within 1 tile of it give 1 more.
 - **The home farm** is free play. Everything harvested, in quests too, goes to the barn, and the shop sells field upgrades, seeds, hats for Bolt and farm decorations for produce. Each finished chapter puts new things in the shop and a badge on the shelf. The shelf also has the almanac (a page per crop) and titles.
-- **For grown-ups:** the shelf has a practice mode that opens every chapter and word, and a button to start progress over.
+- **For grown-ups:** the shelf has a practice mode that opens every chapter and word, and a button to start progress over. For testing, opening the game with `?testing` at the end of the address (for example `index.html?testing`) also shows an **Unlock everything** button there: it finishes every chapter and gives every shop item, crop, crown, almanac page and Farm Book page, without changing stars or contracts. Players never see it.
 
 ## Crops
 
