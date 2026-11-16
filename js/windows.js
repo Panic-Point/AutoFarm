@@ -2,6 +2,7 @@
 // resize, rename, hide, delete and run. Other windows can use its commands
 // with `use <name>`.
 import { nameProblem, newWindow, nextName, normalizeName } from "./files.js";
+import { backspaceDedent, lineDedent } from "./indent.js";
 
 const SMALL_SCREEN = window.matchMedia("(max-width: 760px)");
 const MIN_W = 220;
@@ -255,7 +256,25 @@ export class Desk {
 
   editorKeys(e, view) {
     const ta = view.textarea;
-    if (e.key === "Tab" && !e.shiftKey) {
+    const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
+    if (e.key === "Backspace" && plain && !e.shiftKey && ta.selectionStart === ta.selectionEnd) {
+      // In a line's leading spaces, go back a whole indent level at a time.
+      const cut = backspaceDedent(ta.value, ta.selectionStart);
+      if (!cut) return;
+      e.preventDefault();
+      ta.setRangeText("", cut.from, cut.to, "end");
+      ta.dispatchEvent(new Event("input"));
+    } else if (e.key === "Tab" && e.shiftKey && plain) {
+      // Shift+Tab takes one indent level off the cursor's line.
+      e.preventDefault();
+      const cut = lineDedent(ta.value, ta.selectionStart);
+      if (!cut) return;
+      const s = Math.max(cut.from, ta.selectionStart - (cut.to - cut.from));
+      const end = Math.max(cut.from, ta.selectionEnd - (cut.to - cut.from));
+      ta.setRangeText("", cut.from, cut.to);
+      ta.setSelectionRange(s, end);
+      ta.dispatchEvent(new Event("input"));
+    } else if (e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
       ta.setRangeText("    ", ta.selectionStart, ta.selectionEnd, "end");
       view.data.code = ta.value;
