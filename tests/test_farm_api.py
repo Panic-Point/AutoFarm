@@ -43,6 +43,9 @@ logs = []
 fake.log = logs.append
 at = []
 fake.at = lambda name, line: at.append((name, line))
+lines = []
+fake.line = lambda name, line: lines.append((name, line))
+fake.line_limit = lambda: lines.append("limit")
 sys.modules["_farm"] = fake
 
 import farm_api  # noqa: E402
@@ -53,6 +56,7 @@ class FarmApiTest(unittest.TestCase):
         calls.clear()
         logs.clear()
         at.clear()
+        lines.clear()
         state["budget"] = 10**9
 
     def test_loops_and_ifs(self):
@@ -553,6 +557,43 @@ class WordsTest(unittest.TestCase):
     def test_plot_data(self):
         self.assertEqual(farm_api._plot_data("rows"), [1, 2])
         self.assertIsNone(farm_api._plot_data("nothing"))
+
+
+class StepModeTest(unittest.TestCase):
+    """Step mode reports every line the program runs, for the Step button."""
+
+    def setUp(self):
+        calls.clear()
+        logs.clear()
+        lines.clear()
+        state["budget"] = 10**9
+        state["seeds"] = None
+
+    def test_step_mode_reports_every_line(self):
+        code = "set x to 3\nrepeat 2 times:\n    if is_ripe():\n        harvest()\nprint(x)\n"
+        self.assertEqual(farm_api.run(code, step=True)[0], "ok")
+        self.assertEqual(lines, [("main", 1), ("main", 2), ("main", 3), ("main", 4),
+                                 ("main", 2), ("main", 3), ("main", 4),
+                                 # Back to the loop line once more, where it finds it's done.
+                                 ("main", 2), ("main", 5)])
+
+    def test_step_mode_reports_lines_in_other_windows(self):
+        farm_api.run("use helper\ngo()\n", {"helper": "define go:\n    till()\n"}, step=True)
+        self.assertEqual(lines, [("main", 1), ("helper", 1), ("main", 2), ("helper", 2)])
+
+    def test_normal_runs_report_no_lines(self):
+        farm_api.run("set x to 3\nwait()\n")
+        self.assertEqual(lines, [])
+
+    def test_step_mode_stops_reporting_after_limit(self):
+        status, _ = farm_api.run("repeat 10000 times:\n    set x to 1\n", step=True)
+        self.assertEqual(status, "ok")
+        self.assertEqual(len(lines), farm_api.STEP_LINE_LIMIT + 1)
+        self.assertEqual(lines[-1], "limit")
+
+    def test_step_mode_still_stops_runaway_loops(self):
+        status, _ = farm_api.run("while True:\n    pass\n", step=True)
+        self.assertEqual(status, "too_many_steps")
 
 
 if __name__ == "__main__":

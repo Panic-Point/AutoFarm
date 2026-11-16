@@ -4,6 +4,7 @@ import { CAN_SIZE, ITEMS, emptyInventory, newFarmState } from "./game.js";
 import { drawBoltIcon, drawFarm } from "./render.js";
 import { loadWorkspace } from "./files.js";
 import { Desk } from "./windows.js";
+import * as playback from "./playback.js";
 import { CHAPTERS, QUESTS, chapterOf, findQuest } from "./chapters.js";
 import { CONTRACTS, DINNER_EVERY, findContract } from "./postgame.js";
 import {
@@ -32,6 +33,8 @@ const canvas = $("farm");
 const ctx = canvas.getContext("2d");
 const runBtn = $("run");
 const stopBtn = $("stop");
+const stepBtn = $("step");
+const keepGoingBtn = $("keep-going");
 const speedEl = $("speed");
 const consoleEl = $("console");
 
@@ -61,7 +64,7 @@ let workerReady = false;
 let runId = 0;
 
 // Playback state for the current run.
-let run = null; // { id, queue: [], done: null|{status,message}, lastActivity, start, quest }
+let run = null; // { id, queue: [], done: null|{status,message}, lastActivity, start, quest, stepping, wantStep }
 let accumulator = 0;
 let lastFrameTime = 0;
 
@@ -414,7 +417,8 @@ function cancelNextPlot() {
 }
 
 // results: the runs on the plots before this one, for quests with test plots.
-function startRun(name = desk.active, plotIndex = 0, results = []) {
+// stepping: start paused on the first line, to step through it (see playback.js).
+function startRun(name = desk.active, plotIndex = 0, results = [], stepping = false) {
   if (!workerReady || run) return;
   cancelNextPlot();
   if (plotIndex === 0) consoleEl.textContent = "";
@@ -445,12 +449,17 @@ function startRun(name = desk.active, plotIndex = 0, results = []) {
     contract: quest ? null : (currentContract()?.id ?? null),
     name,
     results,
+    at: null,
+    // Step mode: every line is reported, and playback waits for Step presses.
+    lines: stepping,
+    stepping,
+    wantStep: stepping,
   };
   save(STORE_FILES, desk.workspace);
   const program = desk.program(name);
   const maxTicks = quest ? tickLimit(quest) : currentContract()?.ticks;
   const data = quest ? plotData(quest, plot) : {};
-  worker.postMessage({ type: "run", runId, ...program, state: farm, locked: locked(progress), maxTicks, data });
+  worker.postMessage({ type: "run", runId, ...program, state: farm, locked: locked(progress), maxTicks, data, step: stepping });
   desk.setRunning(name);
   desk.showLine(null);
   updateRunButton();
@@ -490,7 +499,7 @@ function stopRun() {
 function completeRun(done) {
   const start = run.start;
   const questId = run.quest;
-  const { name, results, contract } = run;
+  const { name, results, contract, stepping } = run;
   const { status, message, ticks } = done;
   const cls = status === "ok" ? "status" : "error";
   finishRun(`${message} (${ticks} ${ticks === 1 ? "tick" : "ticks"})`, cls);
@@ -539,7 +548,7 @@ function completeRun(done) {
     renderAll(`Plot ${thisPlot + 1} done! Now plot ${thisPlot + 2}...`);
     nextPlotTimer = setTimeout(() => {
       nextPlotTimer = null;
-      startRun(name, thisPlot + 1, all);
+      startRun(name, thisPlot + 1, all, stepping);
     }, 1200);
     return;
   }
@@ -566,27 +575,23 @@ function completeRun(done) {
   else reward();
 }
 
-// Apply queued events: logs immediately, frames at the chosen speed.
-function pump(maxFrames) {
-  let frames = 0;
-  while (run && run.pos < run.queue.length) {
-    const ev = run.queue[run.pos];
-    if (ev.kind === "frame") {
-      if (frames >= maxFrames) break;
-      farm = ev.state;
-      run.at = ev.at;
-      frames += 1;
-    } else {
-      log(ev.text);
-    }
-    run.pos += 1;
+// Apply one played event to the page (see playback.js).
+function applyEvent(ev) {
+  if (ev.kind === "frame") farm = ev.state;
+  else if (ev.kind === "log") log(ev.text);
+  else if (ev.kind === "line_limit" && run.stepping) {
+    log("That's a lot of lines! From here on, Step goes one action at a time.", "note");
   }
-  // Drop consumed events now and then so the queue doesn't grow forever.
-  if (run && run.pos > 2000) {
-    run.queue = run.queue.slice(run.pos);
-    run.pos = 0;
-  }
-  return frames;
+}
+
+// Step mode: play up to the next line, once the player asks for it.
+function stepRun() {
+  if (!run.wantStep) return;
+  const before = farm;
+  if (!playback.step(run, applyEvent)) return; // wait for more events
+  run.wantStep = false;
+  if (farm !== before) render();
+  desk.showLine(run.at, "step");
 }
 
 function loop(now) {
@@ -594,6 +599,7 @@ function loop(now) {
   lastFrameTime = now;
   if (demo) stepDemo(dt);
   if (run) {
+    if (run.stepping) stepRun();
     const speed = Number(speedEl.value);
     let budget;
     if (speed === 0) {
@@ -603,12 +609,13 @@ function loop(now) {
       budget = Math.floor(accumulator);
       accumulator -= budget;
     }
-    const used = pump(budget);
+    const used = run.stepping ? 0 : playback.play(run, budget, applyEvent);
     if (used > 0) {
       render();
       desk.showLine(run.at, "run");
     }
-    if (run && run.done && run.pos >= run.queue.length) {
+    // While stepping, the run ends on the Step press after its last line.
+    if (run && run.done && run.pos >= run.queue.length && (!run.stepping || run.wantStep)) {
       completeRun(run.done);
     } else if (run && !run.done && now - run.lastActivity > WATCHDOG_MS) {
       log("Python stopped responding, so it was restarted.", "error");
@@ -1303,13 +1310,44 @@ const desk = new Desk({
 });
 
 function updateRunButton() {
+  updateStepButtons();
   if (!workerReady) return;
   runBtn.disabled = Boolean(run);
   runBtn.textContent = `Run ${desk.active}`;
 }
 
+function updateStepButtons() {
+  stepBtn.disabled = !workerReady;
+  keepGoingBtn.disabled = !run?.stepping;
+}
+
+// Step: start a run paused on its first line, pause a run that's playing,
+// or move a paused run on by one line.
+function pressStep() {
+  if (!workerReady) return;
+  if (!run) {
+    startRun(desk.active, 0, [], true);
+  } else {
+    run.stepping = true;
+    run.wantStep = true;
+  }
+  updateStepButtons();
+}
+
+// Keep going: back to normal playback at the chosen speed.
+function keepGoing() {
+  if (!run?.stepping) return;
+  run.stepping = false;
+  run.wantStep = false;
+  accumulator = 0;
+  desk.showLine(run.at, "run");
+  updateStepButtons();
+}
+
 runBtn.addEventListener("click", () => startRun());
 stopBtn.addEventListener("click", stopRun);
+stepBtn.addEventListener("click", pressStep);
+keepGoingBtn.addEventListener("click", keepGoing);
 $("reset").addEventListener("click", () => {
   if (run) stopRun();
   consoleEl.textContent = "";

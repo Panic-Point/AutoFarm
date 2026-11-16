@@ -17,7 +17,8 @@ AutoFarm is a static site: plain HTML, CSS and ES modules, with no build step an
 - `js/worker.js` and `js/bridge.js`: a web worker that loads Pyodide and runs the player's program at full speed against a copy of the farm. It streams one snapshot per tick, plus `print()` output, back to the page.
 - `js/files.js`: window names, the starter windows, and loading saved windows.
 - `js/windows.js`: the desk of code windows (move, resize, rename, hide, delete, run).
-- `js/main.js`: the page. It replays the snapshots at the chosen speed, handles Run, Stop and Reset, judges quests, and draws the map, shop, shelf, lesson cards and Farm Book. Lesson and Farm Book examples run in the same worker on their own little field.
+- `js/playback.js`: plays a run's events back, at the chosen speed or one line at a time for the Step button. A run started with Step reports every line it runs (the first 5,000), and after that Step goes one action at a time. Normal runs don't report lines, so they stay fast.
+- `js/main.js`: the page. It replays the snapshots at the chosen speed, handles Run, Stop, Step, Keep going and Reset, judges quests, and draws the map, shop, shelf, lesson cards and Farm Book. Lesson and Farm Book examples run in the same worker on their own little field.
 - `js/render.js`: canvas drawing. The field is drawn with the LPC sprite sheets in `assets/sprites/` (credits and licenses in `assets/CREDITS.md`), with plain shapes for what the sheets don't have, and with plain shapes everywhere until the sheets load.
 
 ## Limits and saving

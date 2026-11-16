@@ -68,6 +68,10 @@ _ITEM_NAMES = _or_list([c.upper() for c in _CROPS if c != "grass"] + ['"hay"'])
 
 # Safety limits so a runaway program cannot freeze the game.
 LINE_LIMIT = 300_000
+# In step mode, how many lines are reported for the player to step through.
+# After that, stepping goes one action at a time, so a long loop can't flood
+# the page with line events.
+STEP_LINE_LIMIT = 5_000
 
 
 class OutOfTicks(BaseException):
@@ -275,6 +279,7 @@ API = {
 # "<file:helper>", so tracebacks and the line counter know which code is theirs.
 _FILE_PREFIX = "<file:"
 _lines = 0
+_step_lines = 0
 
 
 def _filename(name):
@@ -294,10 +299,33 @@ def _local_trace(frame, event, arg):
     return _local_trace
 
 
+def _step_trace(frame, event, arg):
+    """Like _local_trace, but also tells the game about every line, so the
+    player can step through them one at a time. Only used in step mode, so
+    normal runs stay fast."""
+    global _lines, _step_lines
+    if event == "line":
+        _lines += 1
+        if _lines > LINE_LIMIT:
+            raise TooManySteps()
+        if _step_lines < STEP_LINE_LIMIT:
+            _step_lines += 1
+            _farm.line(frame.f_code.co_filename[len(_FILE_PREFIX):-1], frame.f_lineno)
+            if _step_lines == STEP_LINE_LIMIT:
+                _farm.line_limit()
+    return _step_trace
+
+
 def _global_trace(frame, event, arg):
     # Only count lines in the player's own code.
     if _is_player_file(frame.f_code.co_filename):
         return _local_trace
+    return None
+
+
+def _global_step_trace(frame, event, arg):
+    if _is_player_file(frame.f_code.co_filename):
+        return _step_trace
     return None
 
 
@@ -472,24 +500,27 @@ def used_words():
     return list(_used)
 
 
-def run(code, files=None, name="main", locked=None):
+def run(code, files=None, name="main", locked=None, step=False):
     """Run a player's program. `code` is the code window being run and `name`
     is its name. `files` maps the names of the other code windows to their code
     (a dict or a JSON string), so the program can use them. `locked` maps each
     coding word Bolt doesn't know yet to what Bolt says about it (a dict or a
-    JSON string); using one stops the program before it starts.
+    JSON string); using one stops the program before it starts. With `step`,
+    every line the program runs is reported through `_farm.line`, for the
+    first STEP_LINE_LIMIT lines, so the player can step through it.
 
     Returns [status, message] where status is 'ok', 'out_of_ticks',
     'too_many_steps' or 'error'."""
-    global _lines, _used, _error_at
+    global _lines, _step_lines, _used, _error_at
     _lines = 0
+    _step_lines = 0
     _error_at = []
     files = _parse_files(files)
     files[name] = code
     loader = _Loader(files, name, {str(k): str(v) for k, v in _parse_json(locked).items()})
     _used = []
     env = {"__name__": "__main__"}
-    sys.settrace(_global_trace)
+    sys.settrace(_global_step_trace if step else _global_trace)
     try:
         loader.run(name, env)
     except PlayerError as e:
