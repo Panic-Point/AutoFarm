@@ -83,6 +83,38 @@ class FarmApiTest(unittest.TestCase):
         self.assertEqual(farm_api.run(code)[0], "ok")
         self.assertEqual(len(calls), 3)
 
+    def test_up_down_left_right_are_directions(self):
+        for alias, compass in (("UP", "north"), ("DOWN", "south"), ("LEFT", "west"), ("RIGHT", "east")):
+            calls.clear()
+            status, msg = farm_api.run("move(%s)\n" % alias)
+            self.assertEqual(status, "ok", msg)
+            self.assertEqual(calls, [("move", (compass,))])
+
+    def test_can_move_takes_up_down_left_right(self):
+        seen = []
+        old = fake.can_move
+        fake.can_move = lambda d: seen.append(d) or True
+        try:
+            status, msg = farm_api.run(
+                "print(can_move(UP), can_move(DOWN), can_move(LEFT), can_move(RIGHT))\n")
+        finally:
+            fake.can_move = old
+        self.assertEqual(status, "ok", msg)
+        self.assertEqual(seen, ["north", "south", "west", "east"])
+        self.assertEqual(logs, ["True True True True"])
+
+    def test_aliases_match_compass_names(self):
+        status, msg = farm_api.run(
+            "if UP == NORTH and DOWN == SOUTH and LEFT == WEST and RIGHT == EAST:\n    print('same')\n")
+        self.assertEqual(status, "ok", msg)
+        self.assertEqual(logs, ["same"])
+
+    def test_bad_direction_mentions_aliases(self):
+        for cmd in ("move", "can_move"):
+            status, msg = farm_api.run(cmd + "('up')\n")
+            self.assertEqual(status, "error")
+            self.assertIn(cmd + "() needs NORTH, SOUTH, EAST or WEST (or UP, DOWN, LEFT or RIGHT)", msg)
+
     def test_error_reports_line(self):
         status, msg = farm_api.run("move(NORTH)\nplant('potato')\n")
         self.assertEqual(status, "error")
