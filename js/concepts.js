@@ -51,7 +51,7 @@ export const TIPS = {
   ],
 };
 
-const DIRECTIONS = "`NORTH`, `SOUTH`, `EAST` or `WEST`";
+const DIRECTIONS = "`NORTH`, `SOUTH`, `EAST` or `WEST` (or `UP`, `DOWN`, `LEFT` or `RIGHT`)";
 
 export const CONCEPTS = [
   // ---- Getting started ----
@@ -130,8 +130,12 @@ export const CONCEPTS = [
     short: "`move(NORTH)`, `SOUTH`, `EAST` or `WEST` takes one step. Gives back `False` at the edge.",
     does: "Bolt takes one step that way. North is up the field, east is to the right. Takes 1 tick.",
     gives: "`True` if Bolt moved, `False` if the fence was in the way.",
-    forms: ["move(NORTH)", "move(SOUTH)", "move(EAST)", "move(WEST)"],
-    watch: ["Bumping into the fence still uses a tick.", "The direction is in capital letters, inside the brackets."],
+    forms: ["move(NORTH)", "move(SOUTH)", "move(EAST)", "move(WEST)", "move(UP)", "move(DOWN)", "move(LEFT)", "move(RIGHT)"],
+    watch: [
+      "Bumping into the fence still uses a tick.",
+      "The direction is in capital letters, inside the brackets.",
+      "`UP`, `DOWN`, `LEFT` and `RIGHT` are other names for `NORTH`, `SOUTH`, `WEST` and `EAST`. Use whichever you like.",
+    ],
     example: {
       code: "move(NORTH)\nmove(NORTH)\nmove(EAST)\nmove(SOUTH)",
       field: { map: ["...", "...", "..."] },
