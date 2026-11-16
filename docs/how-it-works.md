@@ -18,7 +18,7 @@ AutoFarm is a static site: plain HTML, CSS and ES modules, with no build step an
 - `js/files.js`: window names, the starter windows, and loading saved windows.
 - `js/windows.js`: the desk of code windows (move, resize, rename, hide, delete, run).
 - `js/main.js`: the page. It replays the snapshots at the chosen speed, handles Run, Stop and Reset, judges quests, and draws the map, shop, shelf, lesson cards and Farm Book. Lesson and Farm Book examples run in the same worker on their own little field.
-- `js/render.js`: canvas drawing. The field is drawn as pixel art from the sprite sheets in `assets/sprites/` (see `assets/CREDITS.md`), with plain shapes for crops the pack doesn't have, and as plain shapes everywhere until the sheets load.
+- `js/render.js`: canvas drawing. The field is drawn with the LPC sprite sheets in `assets/sprites/` (credits and licenses in `assets/CREDITS.md`), with plain shapes for what the sheets don't have, and with plain shapes everywhere until the sheets load.
 
 ## Limits and saving
 
