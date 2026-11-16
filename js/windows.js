@@ -49,8 +49,9 @@ export class Desk {
 
   // ---- Marking a line ----
 
-  // Light up one line of code: the line Bolt is running (kind "run"), or the
-  // line a problem stopped on (kind "error"). `at` is { name, line }, or null
+  // Light up one line of code: the line Bolt is running (kind "run"), the
+  // line a stepped-through program is paused on (kind "step"), or the line a
+  // problem stopped on (kind "error"). `at` is { name, line }, or null
   // to clear the mark. The window holding the line comes to the front while
   // it's marked, and scrolls so the line can be seen.
   showLine(at, kind = "run") {
@@ -73,6 +74,7 @@ export class Desk {
       this.bar.querySelector(`.chip[data-name="${CSS.escape(at.name)}"]`)?.classList.add("has-mark");
     }
     view.mark.classList.toggle("error", kind === "error");
+    view.mark.classList.toggle("step", kind === "step");
     this.scrollToLine(view, at.line);
     this.placeMark(view);
   }

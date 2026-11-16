@@ -6,7 +6,9 @@ import { Game, ripeAt } from "./game.js";
 export const MAX_TICKS = 5000;
 
 export class FarmBridge {
-  // onEvents(events) is called with batches of { kind: "frame"|"log", ... }.
+  // onEvents(events) is called with batches of { kind: "frame"|"log", ... },
+  // plus, in step mode, { kind: "line", at } for every line the program runs
+  // and one { kind: "line_limit" } once it stops reporting them.
   constructor(onEvents = () => {}, batch = 100) {
     this.onEvents = onEvents;
     this.batch = batch;
@@ -47,6 +49,15 @@ export class FarmBridge {
       log: (text) => {
         this.events.push({ kind: "log", text: String(text) });
       },
+      // Step mode: the program is about to run this line of the player's code.
+      line: (name, line) => {
+        this.events.push({ kind: "line", at: { name: String(name), line: Number(line) } });
+        if (this.events.length >= this.batch) this.flush();
+      },
+      // Step mode: no more line events after this one (see STEP_LINE_LIMIT).
+      line_limit: () => {
+        this.events.push({ kind: "line_limit" });
+      },
     };
   }
 
@@ -80,7 +91,8 @@ export class FarmBridge {
     }
   }
 
-  // Run a program with farm_api (a Pyodide proxy). msg: { code, files, name, locked }.
+  // Run a program with farm_api (a Pyodide proxy). msg: { code, files, name, locked, step }.
+  // With step, every line it runs is reported as a "line" event.
   // Returns { status, message, ticks, words, errorAt }, where errorAt is
   // { name, line } for the line a problem stopped on, or null.
   run(api, msg) {
@@ -94,6 +106,7 @@ export class FarmBridge {
         JSON.stringify(msg.files ?? {}),
         msg.name ?? "main",
         JSON.stringify(msg.locked ?? {}),
+        Boolean(msg.step),
       );
       [status, message] = result.toJs();
       result.destroy();

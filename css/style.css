@@ -179,6 +179,11 @@ select { font: inherit; padding: 4px; border-radius: 6px; }
   background: color-mix(in srgb, var(--accent) 28%, transparent);
   border-left: 4px solid var(--accent);
 }
+/* Paused here while stepping through the program, one line at a time. */
+.line-mark.step {
+  background: rgba(240, 190, 40, 0.32);
+  border-left: 4px dashed #d9a21b;
+}
 .line-mark.error {
   background: rgba(220, 70, 60, 0.28);
   border-left-color: #e0574c;
