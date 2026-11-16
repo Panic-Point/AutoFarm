@@ -145,7 +145,7 @@ function log(text, cls = "") {
 
 const itemName = (item) => item[0].toUpperCase() + item.slice(1);
 const inventoryHtml = (inv) =>
-  ITEMS.map((item) => `<span>${itemName(item)} <b>${inv[item] ?? 0}</b></span>`).join("");
+  ITEMS.map((item) => `<span${inv[item] ? "" : ' class="zero"'}>${itemName(item)} <b>${inv[item] ?? 0}</b></span>`).join("");
 const starText = (n, of = 3) => "★".repeat(n) + "☆".repeat(Math.max(0, of - n));
 
 function render() {
@@ -297,32 +297,9 @@ function rich(text) {
   });
 }
 
-// The Commands panel, built from the same entries as the Farm Book. Words
-// Bolt hasn't learned yet are greyed out with the chapter that teaches them.
-function renderReference() {
-  const lockedNow = locked(progress);
-  const body = $("reference-body");
-  body.textContent = "";
-  for (const group of GROUPS) {
-    const items = (TIPS[group.id] ?? []).map((tip) => el("li", {}, rich(tip)));
-    for (const c of CONCEPTS.filter((x) => x.group === group.id)) {
-      const isLocked = Boolean(c.word && c.word in lockedNow);
-      items.push(el("li", { class: isLocked ? "locked" : "", "data-word": c.word ?? false },
-        isLocked ? el("span", { class: "lock-note" }, `🔒 Chapter ${WORDS[c.word].chapter}`) : null,
-        rich(c.short),
-        isConceptOpen(progress, c)
-          ? el("button", { type: "button", class: "ref-more", title: `Read about ${c.name} in the Farm Book`,
-            "aria-label": `Read about ${c.name} in the Farm Book`, onclick: () => openBook(c.id) }, "📖")
-          : null));
-    }
-    body.append(el("h3", {}, group.title), el("ul", {}, items));
-  }
-}
-
 function renderAll(bubble) {
   renderHeader();
   renderQuestCard(bubble);
-  renderReference();
   render();
 }
 
@@ -1078,8 +1055,8 @@ $("lesson-btn").addEventListener("click", () => {
 });
 
 // ---- The Farm Book ----
-// Every command, idea and crop the player has opened, grouped like the
-// Commands panel. New pages are marked until they're read.
+// Every command, idea and crop the player has opened, grouped by topic.
+// New pages are marked until they're read.
 
 let bookPage = null;
 
@@ -1111,6 +1088,7 @@ function renderBook() {
       el("button", {
         type: "button",
         class: `book-link${x.id === c.id ? " current" : ""}`,
+        title: x.short.replace(/[`*]/g, ""),
         "aria-current": x.id === c.id ? "page" : false,
         onclick: () => {
           bookPage = x.id;
@@ -1129,6 +1107,8 @@ function bookEntry(c) {
   parts.push(el("h4", {}, c.forms.length > 1 ? "Ways to write it" : "How to write it"),
     el("ul", { class: "forms" }, c.forms.map((f) => el("li", {}, el("pre", {}, el("code", {}, f))))));
   parts.push(el("h4", {}, "Watch out"), el("ul", {}, c.watch.map((w) => el("li", {}, rich(w)))));
+  const tips = TIPS[c.group];
+  if (tips) parts.push(el("h4", {}, "Good to know"), el("ul", {}, tips.map((t) => el("li", {}, rich(t)))));
   if (c.example) parts.push(el("h4", {}, "Example"), exampleView(c));
   parts.push(el("h4", {}, c.crop ? "Where Bolt met it" : "Where Bolt learned it"), learnedLine(c));
   return parts;

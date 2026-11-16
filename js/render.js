@@ -92,7 +92,19 @@ export function drawBoltIcon(ctx, hat) {
 }
 
 // opts: { looks: { hat, scarecrow, fence, dog }, fog, goal: { at, pattern } }
+// Once the sprite sheets have loaded the farm is drawn as pixel art (see
+// drawPixelFarm). Before that, and in Node, it's drawn with plain shapes.
 export function drawFarm(ctx, state, opts = {}) {
+  if (spritesReady()) {
+    drawPixelFarm(ctx, state, opts);
+    return;
+  }
+  // Draw it again as pixel art once the sheets arrive.
+  waiting.set(ctx.canvas, [ctx, state, opts]);
+  drawFlatFarm(ctx, state, opts);
+}
+
+function drawFlatFarm(ctx, state, opts) {
   const { size } = state;
   const W = ctx.canvas.width;
   const cell = W / size;
@@ -111,16 +123,284 @@ export function drawFarm(ctx, state, opts = {}) {
   }
   if (opts.goal) drawGoal(ctx, state, opts.goal, cell);
   if (looks.fence) drawFence(ctx, W);
+  drawExtras(ctx, state, looks, cell, false);
+  if (opts.fog) drawFog(ctx, state, cell);
+}
+
+// The things that sit on top of the field: shop decorations, the hive, Daisy,
+// the dog and Bolt.
+function drawExtras(ctx, state, looks, cell, pixel) {
+  const { size } = state;
   if (looks.scarecrow) drawScarecrow(ctx, (size - 1) * cell, 0, cell);
   if (looks.jackOLantern) drawJackOLantern(ctx, 0, 0, cell);
   if (state.hive) drawHive(ctx, state.hive[0] * cell, (size - 1 - state.hive[1]) * cell, cell);
   if (looks.dinnerBell) drawBell(ctx, 0, (size - 1) * cell, cell);
-  if (state.dinner) drawCow(ctx, 0, (size - 1) * cell, cell, state.dinner.missed > 0);
+  if (state.dinner) {
+    if (pixel) drawCowSprite(ctx, 0, (size - 1) * cell, cell, state.dinner.missed > 0);
+    else drawCow(ctx, 0, (size - 1) * cell, cell, state.dinner.missed > 0);
+  }
   const bx = state.x * cell;
   const by = (size - 1 - state.y) * cell;
   if (looks.dog) drawDog(ctx, bx, by, cell, state.x === size - 1);
   drawBolt(ctx, bx, by, cell, looks.hat);
-  if (opts.fog) drawFog(ctx, state, cell);
+}
+
+// ---- Pixel art ----
+// The sprite sheets come from the free farm asset pack in assets/sprites
+// (credits in assets/CREDITS.md). Its tiles are 16 pixels, drawn at twice
+// that size. The field is drawn small, one tile to TILE pixels, inside a
+// one-tile border of grass, then scaled up to the canvas without smoothing so
+// everything shares the same chunky pixels.
+
+const TILE = 32;
+const SHEETS = {
+  grass: "grass.png",
+  crops: "crops.png",
+  fence: "fence.png",
+  stones: "stones.png",
+  tree: "tree.png",
+  cow: "cow.png",
+  chicken: "chicken.png",
+  chick: "chick.png",
+};
+const sheets = {};
+const waiting = new Map();
+let loaded = 0;
+
+if (typeof Image !== "undefined") {
+  const base = new URL("../assets/sprites/", import.meta.url);
+  for (const [name, file] of Object.entries(SHEETS)) {
+    const img = new Image();
+    img.onload = () => {
+      sheets[name] = img;
+      loaded += 1;
+      if (!spritesReady()) return;
+      for (const [ctx, state, opts] of waiting.values()) drawPixelFarm(ctx, state, opts);
+      waiting.clear();
+    };
+    img.src = new URL(file, base).href;
+  }
+}
+
+function spritesReady() {
+  return loaded === Object.keys(SHEETS).length;
+}
+
+// Which grass tile to use, from which sides have grass too: N, E, S, W.
+// The grass sheet is drawn over bare earth, so its ragged edges show soil.
+const GRASS_TILES = {
+  "0000": [0, 3], "1000": [0, 2], "0010": [0, 0], "1010": [0, 1],
+  "0100": [1, 3], "0001": [3, 3], "0101": [2, 3],
+  "0110": [1, 0], "0111": [2, 0], "0011": [3, 0],
+  "1110": [1, 1], "1111": [2, 1], "1011": [3, 1],
+  "1100": [1, 2], "1101": [2, 2], "1001": [3, 2],
+};
+const GRASS_FULL = [9, 2];
+
+const EARTH = { base: "#a8703f", dark: "#8a5530", light: "#c08752", speck: "#7a4a2a" };
+const WET_EARTH = { base: "#6f4528", dark: "#56331d", light: "#83553a", speck: "#4a2b18" };
+
+// A little reusable canvas the field is drawn on before it's scaled up.
+let buffer = null;
+function bufferOf(size) {
+  if (typeof OffscreenCanvas !== "undefined") {
+    if (!buffer || buffer.width !== size) buffer = new OffscreenCanvas(size, size);
+  } else if (!buffer || buffer.width !== size) {
+    buffer = document.createElement("canvas");
+    buffer.width = buffer.height = size;
+  }
+  return buffer;
+}
+
+// A number from 0 to 1 that's always the same for a tile, for decorations.
+function noise(x, y, salt = 0) {
+  let h = (x * 374761393 + y * 668265263 + salt * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+function sprite(ctx, sheet, sx, sy, sw, sh, dx, dy, scale = 2) {
+  ctx.drawImage(sheets[sheet], sx, sy, sw, sh, Math.round(dx), Math.round(dy), sw * scale, sh * scale);
+}
+
+function drawPixelFarm(ctx, state, opts) {
+  const { size } = state;
+  const looks = opts.looks ?? { hat: "straw_hat" };
+  const side = (size + 2) * TILE;
+  const buf = bufferOf(side);
+  const b = buf.getContext("2d");
+  b.imageSmoothingEnabled = false;
+  b.clearRect(0, 0, side, side);
+
+  // Grid cells include the border, so the field's tile (x, y) is cell (x+1, y+1).
+  const groundAt = (gx, gy) => {
+    const x = gx - 1;
+    const y = gy - 1;
+    if (x < 0 || y < 0 || x >= size || y >= size) return "border";
+    return state.tiles[y * size + x].ground;
+  };
+  const isGrass = (gx, gy) => groundAt(gx, gy) !== "soil";
+
+  for (let gy = 0; gy < size + 2; gy++) {
+    for (let gx = 0; gx < size + 2; gx++) {
+      const px = gx * TILE;
+      const py = (size + 1 - gy) * TILE;
+      const ground = groundAt(gx, gy);
+      const tile = ground === "border" ? null : state.tiles[(gy - 1) * size + gx - 1];
+      drawEarth(b, px, py, tile && tile.wet > 0 ? WET_EARTH : EARTH, gx, gy, ground === "soil");
+      if (ground === "soil") continue;
+      const key = [isGrass(gx, gy + 1), isGrass(gx + 1, gy), isGrass(gx, gy - 1), isGrass(gx - 1, gy)]
+        .map((g) => (g ? "1" : "0")).join("");
+      const [tx, ty] = GRASS_TILES[key];
+      // Each quarter of the tile: where grass is on both sides and the
+      // corner, use solid grass, so soil only peeks through at real corners.
+      for (const [qx, qy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+        const dx = qx ? 1 : -1;
+        const dy = qy ? -1 : 1;
+        const solid = isGrass(gx + dx, gy) && isGrass(gx, gy + dy) && isGrass(gx + dx, gy + dy);
+        const [sx, sy] = solid ? GRASS_FULL : [tx, ty];
+        sprite(b, "grass", sx * 16 + qx * 8, sy * 16 + qy * 8, 8, 8, px + qx * 16, py + qy * 16);
+      }
+    }
+  }
+
+  drawBorder(b, state, looks, side);
+
+  b.save();
+  b.translate(TILE, TILE);
+  const cell = TILE;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const tile = state.tiles[y * size + x];
+      const px = x * cell;
+      const py = (size - 1 - y) * cell;
+      if (tile.ground === "well") drawWell(b, px, py);
+      if (tile.ground === "soil" && tile.last === "wheat" && !tile.crop) drawStubble(b, px, py, cell);
+      if (tile.crop) drawCrop(b, state, x, y, px, py, cell, true);
+    }
+  }
+  if (opts.goal) drawGoal(b, state, opts.goal, cell);
+  drawExtras(b, state, looks, cell, true);
+  if (opts.fog) drawFog(b, state, cell);
+  b.restore();
+
+  // Scale up by a whole number, so every pixel is the same size, to about
+  // twice the canvas's first size. The page shrinks it smoothly to fit, which
+  // stays sharp on high-density screens too.
+  const canvas = ctx.canvas;
+  canvas.dataset.size ??= canvas.width;
+  const W = side * Math.max(1, Math.ceil((2 * canvas.dataset.size) / side));
+  if (canvas.width !== W) canvas.width = canvas.height = W;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, W, W);
+  ctx.drawImage(buf, 0, 0, side, side, 0, 0, W, W);
+}
+
+// Bare earth, or tilled soil with furrows.
+function drawEarth(ctx, px, py, earth, gx, gy, tilled) {
+  ctx.fillStyle = earth.base;
+  ctx.fillRect(px, py, TILE, TILE);
+  if (tilled) {
+    for (const fy of [4, 14, 24]) {
+      ctx.fillStyle = earth.light;
+      ctx.fillRect(px + 2, py + fy, TILE - 4, 2);
+      ctx.fillStyle = earth.dark;
+      ctx.fillRect(px + 2, py + fy + 2, TILE - 4, 3);
+    }
+  }
+  ctx.fillStyle = earth.speck;
+  for (let i = 0; i < 3; i++) {
+    const sx = Math.floor(noise(gx, gy, i) * (TILE - 4)) + 2;
+    const sy = Math.floor(noise(gx, gy, i + 7) * (TILE - 4)) + 2;
+    ctx.fillRect(px + sx, py + sy, 2, 2);
+  }
+}
+
+// Short yellow stalks left where wheat was just picked: carrots love it here.
+function drawStubble(ctx, px, py) {
+  ctx.fillStyle = "#d9c06a";
+  for (const [dx, dy] of [[6, 8], [16, 10], [24, 6], [10, 20], [22, 22]]) {
+    ctx.fillRect(px + dx, py + dy, 2, 4);
+  }
+}
+
+// A round stone well with water in it.
+function drawWell(ctx, px, py) {
+  const ring = (inset, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(px + inset + 4, py + inset, 24 - 2 * inset, 28 - 2 * inset);
+    ctx.fillRect(px + inset, py + inset + 4, 32 - 2 * inset, 20 - 2 * inset);
+    ctx.fillRect(px + inset + 2, py + inset + 2, 28 - 2 * inset, 24 - 2 * inset);
+  };
+  ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.fillRect(px + 4, py + 26, 24, 4);
+  ring(1, "#4d555c");
+  ring(2, COLORS.stoneDark);
+  ring(3, COLORS.stone);
+  ring(8, "#2f5f80");
+  ring(9, COLORS.water);
+  ctx.fillStyle = "#bfe6ff";
+  ctx.fillRect(px + 12, py + 12, 4, 2);
+  ctx.fillRect(px + 18, py + 16, 2, 2);
+  ctx.fillStyle = COLORS.stoneDark;
+  for (const [x, y] of [[8, 6], [20, 5], [5, 15], [26, 14], [10, 24], [21, 25]]) ctx.fillRect(px + x, py + y, 3, 1);
+}
+
+// The grass border round the field: trees in the top corners, stepping stones,
+// a hen and her chick, and the fence once it's bought.
+function drawBorder(ctx, state, looks, side) {
+  const n = state.size + 2;
+  // Stepping stones along the bottom path.
+  const stones = [[2, 1, 12, 12], [18, 2, 12, 12], [34, 3, 12, 12], [49, 2, 7, 7], [55, 8, 7, 6]];
+  for (let gx = 1; gx < n - 1; gx++) {
+    if (noise(gx, 0, 3) < 0.45) continue;
+    const [sx, sy, sw, sh] = stones[Math.floor(noise(gx, 0, 4) * stones.length)];
+    sprite(ctx, "stones", sx, sy, sw + 1, sh + 1, gx * TILE + (TILE - sw * 2) / 2, side - TILE + (TILE - sh * 2) / 2 + 2);
+  }
+  // Little flowers on the side borders.
+  for (let gy = 1; gy < n - 1; gy++) {
+    for (const gx of [0, n - 1]) {
+      if (noise(gx, gy, 5) < 0.5) continue;
+      const fx = gx * TILE + 8 + Math.floor(noise(gx, gy, 6) * 14);
+      const fy = gy * TILE + 6 + Math.floor(noise(gx, gy, 8) * 18);
+      ctx.fillStyle = noise(gx, gy, 9) < 0.5 ? "#f7f3e8" : "#f2c94c";
+      ctx.fillRect(fx, fy, 2, 2);
+      ctx.fillRect(fx + 4, fy + 2, 2, 2);
+      ctx.fillRect(fx + 1, fy + 5, 2, 2);
+    }
+  }
+  if (looks.fence) drawFenceSprites(ctx, side);
+  // A hen and her chick wander the bottom border; where depends on the field.
+  const hx = TILE * (1 + Math.floor(noise(state.size, 1, 2) * (n - 3)));
+  sprite(ctx, "chicken", 0, 0, 16, 16, hx + 6, side - TILE + 10, 1);
+  sprite(ctx, "chick", 0, 0, 16, 16, hx + 20, side - TILE + 12, 1);
+  // Maple trees peek in from the top corners.
+  sprite(ctx, "tree", 96, 0, 32, 48, -TILE / 2 - 8, -64);
+  sprite(ctx, "tree", 96, 0, 32, 48, side - TILE - 24, -64);
+}
+
+// The wooden fence from the shop, round the outside of the border.
+function drawFenceSprites(ctx, side) {
+  const n = side / TILE;
+  // A post with rails to its right is 16 pixels; the last post has no rails.
+  for (const y of [-6, side - TILE + 2]) {
+    for (let i = 0; i < n; i++) {
+      const last = i === n - 1;
+      sprite(ctx, "fence", 5, 32, last ? 6 : 16, 16, 4 + i * TILE, y);
+    }
+  }
+  for (const x of [4, side - 16]) {
+    for (let y = 20; y < side - TILE + 4; y += TILE) sprite(ctx, "fence", 5, 14, 6, 16, x, y);
+  }
+}
+
+// Daisy, waiting at the barn for dinner. She cries once she misses a meal.
+function drawCowSprite(ctx, px, py, cell, sad) {
+  sprite(ctx, "cow", 0, 8, 32, 24, px - 2, py + cell - 26, 1);
+  if (sad) {
+    ctx.fillStyle = "#4aa3df";
+    ctx.fillRect(px + 6, py + cell - 12, 2, 3);
+  }
 }
 
 // A striped bee hive in the top right of its tile, with a bee beside it.
@@ -372,7 +652,8 @@ function drawGround(ctx, tile, px, py, cell) {
 }
 
 // tx, ty: the tile's place on the field, so berries can count their friends.
-function drawCrop(ctx, state, tx, ty, px, py, cell) {
+// pixel: draw with the sprite sheets where the pack has the crop.
+function drawCrop(ctx, state, tx, ty, px, py, cell, pixel = false) {
   const tile = state.tiles[ty * state.size + tx];
   const info = CROPS[tile.crop];
   const growth = Math.min(1, tile.age / info.growTicks);
@@ -381,7 +662,13 @@ function drawCrop(ctx, state, tx, ty, px, py, cell) {
   const base = py + cell * 0.82;
   const h = cell * (0.15 + 0.5 * growth);
 
-  if (ripe && tile.crop !== "grass") {
+  if (pixel && tile.crop === "grass") {
+    drawGrassTufts(ctx, px, py, growth, ripe);
+    return;
+  }
+  if (pixel && ripe) {
+    drawRipeGlow(ctx, px, py);
+  } else if (ripe && tile.crop !== "grass") {
     ctx.fillStyle = COLORS.ripe;
     ctx.globalAlpha = 0.35;
     ctx.beginPath();
@@ -439,7 +726,8 @@ function drawCrop(ctx, state, tx, ty, px, py, cell) {
   } else if (tile.crop === "strawberry") {
     // A ripe plant shows one berry for each strawberry it will give.
     const berries = ripe ? harvestYield(state, tx, ty).strawberry : growth > 0.5 ? 1 : 0;
-    drawStrawberry(ctx, cx, base, cell, growth, ripe, berries);
+    if (pixel) drawStrawberrySprite(ctx, px, py, growth, ripe, berries);
+    else drawStrawberry(ctx, cx, base, cell, growth, ripe, berries);
   } else if (tile.crop === "blueberry") {
     // The bush grows a little bigger each time it's picked.
     const berries = ripe ? harvestYield(state, tx, ty).blueberry : growth > 0.4 ? 3 : 0;
@@ -566,6 +854,53 @@ function heart(ctx, x, y, s) {
   ctx.bezierCurveTo(x - s * 1.4, y + s * 0.1, x - s * 0.9, y - s * 1.1, x, y - s * 0.35);
   ctx.bezierCurveTo(x + s * 0.9, y - s * 1.1, x + s * 1.4, y + s * 0.1, x, y + s);
   ctx.fill();
+}
+
+// A pale patch under a ripe crop and a twinkle beside it, so ripe crops are
+// easy to spot.
+function drawRipeGlow(ctx, px, py) {
+  ctx.fillStyle = "rgba(255, 244, 184, 0.3)";
+  ctx.fillRect(px + 7, py + 3, 18, 26);
+  ctx.fillRect(px + 3, py + 7, 26, 18);
+  ctx.fillRect(px + 5, py + 5, 22, 22);
+  ctx.fillStyle = "#fffbe0";
+  ctx.fillRect(px + 25, py + 2, 2, 6);
+  ctx.fillRect(px + 23, py + 4, 6, 2);
+}
+
+// Grass grows in tufts. Ripe grass turns to golden hay.
+function drawGrassTufts(ctx, px, py, growth, ripe) {
+  const h = 2 + Math.round(5 * growth);
+  const [dark, light] = ripe ? ["#b89b3c", "#e6d27a"] : ["#3f7d3a", "#5f9e4a"];
+  for (const [dx, dy] of [[7, 12], [19, 9], [12, 24], [24, 22]]) {
+    const by = py + dy + 4;
+    ctx.fillStyle = dark;
+    ctx.fillRect(px + dx, by - h, 2, h);
+    ctx.fillRect(px + dx + 4, by - h + 1, 2, h - 1);
+    ctx.fillStyle = light;
+    ctx.fillRect(px + dx + 2, by - h - 2, 2, h + 2);
+    ctx.fillRect(px + dx - 1, by - 1, 8, 1);
+  }
+}
+
+// The pack's strawberry plant, one picture per stage, with a little berry in
+// front for each strawberry a ripe plant will give.
+function drawStrawberrySprite(ctx, px, py, growth, ripe, berries) {
+  const stage = ripe ? 5 : Math.min(4, Math.floor(growth * 5));
+  sprite(ctx, "crops", stage * 16, 16, 16, 16, px, py - 2);
+  if (!ripe) return;
+  const spots = [[13, 25], [5, 24], [21, 24], [9, 28], [17, 28]];
+  for (let i = 0; i < Math.min(berries, spots.length); i++) {
+    const [x, y] = spots[i];
+    ctx.fillStyle = "#7a1020";
+    ctx.fillRect(px + x - 1, py + y - 1, 7, 6);
+    ctx.fillStyle = COLORS.berryRed;
+    ctx.fillRect(px + x, py + y, 5, 4);
+    ctx.fillStyle = COLORS.berrySeed;
+    ctx.fillRect(px + x + 1, py + y + 1, 1, 1);
+    ctx.fillStyle = COLORS.berryLeaf;
+    ctx.fillRect(px + x + 1, py + y - 2, 3, 2);
+  }
 }
 
 function drawStrawberry(ctx, cx, base, cell, growth, ripe, berries) {
