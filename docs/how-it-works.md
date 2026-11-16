@@ -10,7 +10,7 @@ AutoFarm is a static site: plain HTML, CSS and ES modules, with no build step an
 - `js/quests.js`: builds a quest's field and checks its goal and stars.
 - `js/progress.js`: stars, open chapters, the shop, badges, almanac and titles.
 - `js/words.js`: the coding words and which chapter teaches each.
-- `js/concepts.js`: the Farm Book, as data: one entry per command, idea and crop, with its example program. The lesson cards, the Farm Book and the Commands panel are all built from it.
+- `js/concepts.js`: the Farm Book, as data: one entry per command, idea and crop, with its example program. The lesson cards and the Farm Book are both built from it.
 - `py/words.py`: finds the coding words a program uses, for the locks.
 - `py/plain_words.py`: turns plain-word lines like `repeat 5 times:` into Python.
 - `py/farm_api.py`: the Python commands players use, plus the sandbox. It only lets programs import the player's own code windows, and blocks dunder names and file or eval builtins, and limits runaway loops.
@@ -19,7 +19,7 @@ AutoFarm is a static site: plain HTML, CSS and ES modules, with no build step an
 - `js/windows.js`: the desk of code windows (move, resize, rename, hide, delete, run).
 - `js/playback.js`: plays a run's events back, at the chosen speed or one line at a time for the Step button. A run started with Step reports every line it runs (the first 5,000), and after that Step goes one action at a time. Normal runs don't report lines, so they stay fast.
 - `js/main.js`: the page. It replays the snapshots at the chosen speed, handles Run, Stop, Step, Keep going and Reset, judges quests, and draws the map, shop, shelf, lesson cards and Farm Book. Lesson and Farm Book examples run in the same worker on their own little field.
-- `js/render.js`: canvas drawing.
+- `js/render.js`: canvas drawing. The field is drawn with the LPC sprite sheets in `assets/sprites/` (credits and licenses in `assets/CREDITS.md`), with plain shapes for what the sheets don't have, and with plain shapes everywhere until the sheets load.
 
 ## Limits and saving
 

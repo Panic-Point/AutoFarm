@@ -1,8 +1,7 @@
 // Every command and coding idea Bolt learns, as plain data. One entry feeds
-// three places:
+// two places:
 //   - the lesson card shown before the quest that first needs it (`learned`),
 //   - the Farm Book, the encyclopedia of what the player has unlocked,
-//   - the Commands panel, which shows each entry's `short` line.
 //
 // An entry:
 //   id       a name for the entry (saved in progress.seen once it's been read)
@@ -12,7 +11,7 @@
 //   also     other words the entry covers, which open in the same chapter
 //   learned  the quest that first needs it: its lesson shows before that quest,
 //            and the book links back to it. null if no quest needs it.
-//   short    one line for the Commands panel. `code` is shown as code.
+//   short    one line summary, shown when hovering its name in the Farm Book
 //   does     what it does, in a sentence or two
 //   gives    what it gives back, or null
 //   forms    every way of writing it (plain words and Python unlock together)
@@ -40,7 +39,8 @@ export const GROUPS = [
   { id: "crops", title: "Crops" },
 ];
 
-// Lines in the Commands panel that aren't entries of their own.
+// Tips that aren't entries of their own, shown on every Farm Book page in
+// their group under "Good to know".
 export const TIPS = {
   basics: ["Each action takes one tick. Crops grow every tick. Looking around is free."],
   loops: ["Lines inside a loop, choice or command are indented by 4 spaces."],
@@ -51,7 +51,7 @@ export const TIPS = {
   ],
 };
 
-const DIRECTIONS = "`NORTH`, `SOUTH`, `EAST` or `WEST`";
+const DIRECTIONS = "`NORTH`, `SOUTH`, `EAST` or `WEST` (or `UP`, `DOWN`, `LEFT` or `RIGHT`)";
 
 export const CONCEPTS = [
   // ---- Getting started ----
@@ -130,8 +130,12 @@ export const CONCEPTS = [
     short: "`move(NORTH)`, `SOUTH`, `EAST` or `WEST` takes one step. Gives back `False` at the edge.",
     does: "Bolt takes one step that way. North is up the field, east is to the right. Takes 1 tick.",
     gives: "`True` if Bolt moved, `False` if the fence was in the way.",
-    forms: ["move(NORTH)", "move(SOUTH)", "move(EAST)", "move(WEST)"],
-    watch: ["Bumping into the fence still uses a tick.", "The direction is in capital letters, inside the brackets."],
+    forms: ["move(NORTH)", "move(SOUTH)", "move(EAST)", "move(WEST)", "move(UP)", "move(DOWN)", "move(LEFT)", "move(RIGHT)"],
+    watch: [
+      "Bumping into the fence still uses a tick.",
+      "The direction is in capital letters, inside the brackets.",
+      "`UP`, `DOWN`, `LEFT` and `RIGHT` are other names for `NORTH`, `SOUTH`, `WEST` and `EAST`. Use whichever you like.",
+    ],
     example: {
       code: "move(NORTH)\nmove(NORTH)\nmove(EAST)\nmove(SOUTH)",
       field: { map: ["...", "...", "..."] },

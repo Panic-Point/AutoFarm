@@ -87,12 +87,36 @@ Object.assign(HATS, {
 export function drawBoltIcon(ctx, hat) {
   const W = ctx.canvas.width;
   ctx.clearRect(0, 0, W, W);
+  if (spritesReady()) {
+    // Bolt's sprite and hat at tile size, scaled up by a whole number.
+    const icon = document.createElement("canvas");
+    icon.width = icon.height = TILE;
+    const g = icon.getContext("2d");
+    drawBoltSprite(g, 0, 2, TILE, hat, false);
+    const scale = Math.max(1, Math.floor(W / TILE));
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(icon, (W - TILE * scale) / 2, (W - TILE * scale) / 2, TILE * scale, TILE * scale);
+    return;
+  }
+  waitingIcons.set(ctx.canvas, [ctx, hat]);
   const cell = W * 1.9;
   drawBolt(ctx, (W - cell) / 2, (W - cell) / 2 + W * 0.12, cell, hat);
 }
 
 // opts: { looks: { hat, scarecrow, fence, dog }, fog, goal: { at, pattern } }
+// Once the sprite sheets have loaded the farm is drawn as pixel art (see
+// drawPixelFarm). Before that, and in Node, it's drawn with plain shapes.
 export function drawFarm(ctx, state, opts = {}) {
+  if (spritesReady()) {
+    drawPixelFarm(ctx, state, opts);
+    return;
+  }
+  // Draw it again as pixel art once the sheets arrive.
+  waiting.set(ctx.canvas, [ctx, state, opts]);
+  drawFlatFarm(ctx, state, opts);
+}
+
+function drawFlatFarm(ctx, state, opts) {
   const { size } = state;
   const W = ctx.canvas.width;
   const cell = W / size;
@@ -110,17 +134,364 @@ export function drawFarm(ctx, state, opts = {}) {
     }
   }
   if (opts.goal) drawGoal(ctx, state, opts.goal, cell);
-  if (looks.fence) drawFence(ctx, W);
-  if (looks.scarecrow) drawScarecrow(ctx, (size - 1) * cell, 0, cell);
-  if (looks.jackOLantern) drawJackOLantern(ctx, 0, 0, cell);
+  drawExtras(ctx, state, looks, cell, false);
+  if (opts.fog) drawFog(ctx, state, cell);
+}
+
+// The things that sit on top of the field: the hive, Daisy and Bolt. Shop
+// decorations aren't drawn, to keep the field clear.
+function drawExtras(ctx, state, looks, cell, pixel) {
+  const { size } = state;
   if (state.hive) drawHive(ctx, state.hive[0] * cell, (size - 1 - state.hive[1]) * cell, cell);
-  if (looks.dinnerBell) drawBell(ctx, 0, (size - 1) * cell, cell);
-  if (state.dinner) drawCow(ctx, 0, (size - 1) * cell, cell, state.dinner.missed > 0);
+  if (state.dinner) {
+    if (pixel) drawCowSprite(ctx, 0, (size - 1) * cell, cell, state.dinner.missed > 0);
+    else drawCow(ctx, 0, (size - 1) * cell, cell, state.dinner.missed > 0);
+  }
   const bx = state.x * cell;
   const by = (size - 1 - state.y) * cell;
-  if (looks.dog) drawDog(ctx, bx, by, cell, state.x === size - 1);
-  drawBolt(ctx, bx, by, cell, looks.hat);
-  if (opts.fog) drawFog(ctx, state, cell);
+  if (pixel) drawBoltSprite(ctx, bx, by, cell, looks.hat);
+  else drawBolt(ctx, bx, by, cell, looks.hat);
+}
+
+// ---- Pixel art ----
+// The sprite sheets are Liberated Pixel Cup (LPC) art from OpenGameArt, in
+// assets/sprites (credits and licenses in assets/CREDITS.md). Its tiles are
+// 32 pixels. The field is drawn small, one tile to TILE pixels, inside a
+// grass border, then scaled up to the canvas without smoothing so
+// every pixel stays crisp.
+
+const TILE = 32;
+const SHEETS = {
+  grass: "grass.png",
+  soil: "soil.png",
+  wheat: "wheat.png",
+  youngWheat: "young-wheat.png",
+  tallGrass: "tall-grass.png",
+  crops: "crops.png",
+  cow: "cow.png",
+  bolt: "bolt.png",
+};
+const sheets = {};
+const waiting = new Map();
+const waitingIcons = new Map();
+let loaded = 0;
+
+if (typeof Image !== "undefined") {
+  const base = new URL("../assets/sprites/", import.meta.url);
+  for (const [name, file] of Object.entries(SHEETS)) {
+    const img = new Image();
+    img.onload = () => {
+      sheets[name] = img;
+      loaded += 1;
+      if (!spritesReady()) return;
+      makeRecolors();
+      for (const [ctx, state, opts] of waiting.values()) drawPixelFarm(ctx, state, opts);
+      waiting.clear();
+      for (const [ctx, hat] of waitingIcons.values()) drawBoltIcon(ctx, hat);
+      waitingIcons.clear();
+    };
+    img.src = new URL(file, base).href;
+  }
+}
+
+function spritesReady() {
+  return loaded === Object.keys(SHEETS).length;
+}
+
+// A copy of a sheet with every pixel passed through `fn(r, g, b)`.
+function recolor(img, fn) {
+  const c = document.createElement("canvas");
+  c.width = img.width;
+  c.height = img.height;
+  const g = c.getContext("2d");
+  g.drawImage(img, 0, 0);
+  const data = g.getImageData(0, 0, c.width, c.height);
+  const d = data.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    [d[i], d[i + 1], d[i + 2]] = fn(d[i], d[i + 1], d[i + 2]);
+  }
+  g.putImageData(data, 0, 0);
+  return c;
+}
+
+// Watered soil (only the brown earth darkens, not the grass round it), and
+// brown wilted or rotten crops.
+function makeRecolors() {
+  sheets.wetSoil = recolor(sheets.soil, (r, g, b) => (r > g ? [r * 0.68, g * 0.64, b * 0.66] : [r, g, b]));
+  sheets.deadCrops = recolor(sheets.crops, (r, g, b) => {
+    const l = 0.3 * r + 0.55 * g + 0.15 * b;
+    return [l * 0.95 + 25, l * 0.78 + 10, l * 0.5];
+  });
+}
+
+// Crops from the LPC crops sheet: its column, and whether it's in the top or
+// bottom half. Each crop has four growth stages, 64 pixels tall each.
+const CROP_SPRITES = {
+  carrot: [6, 0],
+  pumpkin: [27, 0],
+  corn: [31, 0],
+  lettuce: [2, 320],
+  strawberry: [20, 320],
+  blueberry: [23, 320],
+};
+
+// A little reusable canvas the field is drawn on before it's scaled up.
+let buffer = null;
+function bufferOf(width, height) {
+  if (!buffer || buffer.width !== width || buffer.height !== height) {
+    buffer = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(width, height) : document.createElement("canvas");
+    buffer.width = width;
+    buffer.height = height;
+  }
+  return buffer;
+}
+
+// A number from 0 to 1 that's always the same for a tile, for decorations.
+function noise(x, y, salt = 0) {
+  let h = (x * 374761393 + y * 668265263 + salt * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+function sprite(ctx, sheet, sx, sy, sw, sh, dx, dy) {
+  ctx.drawImage(sheets[sheet], sx, sy, sw, sh, Math.round(dx), Math.round(dy), sw, sh);
+}
+
+// A rounded square a little inside the tile, for each tile's own bed or
+// patch, so there's a strip of grass between neighbours.
+function insetPath(ctx, px, py) {
+  ctx.beginPath();
+  ctx.moveTo(px + 4, py + 1);
+  ctx.lineTo(px + TILE - 4, py + 1);
+  ctx.lineTo(px + TILE - 1, py + 4);
+  ctx.lineTo(px + TILE - 1, py + TILE - 4);
+  ctx.lineTo(px + TILE - 4, py + TILE - 1);
+  ctx.lineTo(px + 4, py + TILE - 1);
+  ctx.lineTo(px + 1, py + TILE - 4);
+  ctx.lineTo(px + 1, py + 4);
+  ctx.closePath();
+}
+
+// A bed of tilled soil: the soil sheet's plain furrows (row 5 has three), cut
+// to the rounded square, with a darker rim.
+function drawBed(ctx, sheet, px, py, variant) {
+  ctx.save();
+  insetPath(ctx, px, py);
+  ctx.clip();
+  sprite(ctx, sheet, variant * TILE, 5 * TILE, TILE, TILE, px, py);
+  ctx.restore();
+  ctx.strokeStyle = "rgba(60, 34, 18, 0.55)";
+  ctx.lineWidth = 1;
+  ctx.save();
+  ctx.translate(0.5, 0.5);
+  insetPath(ctx, px, py);
+  ctx.restore();
+  ctx.stroke();
+}
+
+// A patch of tall wheat or grass: the middle of the field from its sheet, with
+// the front row of stalks along the bottom.
+function drawPatch(ctx, sheet, px, py) {
+  ctx.save();
+  insetPath(ctx, px, py);
+  ctx.clip();
+  sprite(ctx, sheet, TILE, 3 * TILE, TILE, TILE, px, py);
+  sprite(ctx, sheet, TILE, 4 * TILE + 18, TILE, 11, px, py + TILE - 12);
+  ctx.restore();
+}
+
+function drawPixelFarm(ctx, state, opts) {
+  const { size } = state;
+  const looks = opts.looks ?? { hat: "straw_hat" };
+  // Half a tile of grass round the field, or a whole tile when Daisy needs
+  // room to stand beside the barn tile.
+  const margin = state.dinner ? TILE : TILE / 2;
+  const side = size * TILE + 2 * margin;
+  const buf = bufferOf(side, side);
+  const b = buf.getContext("2d");
+  b.imageSmoothingEnabled = false;
+  b.clearRect(0, 0, side, side);
+
+  const tileAt = (x, y) => (x < 0 || y < 0 || x >= size || y >= size ? null : state.tiles[y * size + x]);
+  const growthOf = (t) => Math.min(1, t.age / CROPS[t.crop].growTicks);
+
+  // Grass everywhere, with a few light blades.
+  for (let gy = 0; gy * TILE < side; gy++) {
+    for (let gx = 0; gx * TILE < side; gx++) {
+      const px = gx * TILE;
+      const py = gy * TILE;
+      sprite(b, "grass", 0, 0, TILE, TILE, px, py);
+      b.fillStyle = "#64a42c";
+      for (let i = 0; i < 4; i++) {
+        const bx = px + 2 + Math.floor(noise(gx, gy, i) * 27);
+        const by = py + 2 + Math.floor(noise(gx, gy, i + 9) * 27);
+        b.fillRect(bx, by, 1, 3);
+        b.fillRect(bx + 2, by + 1, 1, 2);
+      }
+    }
+  }
+
+  b.save();
+  b.translate(margin, margin);
+  const screenY = (y) => (size - 1 - y) * TILE;
+
+  // Tilled soil, joined up into beds.
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const tile = tileAt(x, y);
+      if (tile.ground !== "soil") continue;
+      // Each tile is its own bed, so the tiles are easy to tell apart.
+      drawBed(b, tile.wet > 0 ? "wetSoil" : "soil", x * TILE, screenY(y), Math.floor(noise(x, y, 3) * 3));
+      if (tile.last === "wheat" && !tile.crop) drawStubble(b, x * TILE, screenY(y));
+    }
+  }
+
+  // Crops, from the back row to the front, since tall ones reach up into the
+  // tile behind them.
+  for (let y = size - 1; y >= 0; y--) {
+    for (let x = 0; x < size; x++) {
+      const tile = tileAt(x, y);
+      const px = x * TILE;
+      const py = screenY(y);
+      if (tile.ground === "well") drawWell(b, px, py);
+      if (!tile.crop) continue;
+      const ripe = isTileRipe(tile);
+      // Wheat and grass: sprouts, then short and tall growth, then a ripe
+      // patch. Each is kept a little inside its tile, so a field of them
+      // still shows where one tile ends and the next begins.
+      if (tile.crop === "wheat" || tile.crop === "grass") {
+        const young = tile.crop === "wheat" ? "youngWheat" : "tallGrass";
+        const g = growthOf(tile);
+        if (ripe) {
+          drawPatch(b, tile.crop === "wheat" ? "wheat" : "tallGrass", px, py);
+        } else {
+          b.save();
+          b.beginPath();
+          b.rect(px + 3, py + 3, TILE - 6, TILE - 6);
+          b.clip();
+          sprite(b, young, (g < 0.25 ? 0 : g < 0.5 ? 1 : 2) * TILE, 5 * TILE, TILE, TILE, px, py);
+          b.restore();
+        }
+        continue;
+      }
+      const spot = CROP_SPRITES[tile.crop];
+      if (!spot) {
+        // No sprite for this one: draw it with shapes at the same size.
+        drawCrop(b, state, x, y, px, py, TILE, false);
+        if (ripe) drawTwinkle(b, px, py);
+        continue;
+      }
+      const growth = growthOf(tile);
+      const step = ripe ? 3 : Math.min(2, Math.floor(growth * 3));
+      const dead = tile.wilted || tile.rotten;
+      sprite(b, dead ? "deadCrops" : "crops", spot[0] * TILE, spot[1] + step * 64, TILE, 64, px, py - TILE + 2);
+      if (tile.crop === "strawberry" && ripe) drawBerryCount(b, px, py, harvestYield(state, x, y).strawberry);
+      if (ripe && !dead) drawTwinkle(b, px, py);
+    }
+  }
+  b.restore();
+
+
+  b.save();
+  b.translate(margin, margin);
+  if (opts.goal) drawGoal(b, state, opts.goal, TILE);
+  drawExtras(b, state, looks, TILE, true);
+  if (opts.fog) drawFog(b, state, TILE);
+  b.restore();
+
+  // Scale up by a whole number, so every pixel is the same size, to about
+  // twice the canvas's first size. The page shrinks it smoothly to fit, which
+  // stays sharp on high-density screens too.
+  const canvas = ctx.canvas;
+  canvas.dataset.size ??= canvas.width;
+  const W = side * Math.max(1, Math.ceil((2 * canvas.dataset.size) / side));
+  if (canvas.width !== W) canvas.width = canvas.height = W;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, W, W);
+  ctx.drawImage(buf, 0, 0, side, side, 0, 0, W, W);
+}
+
+// A small sparkle in the corner of a ripe crop, so ripe crops are easy to spot.
+function drawTwinkle(ctx, px, py) {
+  ctx.fillStyle = "rgba(255, 251, 224, 0.95)";
+  ctx.fillRect(px + 25, py + 1, 2, 7);
+  ctx.fillRect(px + 22, py + 4, 8, 1);
+  ctx.fillStyle = "rgba(255, 251, 224, 0.5)";
+  ctx.fillRect(px + 23, py + 3, 1, 1);
+  ctx.fillRect(px + 28, py + 6, 1, 1);
+}
+
+// A strawberry plant with friends next to it gives more than one: a little
+// berry for each extra one in front of it.
+function drawBerryCount(ctx, px, py, berries) {
+  const spots = [[2, 25], [24, 26], [8, 28], [18, 28]];
+  for (let i = 0; i < Math.min(berries - 1, spots.length); i++) {
+    const [x, y] = spots[i];
+    ctx.fillStyle = "#5e0f1a";
+    ctx.fillRect(px + x - 1, py + y - 1, 7, 6);
+    ctx.fillStyle = COLORS.berryRed;
+    ctx.fillRect(px + x, py + y, 5, 4);
+    ctx.fillStyle = COLORS.berrySeed;
+    ctx.fillRect(px + x + 1, py + y + 1, 1, 1);
+    ctx.fillRect(px + x + 3, py + y + 2, 1, 1);
+    ctx.fillStyle = COLORS.berryLeaf;
+    ctx.fillRect(px + x + 1, py + y - 2, 3, 2);
+  }
+}
+
+// Short yellow stalks left where wheat was just picked: carrots love it here.
+function drawStubble(ctx, px, py) {
+  ctx.fillStyle = "#d9c06a";
+  for (const [dx, dy] of [[6, 8], [16, 10], [24, 6], [10, 20], [22, 22]]) {
+    ctx.fillRect(px + dx, py + dy, 2, 4);
+  }
+}
+
+// A round stone well with water in it.
+function drawWell(ctx, px, py) {
+  const ring = (inset, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(px + inset + 4, py + inset, 24 - 2 * inset, 28 - 2 * inset);
+    ctx.fillRect(px + inset, py + inset + 4, 32 - 2 * inset, 20 - 2 * inset);
+    ctx.fillRect(px + inset + 2, py + inset + 2, 28 - 2 * inset, 24 - 2 * inset);
+  };
+  ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.fillRect(px + 4, py + 26, 24, 4);
+  ring(1, "#4d555c");
+  ring(2, COLORS.stoneDark);
+  ring(3, COLORS.stone);
+  ring(8, "#2f5f80");
+  ring(9, COLORS.water);
+  ctx.fillStyle = "#bfe6ff";
+  ctx.fillRect(px + 12, py + 12, 4, 2);
+  ctx.fillRect(px + 18, py + 16, 2, 2);
+  ctx.fillStyle = COLORS.stoneDark;
+  for (const [x, y] of [[8, 6], [20, 5], [5, 15], [26, 14], [10, 24], [21, 25]]) ctx.fillRect(px + x, py + y, 3, 1);
+}
+
+// Bolt, from the Bits & Bots sprite (21x24 pixels in the top-left of each
+// 32-pixel frame; frame 0 faces the player), with a hat on his head.
+function drawBoltSprite(ctx, px, py, cell, hat = "straw_hat", shadow = true) {
+  const x = px + 5;
+  const y = py + 5;
+  if (shadow) {
+    ctx.fillStyle = COLORS.shadow;
+    ctx.fillRect(x + 2, y + 22, 17, 3);
+    ctx.fillRect(x + 4, y + 21, 13, 5);
+  }
+  sprite(ctx, "bolt", 0, 0, 21, 24, x, y);
+  drawHat(ctx, x + 10.5, y + 0.5, 13, cell, hat);
+}
+
+// Daisy, waiting at the barn for dinner. She cries once she misses a meal.
+// She's bigger than a tile, so she stands mostly in the border below it.
+function drawCowSprite(ctx, px, py, cell, sad) {
+  sprite(ctx, "cow", 0, 0, 71, 44, px - 20, py + cell - 12);
+  if (sad) {
+    ctx.fillStyle = "#4aa3df";
+    ctx.fillRect(px + 42, py + cell + 2, 2, 3);
+  }
 }
 
 // A striped bee hive in the top right of its tile, with a bee beside it.
@@ -151,19 +522,6 @@ function drawHive(ctx, px, py, cell) {
   ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
   ctx.beginPath();
   ctx.ellipse(bx, by - cell * 0.05, cell * 0.03, cell * 0.02, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-// A dinner bell on a post in the top left of the barn tile.
-function drawBell(ctx, px, py, cell) {
-  const x = px + cell * 0.14;
-  ctx.fillStyle = "#7a5230";
-  ctx.fillRect(x - cell * 0.015, py + cell * 0.12, cell * 0.03, cell * 0.36);
-  ctx.fillStyle = "#e6b422";
-  ctx.beginPath();
-  ctx.moveTo(x - cell * 0.07, py + cell * 0.26);
-  ctx.quadraticCurveTo(x, py + cell * 0.06, x + cell * 0.07, py + cell * 0.26);
-  ctx.closePath();
   ctx.fill();
 }
 
@@ -241,85 +599,6 @@ function drawGoal(ctx, state, goal, cell) {
   }
 }
 
-function drawFence(ctx, W) {
-  const t = Math.max(4, W / 80);
-  ctx.strokeStyle = COLORS.wood;
-  ctx.lineWidth = t;
-  ctx.strokeRect(t / 2, t / 2, W - t, W - t);
-  ctx.fillStyle = "#7a5230";
-  const step = W / 12;
-  for (let i = 0; i <= 12; i++) {
-    const p = Math.min(W - t * 1.5, i * step);
-    for (const [x, y] of [[p, 0], [p, W - t * 1.5], [0, p], [W - t * 1.5, p]]) ctx.fillRect(x, y, t * 1.5, t * 1.5);
-  }
-}
-
-function drawScarecrow(ctx, px, py, cell) {
-  const cx = px + cell * 0.78;
-  const top = py + cell * 0.12;
-  const s = cell * 0.22;
-  ctx.strokeStyle = COLORS.wood;
-  ctx.lineWidth = Math.max(2, cell / 30);
-  ctx.beginPath();
-  ctx.moveTo(cx, top + s * 0.5);
-  ctx.lineTo(cx, top + s * 2.4);
-  ctx.moveTo(cx - s * 0.8, top + s * 1.1);
-  ctx.lineTo(cx + s * 0.8, top + s * 1.1);
-  ctx.stroke();
-  ctx.fillStyle = "#3e6fb0";
-  ctx.fillRect(cx - s * 0.4, top + s * 0.9, s * 0.8, s * 0.8);
-  ctx.fillStyle = "#f1d9a6";
-  ctx.beginPath();
-  ctx.arc(cx, top + s * 0.55, s * 0.35, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#d9a441";
-  ctx.fillRect(cx - s * 0.6, top + s * 0.18, s * 1.2, s * 0.14);
-}
-
-// A carved pumpkin in the north-west corner.
-function drawJackOLantern(ctx, px, py, cell) {
-  const cx = px + cell * 0.2;
-  const cy = py + cell * 0.22;
-  const r = cell * 0.12;
-  ctx.fillStyle = COLORS.pumpkin;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, r * 1.1, r, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#3b2a12";
-  for (const dx of [-0.4, 0.4]) {
-    ctx.beginPath();
-    ctx.moveTo(cx + dx * r - r * 0.18, cy - r * 0.1);
-    ctx.lineTo(cx + dx * r + r * 0.18, cy - r * 0.1);
-    ctx.lineTo(cx + dx * r, cy - r * 0.4);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + r * 0.35, r * 0.5, r * 0.18, 0, 0, Math.PI);
-  ctx.fill();
-  ctx.fillStyle = COLORS.vine;
-  ctx.fillRect(cx - r * 0.1, cy - r * 1.25, r * 0.2, r * 0.3);
-}
-
-function drawDog(ctx, bx, by, cell, atEastEdge) {
-  // Sit beside Bolt, on whichever side has room.
-  const cx = bx + cell * (atEastEdge ? 0.14 : 0.86);
-  const cy = by + cell * 0.72;
-  const r = cell * 0.09;
-  ctx.fillStyle = "#9b6a3c";
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, r * 1.3, r, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx, cy - r * 1.2, r * 0.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#5e3d1f";
-  ctx.beginPath();
-  ctx.ellipse(cx - r * 0.7, cy - r * 1.4, r * 0.3, r * 0.55, 0.4, 0, Math.PI * 2);
-  ctx.ellipse(cx + r * 0.7, cy - r * 1.4, r * 0.3, r * 0.55, -0.4, 0, Math.PI * 2);
-  ctx.fill();
-}
-
 function drawGround(ctx, tile, px, py, cell) {
   if (tile.ground === "well") {
     ctx.fillStyle = COLORS.grass;
@@ -372,7 +651,8 @@ function drawGround(ctx, tile, px, py, cell) {
 }
 
 // tx, ty: the tile's place on the field, so berries can count their friends.
-function drawCrop(ctx, state, tx, ty, px, py, cell) {
+// glow: false leaves out the pale circle under a ripe crop.
+function drawCrop(ctx, state, tx, ty, px, py, cell, glow = true) {
   const tile = state.tiles[ty * state.size + tx];
   const info = CROPS[tile.crop];
   const growth = Math.min(1, tile.age / info.growTicks);
@@ -381,7 +661,7 @@ function drawCrop(ctx, state, tx, ty, px, py, cell) {
   const base = py + cell * 0.82;
   const h = cell * (0.15 + 0.5 * growth);
 
-  if (ripe && tile.crop !== "grass") {
+  if (glow && ripe && tile.crop !== "grass") {
     ctx.fillStyle = COLORS.ripe;
     ctx.globalAlpha = 0.35;
     ctx.beginPath();

@@ -23,6 +23,13 @@ SOUTH = "south"
 EAST = "east"
 WEST = "west"
 _DIRECTIONS = (NORTH, SOUTH, EAST, WEST)
+# Another way to say each direction. North is the top of the field, so
+# UP is NORTH and RIGHT is EAST. They are the same strings as the compass names.
+UP = NORTH
+DOWN = SOUTH
+LEFT = WEST
+RIGHT = EAST
+_DIRECTION_NAMES = "NORTH, SOUTH, EAST or WEST (or UP, DOWN, LEFT or RIGHT)"
 
 
 class Crop:
@@ -99,9 +106,10 @@ def _act(result):
 # ---- Actions: each takes one tick ----
 
 def move(direction):
-    """Step one tile NORTH, SOUTH, EAST or WEST. Returns False at the edge."""
+    """Step one tile NORTH, SOUTH, EAST or WEST (UP, DOWN, LEFT or RIGHT work too).
+    Returns False at the edge."""
     if direction not in _DIRECTIONS:
-        raise ValueError("move() needs NORTH, SOUTH, EAST or WEST, got " + repr(direction))
+        raise ValueError("move() needs " + _DIRECTION_NAMES + ", got " + repr(direction))
     _here()
     return _act(_farm.move(direction))
 
@@ -195,9 +203,10 @@ def ground_here():
 
 
 def can_move(direction):
-    """True if Bolt can step that way, False at the edge of the field."""
+    """True if Bolt can step that way, False at the edge of the field.
+    Takes the same directions as move(), UP, DOWN, LEFT and RIGHT included."""
     if direction not in _DIRECTIONS:
-        raise ValueError("can_move() needs NORTH, SOUTH, EAST or WEST, got " + repr(direction))
+        raise ValueError("can_move() needs " + _DIRECTION_NAMES + ", got " + repr(direction))
     return bool(_farm.can_move(direction))
 
 
@@ -260,7 +269,8 @@ API = {
     "is_ripe": is_ripe, "is_rotten": is_rotten, "is_dry": is_dry, "water_left": water_left,
     "ripe_at": ripe_at, "crop_here": crop_here, "ground_here": ground_here, "can_move": can_move,
     "position": position, "field_size": field_size, "count": count, "ticks": ticks,
-    "NORTH": NORTH, "SOUTH": SOUTH, "EAST": EAST, "WEST": WEST, "Crop": Crop,
+    "NORTH": NORTH, "SOUTH": SOUTH, "EAST": EAST, "WEST": WEST,
+    "UP": UP, "DOWN": DOWN, "LEFT": LEFT, "RIGHT": RIGHT, "Crop": Crop,
     **_CROP_CONSTANTS, "SOIL": SOIL,
     "print": _print, "design": design, "order": order,
 }
