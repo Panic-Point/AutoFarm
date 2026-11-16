@@ -72,11 +72,6 @@ section {
   min-width: 0;
 }
 
-.reference { grid-column: 1 / -1; }
-.reference h2 { margin: 0 0 4px; font-size: 18px; }
-.reference h3 { margin: 12px 0 4px; font-size: 15px; }
-.reference p { margin: 0; color: var(--muted); }
-.reference ul { margin: 0; padding-left: 20px; }
 
 canvas {
   display: block;
@@ -308,7 +303,8 @@ header { align-items: center; }
 .top-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-left: auto; }
 .star-total { font-size: 18px; color: var(--star); font-weight: 700; }
 .star-total b { color: var(--ink); font-variant-numeric: tabular-nums; }
-.barn { display: flex; gap: 10px; color: var(--muted); font-size: 14px; }
+.barn { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--muted); font-size: 14px; }
+.barn span { white-space: nowrap; }
 .barn b { color: var(--ink); font-variant-numeric: tabular-nums; }
 button.small { padding: 3px 10px; font-size: 14px; white-space: nowrap; }
 
@@ -360,12 +356,19 @@ button.small { padding: 3px 10px; font-size: 14px; white-space: nowrap; }
 }
 .plot-chip.current { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
 .plot-chip.passed::after { content: " ✓"; }
-.inv-label { color: var(--muted); margin-right: 10px; }
-.inventory { align-items: baseline; }
-#inventory { display: inline-flex; gap: 14px; }
+.inv-label { color: var(--muted); margin-right: 4px; font-size: 14px; }
+.inventory { align-items: center; gap: 6px; }
+#inventory { display: flex; flex-wrap: wrap; gap: 6px; }
+#inventory > span {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-size: 13px;
+  white-space: nowrap;
+}
+#inventory > span.zero, .barn span.zero { opacity: 0.5; }
 
-.reference li.locked { color: var(--muted); opacity: 0.6; }
-.lock-note { font-size: 12px; margin-right: 6px; white-space: nowrap; }
 
 dialog {
   max-width: min(640px, calc(100vw - 32px));
@@ -481,6 +484,11 @@ dialog h3 { margin: 14px 0 6px; font-size: 16px; }
 
 /* ---- Festival Day ---- */
 .farm-stage { position: relative; }
+.farm-stage canvas {
+  border-radius: 10px;
+  border: 4px solid #6b4a2b;
+  box-shadow: 0 3px 0 #4a321c, 0 6px 16px rgba(0, 0, 0, 0.18);
+}
 .festival-banner {
   position: absolute;
   inset: 35% 6% auto;
@@ -621,18 +629,6 @@ dialog h3 { margin: 14px 0 6px; font-size: 16px; }
 
 /* ---- Commands panel, lessons and the Farm Book ---- */
 
-.reference li { margin: 2px 0; }
-.ref-more {
-  margin-left: 6px;
-  padding: 0 4px;
-  font-size: 13px;
-  line-height: 1.4;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  vertical-align: baseline;
-}
-.ref-more:hover { border-color: var(--accent); }
 .book-new {
   display: inline-block;
   min-width: 1.4em;

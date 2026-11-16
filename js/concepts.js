@@ -1,8 +1,7 @@
 // Every command and coding idea Bolt learns, as plain data. One entry feeds
-// three places:
+// two places:
 //   - the lesson card shown before the quest that first needs it (`learned`),
 //   - the Farm Book, the encyclopedia of what the player has unlocked,
-//   - the Commands panel, which shows each entry's `short` line.
 //
 // An entry:
 //   id       a name for the entry (saved in progress.seen once it's been read)
@@ -12,7 +11,7 @@
 //   also     other words the entry covers, which open in the same chapter
 //   learned  the quest that first needs it: its lesson shows before that quest,
 //            and the book links back to it. null if no quest needs it.
-//   short    one line for the Commands panel. `code` is shown as code.
+//   short    one line summary, shown when hovering its name in the Farm Book
 //   does     what it does, in a sentence or two
 //   gives    what it gives back, or null
 //   forms    every way of writing it (plain words and Python unlock together)
@@ -40,7 +39,8 @@ export const GROUPS = [
   { id: "crops", title: "Crops" },
 ];
 
-// Lines in the Commands panel that aren't entries of their own.
+// Tips that aren't entries of their own, shown on every Farm Book page in
+// their group under "Good to know".
 export const TIPS = {
   basics: ["Each action takes one tick. Crops grow every tick. Looking around is free."],
   loops: ["Lines inside a loop, choice or command are indented by 4 spaces."],
