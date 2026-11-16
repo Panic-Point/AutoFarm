@@ -122,26 +122,21 @@ function drawFlatFarm(ctx, state, opts) {
     }
   }
   if (opts.goal) drawGoal(ctx, state, opts.goal, cell);
-  if (looks.fence) drawFence(ctx, W);
   drawExtras(ctx, state, looks, cell, false);
   if (opts.fog) drawFog(ctx, state, cell);
 }
 
-// The things that sit on top of the field: shop decorations, the hive, Daisy,
-// the dog and Bolt.
+// The things that sit on top of the field: the hive, Daisy and Bolt. Shop
+// decorations aren't drawn, to keep the field clear.
 function drawExtras(ctx, state, looks, cell, pixel) {
   const { size } = state;
-  if (looks.scarecrow) drawScarecrow(ctx, (size - 1) * cell, 0, cell);
-  if (looks.jackOLantern) drawJackOLantern(ctx, 0, 0, cell);
   if (state.hive) drawHive(ctx, state.hive[0] * cell, (size - 1 - state.hive[1]) * cell, cell);
-  if (looks.dinnerBell) drawBell(ctx, 0, (size - 1) * cell, cell);
   if (state.dinner) {
     if (pixel) drawCowSprite(ctx, 0, (size - 1) * cell, cell, state.dinner.missed > 0);
     else drawCow(ctx, 0, (size - 1) * cell, cell, state.dinner.missed > 0);
   }
   const bx = state.x * cell;
   const by = (size - 1 - state.y) * cell;
-  if (looks.dog) drawDog(ctx, bx, by, cell, state.x === size - 1);
   drawBolt(ctx, bx, by, cell, looks.hat);
 }
 
@@ -149,7 +144,7 @@ function drawExtras(ctx, state, looks, cell, pixel) {
 // The sprite sheets are Liberated Pixel Cup (LPC) art from OpenGameArt, in
 // assets/sprites (credits and licenses in assets/CREDITS.md). Its tiles are
 // 32 pixels. The field is drawn small, one tile to TILE pixels, inside a
-// one-tile grass border, then scaled up to the canvas without smoothing so
+// grass border, then scaled up to the canvas without smoothing so
 // every pixel stays crisp.
 
 const TILE = 32;
@@ -159,11 +154,8 @@ const SHEETS = {
   wheat: "wheat.png",
   youngWheat: "young-wheat.png",
   tallGrass: "tall-grass.png",
-  fence: "fence.png",
   crops: "crops.png",
-  trees: "trees.png",
   cow: "cow.png",
-  chicken: "chicken.png",
 };
 const sheets = {};
 const waiting = new Map();
@@ -249,34 +241,56 @@ function sprite(ctx, sheet, sx, sy, sw, sh, dx, dy) {
   ctx.drawImage(sheets[sheet], sx, sy, sw, sh, Math.round(dx), Math.round(dy), sw, sh);
 }
 
-// Draw one tile of an LPC terrain sheet (soil, wheat, tall grass) so it joins
-// up with its neighbours. same(dx, dy) says whether the neighbour that way
-// (north is +y) is the same terrain. The sheet has inner corners at columns
-// 1-2 of rows 0-1, and a 3x3 patch (corners, edges and middle) in rows 2-4.
-// Each quarter of the tile picks the piece that matches its two sides and
-// the corner between them.
-function terrainTile(ctx, sheet, same, px, py) {
-  for (const [qx, qy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
-    const dx = qx ? 1 : -1;
-    const dy = qy ? -1 : 1;
-    const h = same(dx, 0);
-    const v = same(0, dy);
-    let tx;
-    let ty;
-    if (h && v && same(dx, dy)) [tx, ty] = [1, 3];
-    else if (h && v) [tx, ty] = [2 - qx, 1 - qy];
-    else if (h) [tx, ty] = [1, qy ? 4 : 2];
-    else if (v) [tx, ty] = [qx ? 2 : 0, 3];
-    else [tx, ty] = [qx ? 2 : 0, qy ? 4 : 2];
-    const half = TILE / 2;
-    sprite(ctx, sheet, tx * TILE + qx * half, ty * TILE + qy * half, half, half, px + qx * half, py + qy * half);
-  }
+// A rounded square a little inside the tile, for each tile's own bed or
+// patch, so there's a strip of grass between neighbours.
+function insetPath(ctx, px, py) {
+  ctx.beginPath();
+  ctx.moveTo(px + 4, py + 1);
+  ctx.lineTo(px + TILE - 4, py + 1);
+  ctx.lineTo(px + TILE - 1, py + 4);
+  ctx.lineTo(px + TILE - 1, py + TILE - 4);
+  ctx.lineTo(px + TILE - 4, py + TILE - 1);
+  ctx.lineTo(px + 4, py + TILE - 1);
+  ctx.lineTo(px + 1, py + TILE - 4);
+  ctx.lineTo(px + 1, py + 4);
+  ctx.closePath();
+}
+
+// A bed of tilled soil: the soil sheet's plain furrows (row 5 has three), cut
+// to the rounded square, with a darker rim.
+function drawBed(ctx, sheet, px, py, variant) {
+  ctx.save();
+  insetPath(ctx, px, py);
+  ctx.clip();
+  sprite(ctx, sheet, variant * TILE, 5 * TILE, TILE, TILE, px, py);
+  ctx.restore();
+  ctx.strokeStyle = "rgba(60, 34, 18, 0.55)";
+  ctx.lineWidth = 1;
+  ctx.save();
+  ctx.translate(0.5, 0.5);
+  insetPath(ctx, px, py);
+  ctx.restore();
+  ctx.stroke();
+}
+
+// A patch of tall wheat or grass: the middle of the field from its sheet, with
+// the front row of stalks along the bottom.
+function drawPatch(ctx, sheet, px, py) {
+  ctx.save();
+  insetPath(ctx, px, py);
+  ctx.clip();
+  sprite(ctx, sheet, TILE, 3 * TILE, TILE, TILE, px, py);
+  sprite(ctx, sheet, TILE, 4 * TILE + 18, TILE, 11, px, py + TILE - 12);
+  ctx.restore();
 }
 
 function drawPixelFarm(ctx, state, opts) {
   const { size } = state;
   const looks = opts.looks ?? { hat: "straw_hat" };
-  const side = (size + 2) * TILE;
+  // Half a tile of grass round the field, or a whole tile when Daisy needs
+  // room to stand beside the barn tile.
+  const margin = state.dinner ? TILE : TILE / 2;
+  const side = size * TILE + 2 * margin;
   const buf = bufferOf(side, side);
   const b = buf.getContext("2d");
   b.imageSmoothingEnabled = false;
@@ -286,8 +300,8 @@ function drawPixelFarm(ctx, state, opts) {
   const growthOf = (t) => Math.min(1, t.age / CROPS[t.crop].growTicks);
 
   // Grass everywhere, with a few light blades.
-  for (let gy = 0; gy < size + 2; gy++) {
-    for (let gx = 0; gx < size + 2; gx++) {
+  for (let gy = 0; gy * TILE < side; gy++) {
+    for (let gx = 0; gx * TILE < side; gx++) {
       const px = gx * TILE;
       const py = gy * TILE;
       sprite(b, "grass", 0, 0, TILE, TILE, px, py);
@@ -302,7 +316,7 @@ function drawPixelFarm(ctx, state, opts) {
   }
 
   b.save();
-  b.translate(TILE, TILE);
+  b.translate(margin, margin);
   const screenY = (y) => (size - 1 - y) * TILE;
 
   // Tilled soil, joined up into beds.
@@ -310,8 +324,8 @@ function drawPixelFarm(ctx, state, opts) {
     for (let x = 0; x < size; x++) {
       const tile = tileAt(x, y);
       if (tile.ground !== "soil") continue;
-      const same = (dx, dy) => tileAt(x + dx, y + dy)?.ground === "soil";
-      terrainTile(b, tile.wet > 0 ? "wetSoil" : "soil", same, x * TILE, screenY(y));
+      // Each tile is its own bed, so the tiles are easy to tell apart.
+      drawBed(b, tile.wet > 0 ? "wetSoil" : "soil", x * TILE, screenY(y), Math.floor(noise(x, y, 3) * 3));
       if (tile.last === "wheat" && !tile.crop) drawStubble(b, x * TILE, screenY(y));
     }
   }
@@ -326,22 +340,22 @@ function drawPixelFarm(ctx, state, opts) {
       if (tile.ground === "well") drawWell(b, px, py);
       if (!tile.crop) continue;
       const ripe = isTileRipe(tile);
-      // Wheat and grass grow tall into fields that join up with their ripe
-      // neighbours.
-      const stage = (t) => {
-        if (!t || t.crop !== tile.crop) return null;
-        const g = growthOf(t);
-        if (isTileRipe(t)) return "ripe";
-        return g < 0.25 ? "sprout" : g < 0.5 ? "short" : "tall";
-      };
-      const mine = stage(tile);
-      const same = (dx, dy) => stage(tileAt(x + dx, y + dy)) === mine;
+      // Wheat and grass: sprouts, then short and tall growth, then a ripe
+      // patch. Each is kept a little inside its tile, so a field of them
+      // still shows where one tile ends and the next begins.
       if (tile.crop === "wheat" || tile.crop === "grass") {
         const young = tile.crop === "wheat" ? "youngWheat" : "tallGrass";
-        if (mine === "sprout") sprite(b, young, 0, 5 * TILE, TILE, TILE, px, py);
-        else if (mine === "short") sprite(b, young, TILE, 5 * TILE, TILE, TILE, px, py);
-        else if (mine === "tall") sprite(b, young, 2 * TILE, 5 * TILE, TILE, TILE, px, py);
-        else terrainTile(b, tile.crop === "wheat" ? "wheat" : "tallGrass", same, px, py);
+        const g = growthOf(tile);
+        if (ripe) {
+          drawPatch(b, tile.crop === "wheat" ? "wheat" : "tallGrass", px, py);
+        } else {
+          b.save();
+          b.beginPath();
+          b.rect(px + 3, py + 3, TILE - 6, TILE - 6);
+          b.clip();
+          sprite(b, young, (g < 0.25 ? 0 : g < 0.5 ? 1 : 2) * TILE, 5 * TILE, TILE, TILE, px, py);
+          b.restore();
+        }
         continue;
       }
       const spot = CROP_SPRITES[tile.crop];
@@ -361,10 +375,9 @@ function drawPixelFarm(ctx, state, opts) {
   }
   b.restore();
 
-  drawBorder(b, state, looks, side);
 
   b.save();
-  b.translate(TILE, TILE);
+  b.translate(margin, margin);
   if (opts.goal) drawGoal(b, state, opts.goal, TILE);
   drawExtras(b, state, looks, TILE, true);
   if (opts.fog) drawFog(b, state, TILE);
@@ -440,56 +453,6 @@ function drawWell(ctx, px, py) {
   for (const [x, y] of [[8, 6], [20, 5], [5, 15], [26, 14], [10, 24], [21, 25]]) ctx.fillRect(px + x, py + y, 3, 1);
 }
 
-// Bushes and young trees round the field, a few hens, and the wooden fence
-// once it's bought.
-const BUSHES = [[0, 64, 32, 32], [32, 64, 32, 32]];
-const TREES = [[11, 11, 43, 50], [131, 2, 55, 58], [200, 7, 48, 54]];
-function drawBorder(ctx, state, looks, side) {
-  const n = state.size + 2;
-  const ring = [];
-  for (let i = 0; i < n; i++) ring.push([i, 0], [i, n - 1]);
-  for (let i = 1; i < n - 1; i++) ring.push([0, i], [n - 1, i]);
-  if (looks.fence) drawFenceSprites(ctx, n);
-  // Bushes along the sides; skip the corners, where the trees go.
-  for (const [gx, gy] of ring) {
-    const corner = (gx === 0 || gx === n - 1) && (gy === 0 || gy === n - 1);
-    if (corner || noise(gx, gy, 11) < 0.62) continue;
-    const [sx, sy, sw, sh] = BUSHES[Math.floor(noise(gx, gy, 12) * BUSHES.length)];
-    sprite(ctx, "trees", sx, sy, sw, sh, gx * TILE, gy * TILE + 2);
-  }
-  // Two hens pecking in the bottom border.
-  for (const [i, salt] of [[0, 2], [1, 5]]) {
-    const gx = 1 + Math.floor(noise(state.size, i, salt) * (n - 2));
-    const row = noise(state.size, i, salt + 1) < 0.5 ? 1 : 3;
-    sprite(ctx, "chicken", 0, row * 32, 32, 32, gx * TILE, side - TILE);
-  }
-  // Young trees in the top corners.
-  const [lx, ly, lw, lh] = TREES[state.size % TREES.length];
-  sprite(ctx, "trees", lx, ly, lw, lh, (TILE - lw) / 2, TILE - lh + 4);
-  const [rx, ry, rw, rh] = TREES[(state.size + 1) % TREES.length];
-  sprite(ctx, "trees", rx, ry, rw, rh, side - TILE + (TILE - rw) / 2, TILE - rh + 4);
-}
-
-// The wooden fence from the shop, round the border. Corners and rails come
-// from the fence sheet; the sides are posts joined end to end.
-function drawFenceSprites(ctx, n) {
-  const piece = (tx, ty, gx, gy) => sprite(ctx, "fence", tx * TILE, ty * TILE, TILE, TILE, gx * TILE, gy * TILE);
-  for (let gx = 0; gx < n; gx++) {
-    const end = gx === 0 ? 0 : gx === n - 1 ? 2 : null;
-    if (end === null) {
-      piece(1, 0, gx, 0);
-      piece(1, 0, gx, n - 1);
-    } else {
-      piece(end, 2, gx, 0);
-      piece(end, 4, gx, n - 1);
-    }
-  }
-  for (let gy = 1; gy < n - 1; gy++) {
-    piece(1, 1, 0, gy);
-    piece(1, 1, n - 1, gy);
-  }
-}
-
 // Daisy, waiting at the barn for dinner. She cries once she misses a meal.
 // She's bigger than a tile, so she stands mostly in the border below it.
 function drawCowSprite(ctx, px, py, cell, sad) {
@@ -528,19 +491,6 @@ function drawHive(ctx, px, py, cell) {
   ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
   ctx.beginPath();
   ctx.ellipse(bx, by - cell * 0.05, cell * 0.03, cell * 0.02, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-// A dinner bell on a post in the top left of the barn tile.
-function drawBell(ctx, px, py, cell) {
-  const x = px + cell * 0.14;
-  ctx.fillStyle = "#7a5230";
-  ctx.fillRect(x - cell * 0.015, py + cell * 0.12, cell * 0.03, cell * 0.36);
-  ctx.fillStyle = "#e6b422";
-  ctx.beginPath();
-  ctx.moveTo(x - cell * 0.07, py + cell * 0.26);
-  ctx.quadraticCurveTo(x, py + cell * 0.06, x + cell * 0.07, py + cell * 0.26);
-  ctx.closePath();
   ctx.fill();
 }
 
@@ -616,85 +566,6 @@ function drawGoal(ctx, state, goal, cell) {
     ctx.closePath();
     ctx.fill();
   }
-}
-
-function drawFence(ctx, W) {
-  const t = Math.max(4, W / 80);
-  ctx.strokeStyle = COLORS.wood;
-  ctx.lineWidth = t;
-  ctx.strokeRect(t / 2, t / 2, W - t, W - t);
-  ctx.fillStyle = "#7a5230";
-  const step = W / 12;
-  for (let i = 0; i <= 12; i++) {
-    const p = Math.min(W - t * 1.5, i * step);
-    for (const [x, y] of [[p, 0], [p, W - t * 1.5], [0, p], [W - t * 1.5, p]]) ctx.fillRect(x, y, t * 1.5, t * 1.5);
-  }
-}
-
-function drawScarecrow(ctx, px, py, cell) {
-  const cx = px + cell * 0.78;
-  const top = py + cell * 0.12;
-  const s = cell * 0.22;
-  ctx.strokeStyle = COLORS.wood;
-  ctx.lineWidth = Math.max(2, cell / 30);
-  ctx.beginPath();
-  ctx.moveTo(cx, top + s * 0.5);
-  ctx.lineTo(cx, top + s * 2.4);
-  ctx.moveTo(cx - s * 0.8, top + s * 1.1);
-  ctx.lineTo(cx + s * 0.8, top + s * 1.1);
-  ctx.stroke();
-  ctx.fillStyle = "#3e6fb0";
-  ctx.fillRect(cx - s * 0.4, top + s * 0.9, s * 0.8, s * 0.8);
-  ctx.fillStyle = "#f1d9a6";
-  ctx.beginPath();
-  ctx.arc(cx, top + s * 0.55, s * 0.35, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#d9a441";
-  ctx.fillRect(cx - s * 0.6, top + s * 0.18, s * 1.2, s * 0.14);
-}
-
-// A carved pumpkin in the north-west corner.
-function drawJackOLantern(ctx, px, py, cell) {
-  const cx = px + cell * 0.2;
-  const cy = py + cell * 0.22;
-  const r = cell * 0.12;
-  ctx.fillStyle = COLORS.pumpkin;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, r * 1.1, r, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#3b2a12";
-  for (const dx of [-0.4, 0.4]) {
-    ctx.beginPath();
-    ctx.moveTo(cx + dx * r - r * 0.18, cy - r * 0.1);
-    ctx.lineTo(cx + dx * r + r * 0.18, cy - r * 0.1);
-    ctx.lineTo(cx + dx * r, cy - r * 0.4);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + r * 0.35, r * 0.5, r * 0.18, 0, 0, Math.PI);
-  ctx.fill();
-  ctx.fillStyle = COLORS.vine;
-  ctx.fillRect(cx - r * 0.1, cy - r * 1.25, r * 0.2, r * 0.3);
-}
-
-function drawDog(ctx, bx, by, cell, atEastEdge) {
-  // Sit beside Bolt, on whichever side has room.
-  const cx = bx + cell * (atEastEdge ? 0.14 : 0.86);
-  const cy = by + cell * 0.72;
-  const r = cell * 0.09;
-  ctx.fillStyle = "#9b6a3c";
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, r * 1.3, r, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx, cy - r * 1.2, r * 0.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#5e3d1f";
-  ctx.beginPath();
-  ctx.ellipse(cx - r * 0.7, cy - r * 1.4, r * 0.3, r * 0.55, 0.4, 0, Math.PI * 2);
-  ctx.ellipse(cx + r * 0.7, cy - r * 1.4, r * 0.3, r * 0.55, -0.4, 0, Math.PI * 2);
-  ctx.fill();
 }
 
 function drawGround(ctx, tile, px, py, cell) {
