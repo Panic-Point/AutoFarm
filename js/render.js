@@ -87,6 +87,18 @@ Object.assign(HATS, {
 export function drawBoltIcon(ctx, hat) {
   const W = ctx.canvas.width;
   ctx.clearRect(0, 0, W, W);
+  if (spritesReady()) {
+    // Bolt's sprite and hat at tile size, scaled up by a whole number.
+    const icon = document.createElement("canvas");
+    icon.width = icon.height = TILE;
+    const g = icon.getContext("2d");
+    drawBoltSprite(g, 0, 2, TILE, hat, false);
+    const scale = Math.max(1, Math.floor(W / TILE));
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(icon, (W - TILE * scale) / 2, (W - TILE * scale) / 2, TILE * scale, TILE * scale);
+    return;
+  }
+  waitingIcons.set(ctx.canvas, [ctx, hat]);
   const cell = W * 1.9;
   drawBolt(ctx, (W - cell) / 2, (W - cell) / 2 + W * 0.12, cell, hat);
 }
@@ -137,7 +149,8 @@ function drawExtras(ctx, state, looks, cell, pixel) {
   }
   const bx = state.x * cell;
   const by = (size - 1 - state.y) * cell;
-  drawBolt(ctx, bx, by, cell, looks.hat);
+  if (pixel) drawBoltSprite(ctx, bx, by, cell, looks.hat);
+  else drawBolt(ctx, bx, by, cell, looks.hat);
 }
 
 // ---- Pixel art ----
@@ -156,9 +169,11 @@ const SHEETS = {
   tallGrass: "tall-grass.png",
   crops: "crops.png",
   cow: "cow.png",
+  bolt: "bolt.png",
 };
 const sheets = {};
 const waiting = new Map();
+const waitingIcons = new Map();
 let loaded = 0;
 
 if (typeof Image !== "undefined") {
@@ -172,6 +187,8 @@ if (typeof Image !== "undefined") {
       makeRecolors();
       for (const [ctx, state, opts] of waiting.values()) drawPixelFarm(ctx, state, opts);
       waiting.clear();
+      for (const [ctx, hat] of waitingIcons.values()) drawBoltIcon(ctx, hat);
+      waitingIcons.clear();
     };
     img.src = new URL(file, base).href;
   }
@@ -451,6 +468,20 @@ function drawWell(ctx, px, py) {
   ctx.fillRect(px + 18, py + 16, 2, 2);
   ctx.fillStyle = COLORS.stoneDark;
   for (const [x, y] of [[8, 6], [20, 5], [5, 15], [26, 14], [10, 24], [21, 25]]) ctx.fillRect(px + x, py + y, 3, 1);
+}
+
+// Bolt, from the Bits & Bots sprite (21x24 pixels in the top-left of each
+// 32-pixel frame; frame 0 faces the player), with a hat on his head.
+function drawBoltSprite(ctx, px, py, cell, hat = "straw_hat", shadow = true) {
+  const x = px + 5;
+  const y = py + 5;
+  if (shadow) {
+    ctx.fillStyle = COLORS.shadow;
+    ctx.fillRect(x + 2, y + 22, 17, 3);
+    ctx.fillRect(x + 4, y + 21, 13, 5);
+  }
+  sprite(ctx, "bolt", 0, 0, 21, 24, x, y);
+  drawHat(ctx, x + 10.5, y + 0.5, 13, cell, hat);
 }
 
 // Daisy, waiting at the barn for dinner. She cries once she misses a meal.
