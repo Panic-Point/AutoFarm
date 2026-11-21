@@ -444,6 +444,158 @@ repeat 2 times:
 
 </details>
 
+### 3-7 Back and Forth (bonus)
+
+**Goal:** Harvest 12 hay from the 3 grass tiles, never pick grass before it's ripe, and end back at the barn.
+
+**Stars:** 3 for 24 ticks or fewer, 2 for 28 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 3 times:
+    repeat 2 times:
+        harvest()
+        move(EAST)
+    repeat 2 times:
+        harvest()
+        move(WEST)
+```
+
+**Why it works:** Grass is ripe again 4 ticks after it's picked. Going back and forth along the row, picking on the way out and on the way back, Bolt never walks a step without picking: 12 picks and 12 steps, and the last step west lands on the barn.
+
+</details>
+
+### 3-8 From Hay to Bread (bonus)
+
+**Goal:** Harvest all 16 grass tiles, then turn every tile into wheat.
+
+**Stars:** 3 for 64 ticks or fewer, 2 for 80 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 2 times:
+    repeat 3 times:
+        harvest()
+        till()
+        plant(WHEAT)
+        move(EAST)
+    harvest()
+    till()
+    plant(WHEAT)
+    move(NORTH)
+    repeat 3 times:
+        harvest()
+        till()
+        plant(WHEAT)
+        move(WEST)
+    harvest()
+    till()
+    plant(WHEAT)
+    move(NORTH)
+```
+
+**Why it works:** The 3-1 snake with three actions on every tile: `harvest()` for the hay, `till()` to turn grass into soil, and `plant(WHEAT)`. 48 actions and 16 steps (the last step north bumps the fence).
+
+</details>
+
+### 3-9 The Big Berry Patch (bonus)
+
+**Goal:** Plant 8 strawberries and grow 28 strawberries with them. Don't pick any too soon!
+
+**Stars:** 3 for 35 ticks or fewer, 2 for 44 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 2 times:
+    plant(STRAWBERRY)
+    move(EAST)
+    plant(STRAWBERRY)
+    move(NORTH)
+    plant(STRAWBERRY)
+    move(WEST)
+    plant(STRAWBERRY)
+    move(NORTH)
+repeat 3 times:
+    move(SOUTH)
+repeat 2 times:
+    harvest()
+    move(EAST)
+    harvest()
+    move(NORTH)
+    harvest()
+    move(WEST)
+    harvest()
+    move(NORTH)
+```
+
+**Why it works:** A block 2 wide and 4 tall has 10 pairs of neighbors, so the 8 strawberries make 8 + 20 = 28. Planting it as a zig-zag going up keeps the first and last planted far apart, so Bolt can walk back down and start picking the first ones while the last ones are still growing. Each one is picked only after all its neighbors have ripened, so no friends are lost.
+
+</details>
+
+### 3-10 Just Enough Flour (bonus)
+
+**Goal:** Harvest exactly 12 wheat. Not 11, not 13!
+
+**Stars:** 3 for 24 ticks or fewer, 2 for 32 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 2 times:
+    repeat 2 times:
+        harvest()
+        move(EAST)
+    harvest()
+    move(NORTH)
+    repeat 2 times:
+        harvest()
+        move(WEST)
+    harvest()
+    move(NORTH)
+```
+
+**Why it works:** 4 rows of 3 makes 12. Snaking 3 tiles along each of the 4 rows fits a loop inside a loop exactly, and the fourth column of wheat is never touched.
+
+</details>
+
+### 3-11 Bolt's Backwards Planting (bonus, fix Bolt's code)
+
+**Goal:** Fix Bolt's code so every tile of the grassy field gets wheat.
+
+**Stars:** 3 for 48 ticks or fewer, 2 for 60 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 2 times:
+    repeat 3 times:
+        till()
+        plant(WHEAT)
+        move(EAST)
+    till()
+    plant(WHEAT)
+    move(NORTH)
+    repeat 3 times:
+        till()
+        plant(WHEAT)
+        move(WEST)
+    till()
+    plant(WHEAT)
+    move(NORTH)
+```
+
+**Why it works:** The fixed version of Bolt's code. In the loop going west the starter planted before tilling, so the wheat had nowhere to grow; tilling first turns the grass into soil.
+
+</details>
+
 ## Chapter 4: Look Before You Act
 
 ### 4-1 Only the Ripe Ones
@@ -645,6 +797,188 @@ repeat 2 times:
 ```
 
 **Why it works:** The 4-5 choice inside the 4-2 snake. Because it checks every tile, the same program works on both test plots.
+
+</details>
+
+### 4-8 Carrots Only, Please (bonus, 2 test plots)
+
+**Goal:** On both test plots: harvest every ripe carrot, leave the wheat standing, and lose nothing.
+
+**Stars:** 3 for 44 ticks or fewer, 2 for 70 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 2 times:
+    repeat 3 times:
+        if crop_here() == CARROT:
+            if is_ripe():
+                harvest()
+        move(EAST)
+    if crop_here() == CARROT:
+        if is_ripe():
+            harvest()
+    move(NORTH)
+    repeat 3 times:
+        if crop_here() == CARROT:
+            if is_ripe():
+                harvest()
+        move(WEST)
+    if crop_here() == CARROT:
+        if is_ripe():
+            harvest()
+    move(NORTH)
+```
+
+**Why it works:** Ripe wheat is ripe too, so Bolt asks two questions, one inside the other: is it a carrot, and is it ripe? Young carrots that ripen before Bolt gets to them are picked too. Both plots in 44 ticks.
+
+</details>
+
+### 4-9 Carrots Into Pumpkins (bonus, 2 test plots)
+
+**Goal:** On both test plots: pick each carrot and plant a pumpkin in its spot, and plant wheat on every bare tile.
+
+**Stars:** 3 for 79 ticks or fewer, 2 for 104 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 2 times:
+    repeat 3 times:
+        if crop_here() == CARROT:
+            harvest()
+            plant(PUMPKIN)
+        else:
+            plant(WHEAT)
+        move(EAST)
+    if crop_here() == CARROT:
+        harvest()
+        plant(PUMPKIN)
+    else:
+        plant(WHEAT)
+    move(NORTH)
+    repeat 3 times:
+        if crop_here() == CARROT:
+            harvest()
+            plant(PUMPKIN)
+        else:
+            plant(WHEAT)
+        move(WEST)
+    if crop_here() == CARROT:
+        harvest()
+        plant(PUMPKIN)
+    else:
+        plant(WHEAT)
+    move(NORTH)
+```
+
+**Why it works:** Each carrot picked pays for the pumpkin seed planted in its place (1 carrot each), and every other tile was bare, so `else` plants wheat. The carrots are in different places on the two plots, so the program looks at every tile.
+
+</details>
+
+### 4-10 Lettuce for Tomorrow (bonus)
+
+**Goal:** Harvest 8 lettuce before any wilt, and leave lettuce growing on all 4 tiles of the first row.
+
+**Stars:** 3 for 35 ticks or fewer, 2 for 44 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 3 times:
+    plant(LETTUCE)
+    move(EAST)
+plant(LETTUCE)
+repeat 2 times:
+    repeat 3 times:
+        move(WEST)
+    repeat 3 times:
+        if is_ripe():
+            harvest()
+        plant(LETTUCE)
+        move(EAST)
+    if is_ripe():
+        harvest()
+    plant(LETTUCE)
+```
+
+**Why it works:** Lettuce is ripe 6 ticks after planting and wilts 8 ticks after that. After planting the row, Bolt walks back to the first lettuce and goes east again, picking each one and planting a new one in its place. Doing that twice gives 8 lettuce and leaves the row growing. Only the first row is planted without the loop, so Bolt never walks back from the west edge for nothing.
+
+</details>
+
+### 4-11 Bolt's Pumpkin Mix-Up (bonus, fix Bolt's code)
+
+**Goal:** Fix Bolt's code so it picks only ripe pumpkins, tills the rotten ones, and loses none.
+
+**Stars:** 3 for 24 ticks or fewer, 2 for 30 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 2 times:
+    repeat 4 times:
+        if is_ripe():
+            harvest()
+        else if is_rotten():
+            till()
+        move(EAST)
+    repeat 4 times:
+        move(WEST)
+    move(NORTH)
+```
+
+**Why it works:** The fixed version of Bolt's code. Young and rotten pumpkins are pumpkins too, so the starter's `crop_here() == PUMPKIN` picked the young ones and never reached the `else if`. Asking `is_ripe()` instead lets the rotten ones fall through to `till()`.
+
+</details>
+
+### 4-12 Pip's Big Tidy-Up (bonus, 3 test plots)
+
+**Goal:** On all 3 test plots: harvest every ripe crop, till every rotten pumpkin, plant wheat on every bare tile, and lose nothing.
+
+**Stars:** 3 for 126 ticks or fewer, 2 for 162 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 2 times:
+    repeat 3 times:
+        if is_ripe():
+            harvest()
+        else if is_rotten():
+            till()
+        if crop_here() == None:
+            plant(WHEAT)
+        move(EAST)
+    if is_ripe():
+        harvest()
+    else if is_rotten():
+        till()
+    if crop_here() == None:
+        plant(WHEAT)
+    move(NORTH)
+    repeat 3 times:
+        if is_ripe():
+            harvest()
+        else if is_rotten():
+            till()
+        if crop_here() == None:
+            plant(WHEAT)
+        move(WEST)
+    if is_ripe():
+        harvest()
+    else if is_rotten():
+        till()
+    if crop_here() == None:
+        plant(WHEAT)
+    move(NORTH)
+```
+
+**Why it works:** Two checks in a row: the first picks a ripe crop or tills a rotten one, and the second plants wheat whenever the tile is now bare (`crop_here() == None`). A young crop isn't bare, so it's left alone. Ripe pumpkins sit near the start of each plot, so they're picked well before they rot.
 
 </details>
 
