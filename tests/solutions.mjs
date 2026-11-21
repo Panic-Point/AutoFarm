@@ -135,6 +135,83 @@ repeat 2 times:
         move(WEST)
     move(NORTH)
     print("row done")`,
+  "3-7": `
+repeat 3 times:
+    repeat 2 times:
+        harvest()
+        move(EAST)
+    repeat 2 times:
+        harvest()
+        move(WEST)`,
+  "3-8": `
+repeat 2 times:
+    repeat 3 times:
+        harvest()
+        till()
+        plant(WHEAT)
+        move(EAST)
+    harvest()
+    till()
+    plant(WHEAT)
+    move(NORTH)
+    repeat 3 times:
+        harvest()
+        till()
+        plant(WHEAT)
+        move(WEST)
+    harvest()
+    till()
+    plant(WHEAT)
+    move(NORTH)`,
+  "3-9": `
+repeat 2 times:
+    plant(STRAWBERRY)
+    move(EAST)
+    plant(STRAWBERRY)
+    move(NORTH)
+    plant(STRAWBERRY)
+    move(WEST)
+    plant(STRAWBERRY)
+    move(NORTH)
+repeat 3 times:
+    move(SOUTH)
+repeat 2 times:
+    harvest()
+    move(EAST)
+    harvest()
+    move(NORTH)
+    harvest()
+    move(WEST)
+    harvest()
+    move(NORTH)`,
+  "3-10": `
+repeat 2 times:
+    repeat 2 times:
+        harvest()
+        move(EAST)
+    harvest()
+    move(NORTH)
+    repeat 2 times:
+        harvest()
+        move(WEST)
+    harvest()
+    move(NORTH)`,
+  "3-11": `
+repeat 2 times:
+    repeat 3 times:
+        till()
+        plant(WHEAT)
+        move(EAST)
+    till()
+    plant(WHEAT)
+    move(NORTH)
+    repeat 3 times:
+        till()
+        plant(WHEAT)
+        move(WEST)
+    till()
+    plant(WHEAT)
+    move(NORTH)`,
   "4-1": `
 repeat 4 times:
     if is_ripe():
@@ -234,6 +311,114 @@ repeat 2 times:
     else if is_rotten():
         till()
     move(NORTH)`,
+  "4-8": `
+repeat 2 times:
+    repeat 3 times:
+        if crop_here() == CARROT:
+            if is_ripe():
+                harvest()
+        move(EAST)
+    if crop_here() == CARROT:
+        if is_ripe():
+            harvest()
+    move(NORTH)
+    repeat 3 times:
+        if crop_here() == CARROT:
+            if is_ripe():
+                harvest()
+        move(WEST)
+    if crop_here() == CARROT:
+        if is_ripe():
+            harvest()
+    move(NORTH)`,
+  "4-9": `
+repeat 2 times:
+    repeat 3 times:
+        if crop_here() == CARROT:
+            harvest()
+            plant(PUMPKIN)
+        else:
+            plant(WHEAT)
+        move(EAST)
+    if crop_here() == CARROT:
+        harvest()
+        plant(PUMPKIN)
+    else:
+        plant(WHEAT)
+    move(NORTH)
+    repeat 3 times:
+        if crop_here() == CARROT:
+            harvest()
+            plant(PUMPKIN)
+        else:
+            plant(WHEAT)
+        move(WEST)
+    if crop_here() == CARROT:
+        harvest()
+        plant(PUMPKIN)
+    else:
+        plant(WHEAT)
+    move(NORTH)`,
+  "4-10": `
+repeat 3 times:
+    plant(LETTUCE)
+    move(EAST)
+plant(LETTUCE)
+repeat 2 times:
+    repeat 3 times:
+        move(WEST)
+    repeat 3 times:
+        if is_ripe():
+            harvest()
+        plant(LETTUCE)
+        move(EAST)
+    if is_ripe():
+        harvest()
+    plant(LETTUCE)`,
+  "4-11": `
+repeat 2 times:
+    repeat 4 times:
+        if is_ripe():
+            harvest()
+        else if is_rotten():
+            till()
+        move(EAST)
+    repeat 4 times:
+        move(WEST)
+    move(NORTH)`,
+  "4-12": `
+repeat 2 times:
+    repeat 3 times:
+        if is_ripe():
+            harvest()
+        else if is_rotten():
+            till()
+        if crop_here() == None:
+            plant(WHEAT)
+        move(EAST)
+    if is_ripe():
+        harvest()
+    else if is_rotten():
+        till()
+    if crop_here() == None:
+        plant(WHEAT)
+    move(NORTH)
+    repeat 3 times:
+        if is_ripe():
+            harvest()
+        else if is_rotten():
+            till()
+        if crop_here() == None:
+            plant(WHEAT)
+        move(WEST)
+    if is_ripe():
+        harvest()
+    else if is_rotten():
+        till()
+    if crop_here() == None:
+        plant(WHEAT)
+    move(NORTH)`,
+
   "5-1": `
 repeat while can_move(EAST):
     move(EAST)`,

@@ -14,8 +14,8 @@ A quest gives 1 star for meeting its goal, 2 stars within one tick limit and 3 w
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | [First Steps](#chapter-1-first-steps) | Aunt Juniper | sequencing, commands (function calls), algorithms, debugging | move, harvest | 1-1 to 1-6 | 0 stars |
 | 2 | [Do It Again](#chapter-2-do-it-again) | Daisy | loops, the loop body and indentation, off-by-one, state changes over time | till, plant, wait, repeat | 2-1 to 2-6 | 6 stars |
-| 3 | [Loops in Loops](#chapter-3-loops-in-loops) | Hazel | nested loops, finding the pattern, coordinates and grids | a loop inside a loop | 3-1 to 3-6 | 12 stars |
-| 4 | [Look Before You Act](#chapter-4-look-before-you-act) | Pip | conditionals, Booleans, comparison, sensing (input) | if and else, else if, comparing with == and <, is_ripe, is_rotten, crop_here, ground_here | 4-1 to 4-7 | 17 stars |
+| 3 | [Loops in Loops](#chapter-3-loops-in-loops) | Hazel | nested loops, finding the pattern, coordinates and grids | a loop inside a loop | 3-1 to 3-11 | 12 stars |
+| 4 | [Look Before You Act](#chapter-4-look-before-you-act) | Pip | conditionals, Booleans, comparison, sensing (input) | if and else, else if, comparing with == and <, is_ripe, is_rotten, crop_here, ground_here | 4-1 to 4-12 | 17 stars |
 | 5 | [Until It's Done](#chapter-5-until-its-done) | Wren | loops that stop on a condition, infinite loops and `break`, searching, generalising | repeat until, repeat while, repeat forever, break, can_move, position, field_size | 5-1 to 5-8 | 24 stars |
 | 6 | [Keeping Count](#chapter-6-keeping-count) | Mayor Maple | variables, counters and accumulators, counting loops, Boolean logic, resources and constraints | set and change, count, ticks, for ... from ... to, and, or and not, the watering can | 6-1 to 6-7 | 32 stars |
 | 7 | [Teach Bolt](#chapter-7-teach-bolt) | Bolt | functions, parameters and arguments, return values, abstraction, modules | define, use, give back, ripe_at | 7-1 to 7-5 | 38 stars |
@@ -171,7 +171,7 @@ repeat 2 times:
 
 ### New on the farm
 
-Strawberries (3 wheat, ripe after 12 ticks) arrive with the **Friends** rule: each one gives 1 more for every strawberry right next to it when it ripens, so a 2 by 2 square of 4 makes 12 (3-5). Quest 3-6 is a Fix Bolt's code quest.
+Strawberries (3 wheat, ripe after 12 ticks) arrive with the **Friends** rule: each one gives 1 more for every strawberry right next to it when it ripens, so a 2 by 2 square of 4 makes 12 (3-5, 3-9). Quests 3-6 and 3-11 are Fix Bolt's code quests. Quest 3-10 is the first with an **exact** goal: harvesting too much fails it.
 
 ### Quests
 
@@ -183,6 +183,11 @@ Strawberries (3 wheat, ripe after 12 ticks) arrive with the **Friends** rule: ea
 | 3-4 | Festival Wheat | Hazel | Plant wheat on the whole 5 by 5 field. | a loop inside a loop | a loop inside a loop |  |
 | 3-5 | Berry Friends | Hazel | You have wheat for 4 strawberries. Grow 12 strawberries with them. | earlier words: plant, wait, repeat |  | Bonus |
 | 3-6 | The Tangled Sweep | Hazel | Fix Bolt's code so it harvests all 8 grass tiles. | a loop inside a loop | a loop inside a loop | Bonus, Fix Bolt's code |
+| 3-7 | Back and Forth | Daisy | Harvest 12 hay from the 3 grass tiles, never pick grass before it's ripe, and end back at the barn. | a loop inside a loop | a loop inside a loop | Bonus |
+| 3-8 | From Hay to Bread | Hazel | Harvest all 16 grass tiles, then turn every tile into wheat. | a loop inside a loop | a loop inside a loop | Bonus |
+| 3-9 | The Big Berry Patch | Hazel | Plant 8 strawberries and grow 28 strawberries with them. Don't pick any too soon! | earlier words: plant, repeat |  | Bonus |
+| 3-10 | Just Enough Flour | Hazel | Harvest exactly 12 wheat. Not 11, not 13! | a loop inside a loop | a loop inside a loop | Bonus |
+| 3-11 | Bolt's Backwards Planting | Bolt | Fix Bolt's code so every tile of the grassy field gets wheat. | a loop inside a loop | a loop inside a loop | Bonus, Fix Bolt's code |
 
 ## Chapter 4: Look Before You Act
 
@@ -277,7 +282,7 @@ if ground_here() == GRASS:
 
 ### New on the farm
 
-Crops can now be picked too early, so `noLoss` quests fail if Bolt picks an unripe crop. **Pumpkins** rot 30 ticks after ripening (4-5, 4-7). **Lettuce** wilts 8 ticks after it's ripe and gives nothing, so the first planted must be the first picked (4-6). Quest 4-7 is the first with **test plots**: the same program runs on 2 different fields.
+Crops can now be picked too early, so `noLoss` quests fail if Bolt picks an unripe crop. **Pumpkins** rot 30 ticks after ripening (4-5, 4-7). **Lettuce** wilts 8 ticks after it's ripe and gives nothing, so the first planted must be the first picked (4-6). Quest 4-7 is the first with **test plots**: the same program runs on 2 different fields. Quest 4-11 is a Fix Bolt's code quest.
 
 ### Quests
 
@@ -290,6 +295,11 @@ Crops can now be picked too early, so `noLoss` quests fail if Bolt picks an unri
 | 4-5 | Pip's Pumpkin Patch | Pip | Pick the ripe pumpkins, till away the rotten ones, and leave the young ones alone. | if and else, else if, is_ripe, is_rotten | else if |  |
 | 4-6 | Crunchy Lettuce | Pip | Plant 5 lettuce in the row, then pick all 5 before any of them wilt. | if and else, is_ripe |  | Bonus |
 | 4-7 | Pumpkin Patrol | Pip | On both test plots: pick every ripe pumpkin, till every rotten one, and lose none. | if and else, else if, is_ripe, is_rotten | else if; a loop inside a loop | Bonus, 2 test plots |
+| 4-8 | Carrots Only, Please | Pip | On both test plots: harvest every ripe carrot, leave the wheat standing, and lose nothing. | if and else, comparing with == and <, is_ripe, crop_here | crop_here; a loop inside a loop | Bonus, 2 test plots |
+| 4-9 | Carrots Into Pumpkins | Pip | On both test plots: pick each carrot and plant a pumpkin in its spot, and plant wheat on every bare tile. | if and else, comparing with == and <, crop_here | if and else; a loop inside a loop | Bonus, 2 test plots |
+| 4-10 | Lettuce for Tomorrow | Pip | Harvest 8 lettuce before any wilt, and leave lettuce growing on all 4 tiles of the first row. | if and else, is_ripe | a loop inside a loop | Bonus |
+| 4-11 | Bolt's Pumpkin Mix-Up | Bolt | Fix Bolt's code so it picks only ripe pumpkins, tills the rotten ones, and loses none. | if and else, else if, is_ripe, is_rotten | else if | Bonus, Fix Bolt's code |
+| 4-12 | Pip's Big Tidy-Up | Pip | On all 3 test plots: harvest every ripe crop, till every rotten pumpkin, plant wheat on every bare tile, and lose nothing. | if and else, else if, comparing with == and <, is_ripe, is_rotten, crop_here | else if; a loop inside a loop | Bonus, 3 test plots |
 
 ## Chapter 5: Until It's Done
 
@@ -487,7 +497,7 @@ if is_dry():
 
 ### New on the farm
 
-Some goals now ask for an *exact* number. **Corn** only grows while its soil is wet, so it needs the watering can and trips to the well (6-5, 6-7). **Blueberry bushes** stay after a ripe harvest and are ripe again 10 ticks later, giving more each time (6-6).
+More goals now ask for an *exact* number. **Corn** only grows while its soil is wet, so it needs the watering can and trips to the well (6-5, 6-7). **Blueberry bushes** stay after a ripe harvest and are ripe again 10 ticks later, giving more each time (6-6).
 
 ### Quests
 
