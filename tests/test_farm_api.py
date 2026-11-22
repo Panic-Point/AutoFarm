@@ -526,6 +526,41 @@ class WordsTest(unittest.TestCase):
         self.assertTrue(msg.startswith("In helper, line 2: `harvest` needs brackets"), msg)
         self.assertEqual(farm_api.error_line(), ["helper", 2])
 
+    def test_indent_mistakes_use_the_players_words(self):
+        push = ". Put 4 spaces in front of each one, or highlight them and press Tab."
+        cases = {
+            "repeat 3 times:\nharvest()\n": ("Line 2: The lines Bolt should repeat need to be pushed in "
+                                             "under `repeat 3 times:`" + push),
+            "for 3 times:\nharvest()\n": ("Line 2: The lines Bolt should repeat need to be pushed in "
+                                          "under `for 3 times:`" + push),
+            "repeat until is_ripe():\nwait()\n": ("Line 2: The lines Bolt should repeat need to be pushed in "
+                                                  "under `repeat until is_ripe():`" + push),
+            "if is_ripe():\nharvest()\n": ("Line 2: The lines Bolt should do when this is true need to be "
+                                           "pushed in under `if is_ripe():`" + push),
+            "if is_ripe():\n    harvest()\nelse:\ntill()\n": ("Line 4: The lines Bolt should do otherwise need "
+                                                             "to be pushed in under `else:`" + push),
+            "if is_ripe():\n    harvest()\nelse if is_dry():\nwater()\n": (
+                "Line 4: The lines Bolt should do when this is true need to be pushed in "
+                "under `else if is_dry():`" + push),
+            "define go:\nmove(EAST)\n": ("Line 2: The lines of your new command need to be pushed in "
+                                         "under `define go:`" + push),
+            "harvest()\nrepeat 3 times:\n": ("Line 2: Write the lines Bolt should repeat under "
+                                             "`repeat 3 times:`, pushed in by 4 spaces."),
+            "  harvest()\n": ("Line 1: This line is pushed in, but it isn't under a line that ends in a colon, "
+                              "like `repeat 3 times:`. Take the spaces off the front with Backspace or Shift+Tab."),
+            "repeat 2 times:\n        till()\n    harvest()\n": (
+                "Line 3: This line is pushed in by a different amount from the lines above it. "
+                "Line it up with them: 4 spaces for each step in."),
+        }
+        for code, expected in cases.items():
+            status, msg = farm_api.run(code)
+            self.assertEqual((status, msg), ("error", expected), code)
+            self.assertNotIn("for' statement", msg)
+        self.assertEqual(calls, [])
+        status, msg = farm_api.run("use helper\n", {"helper": "define go:\nmove(EAST)\n"})
+        self.assertTrue(msg.startswith("In helper, line 2: The lines of your new command"), msg)
+        self.assertEqual(farm_api.error_line(), ["helper", 2])
+
     def test_brackets_check_leaves_good_code_alone(self):
         ok = [
             "if is_ripe():\n    harvest()\n",

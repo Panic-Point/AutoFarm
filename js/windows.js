@@ -2,7 +2,14 @@
 // resize, rename, hide, delete and run. Other windows can use its commands
 // with `use <name>`.
 import { nameProblem, newWindow, nextName, normalizeName } from "./files.js";
-import { backspaceDedent, lineDedent } from "./indent.js";
+import {
+  backspaceDedent,
+  changedRange,
+  dedentLines,
+  enterDedent,
+  indentBlocks,
+  indentLines,
+} from "./indent.js";
 
 const SMALL_SCREEN = window.matchMedia("(max-width: 760px)");
 const MIN_W = 220;
@@ -123,6 +130,7 @@ export class Desk {
         <button class="win-delete icon" type="button" title="Delete this window">&#215;</button>
       </div>
       <textarea spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
+      <div class="indent-guides" aria-hidden="true"></div>
       <div class="line-mark" hidden aria-hidden="true"></div>
       <div class="win-confirm" hidden>
         <span></span>
@@ -136,6 +144,7 @@ export class Desk {
       nameEl: el.querySelector(".win-name"),
       confirm: el.querySelector(".win-confirm"),
       mark: el.querySelector(".line-mark"),
+      guides: el.querySelector(".indent-guides"),
     };
     view.textarea.value = data.code;
     this.views.set(data.name, view);
@@ -157,17 +166,22 @@ export class Desk {
     el.style.height = `${data.h}px`;
     el.classList.toggle("active", data.name === this.active);
     if (this.marked?.name === data.name) this.placeMark(view);
+    if (!data.hidden) requestAnimationFrame(() => this.drawGuides(view));
   }
 
   wire(view) {
     const { el, textarea } = view;
     el.addEventListener("pointerdown", () => this.focus(view.data.name, false));
     textarea.addEventListener("focus", () => this.focus(view.data.name, false));
-    textarea.addEventListener("scroll", () => this.placeMark(view));
+    textarea.addEventListener("scroll", () => {
+      this.placeMark(view);
+      this.drawGuides(view);
+    });
     textarea.addEventListener("input", () => {
       // The code changed, so a line marked as a problem may not be the problem any more.
       if (this.marked?.kind === "error" && this.marked.name === view.data.name) this.showLine(null);
       view.data.code = textarea.value;
+      this.drawGuides(view);
       this.save();
     });
     textarea.addEventListener("keydown", (e) => this.editorKeys(e, view));
@@ -194,6 +208,7 @@ export class Desk {
     this.wireDrag(view);
     // Remember the size after the player drags the resize corner.
     new ResizeObserver(() => {
+      this.drawGuides(view);
       if (el.hidden || SMALL_SCREEN.matches) return;
       const w = Math.round(el.offsetWidth);
       const h = Math.round(el.offsetHeight);
@@ -259,43 +274,93 @@ export class Desk {
   editorKeys(e, view) {
     const ta = view.textarea;
     const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
-    if (e.key === "Backspace" && plain && !e.shiftKey && ta.selectionStart === ta.selectionEnd) {
+    const { selectionStart: start, selectionEnd: end, value } = ta;
+    if (e.key === "Backspace" && plain && !e.shiftKey && start === end) {
       // In a line's leading spaces, go back a whole indent level at a time.
-      const cut = backspaceDedent(ta.value, ta.selectionStart);
+      const cut = backspaceDedent(value, start);
       if (!cut) return;
       e.preventDefault();
-      ta.setRangeText("", cut.from, cut.to, "end");
-      ta.dispatchEvent(new Event("input"));
-    } else if (e.key === "Tab" && e.shiftKey && plain) {
-      // Shift+Tab takes one indent level off the cursor's line.
+      this.edit(ta, cut.from, cut.to, "");
+    } else if (e.key === "Tab" && plain) {
+      // Tab pushes lines in by one indent level and Shift+Tab pulls them out.
+      // With lines highlighted, every highlighted line moves and stays highlighted.
       e.preventDefault();
-      const cut = lineDedent(ta.value, ta.selectionStart);
-      if (!cut) return;
-      const s = Math.max(cut.from, ta.selectionStart - (cut.to - cut.from));
-      const end = Math.max(cut.from, ta.selectionEnd - (cut.to - cut.from));
-      ta.setRangeText("", cut.from, cut.to);
-      ta.setSelectionRange(s, end);
-      ta.dispatchEvent(new Event("input"));
-    } else if (e.key === "Tab" && !e.shiftKey) {
-      e.preventDefault();
-      ta.setRangeText("    ", ta.selectionStart, ta.selectionEnd, "end");
-      view.data.code = ta.value;
-      this.save();
+      const next = (e.shiftKey ? dedentLines : indentLines)(value, start, end);
+      const change = changedRange(value, next.text);
+      if (change.from !== change.to || change.text) this.edit(ta, change.from, change.to, change.text);
+      ta.setSelectionRange(next.start, next.end);
     } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       this.onRun(view.data.name);
-    } else if (e.key === "Enter") {
-      // Keep the current line's indentation, and indent after a colon.
-      const s = ta.selectionStart;
-      const lineStart = ta.value.lastIndexOf("\n", s - 1) + 1;
-      const line = ta.value.slice(lineStart, s);
-      let indent = line.match(/^\s*/)[0];
-      if (line.trimEnd().endsWith(":")) indent += "    ";
+    } else if (e.key === "Enter" && !e.altKey) {
       e.preventDefault();
-      ta.setRangeText("\n" + indent, s, ta.selectionEnd, "end");
-      view.data.code = ta.value;
-      this.save();
+      // Enter on an empty indented line takes one indent level off, so
+      // pressing Enter twice leaves a loop.
+      const cut = enterDedent(value, start, end);
+      if (cut) {
+        this.edit(ta, cut.from, cut.to, "");
+        return;
+      }
+      // Keep the current line's indentation, and indent after a colon.
+      const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+      const line = value.slice(lineStart, start);
+      let indent = line.match(/^ */)[0];
+      if (line.replace(/#[^'"]*$/, "").trimEnd().endsWith(":")) indent += "    ";
+      this.edit(ta, start, end, "\n" + indent);
     }
+  }
+
+  // Replace from..to with `text` and put the cursor after it. Goes through
+  // the browser's own editing where it can, so Ctrl+Z undoes it in one step.
+  // Either way an `input` event follows, which saves the code.
+  edit(ta, from, to, text) {
+    ta.focus();
+    ta.setSelectionRange(from, to);
+    let done = false;
+    try {
+      done = document.execCommand(text ? "insertText" : "delete", false, text);
+    } catch {
+      done = false;
+    }
+    if (!done) {
+      ta.setRangeText(text, from, to, "end");
+      ta.dispatchEvent(new Event("input"));
+    }
+  }
+
+  // ---- Indent guides ----
+
+  // Shade the lines inside each loop, if and define, with a bar under the
+  // start of the line they belong to, so it's clear which lines a loop repeats.
+  drawGuides(view) {
+    const { textarea: ta, guides } = view;
+    const blocks = indentBlocks(ta.value);
+    guides.textContent = "";
+    guides.style.top = `${ta.offsetTop}px`;
+    guides.style.height = `${ta.clientHeight}px`;
+    guides.style.width = `${ta.clientWidth}px`;
+    if (!blocks.length || view.data.hidden) return;
+    const { height, pad } = this.lineBox(view);
+    const padLeft = parseFloat(getComputedStyle(ta).paddingLeft) || 0;
+    const ch = this.charWidth(ta);
+    for (const b of blocks) {
+      const g = document.createElement("div");
+      g.className = `guide ${b.kind}`;
+      g.style.left = `${padLeft + b.indent * ch + ch * 0.3 - ta.scrollLeft}px`;
+      g.style.top = `${pad + b.first * height - ta.scrollTop}px`;
+      g.style.height = `${(b.last - b.first + 1) * height}px`;
+      guides.append(g);
+    }
+  }
+
+  charWidth(ta) {
+    const font = getComputedStyle(ta).font;
+    if (this.measured?.font !== font) {
+      const ctx = document.createElement("canvas").getContext("2d");
+      ctx.font = font;
+      this.measured = { font, width: ctx.measureText("0000000000").width / 10 || 8.4 };
+    }
+    return this.measured.width;
   }
 
   // ---- Window actions ----
@@ -382,6 +447,7 @@ export class Desk {
     } else if (fresh) {
       view.data.code = code;
       view.textarea.value = code;
+      this.drawGuides(view);
     }
     this.focus(name, false);
     this.save();

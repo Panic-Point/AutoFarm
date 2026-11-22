@@ -174,6 +174,24 @@ select { font: inherit; padding: 4px; border-radius: 6px; }
   background: color-mix(in srgb, var(--accent) 28%, transparent);
   border-left: 4px solid var(--accent);
 }
+/* Shading under the lines inside each loop, if and define, with a bar
+   under the start of the line they belong to. */
+.indent-guides {
+  position: absolute;
+  left: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.indent-guides .guide {
+  position: absolute;
+  right: -100000px;
+  border-left: 3px solid rgba(90, 160, 90, 0.75);
+  background: rgba(90, 160, 90, 0.10);
+  border-radius: 2px;
+}
+.indent-guides .guide.if { border-left-color: rgba(70, 130, 220, 0.75); background: rgba(70, 130, 220, 0.10); }
+.indent-guides .guide.define { border-left-color: rgba(170, 100, 200, 0.75); background: rgba(170, 100, 200, 0.10); }
+.indent-guides .guide.block { border-left-color: rgba(150, 150, 150, 0.6); background: rgba(150, 150, 150, 0.08); }
 /* Paused here while stepping through the program, one line at a time. */
 .line-mark.step {
   background: rgba(240, 190, 40, 0.32);
