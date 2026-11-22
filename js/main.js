@@ -151,6 +151,20 @@ const inventoryHtml = (inv) =>
   ITEMS.map((item) => `<span${inv[item] ? "" : ' class="zero"'}>${itemName(item)} <b>${inv[item] ?? 0}</b></span>`).join("");
 const starText = (n, of = 3) => "★".repeat(n) + "☆".repeat(Math.max(0, of - n));
 
+// Show the tick count, and bump it when it goes up so players see each tick
+// being counted.
+let shownTick = 0;
+function bumpTick(tick) {
+  const box = $("tick").parentElement;
+  $("tick").textContent = tick;
+  if (tick > shownTick) {
+    box.classList.remove("bump");
+    void box.offsetWidth; // restart the animation
+    box.classList.add("bump");
+  }
+  shownTick = tick;
+}
+
 function render() {
   const quest = currentQuest();
   let goal = null;
@@ -159,7 +173,7 @@ function render() {
     if (quest.goal.pattern) goal.misses = patternMisses(quest.goal.pattern, farm);
   }
   drawFarm(ctx, farm, { looks: looks(progress), fog: Boolean(quest && questPlots(quest)[plot].fog), goal });
-  $("tick").textContent = farm.tick;
+  bumpTick(farm.tick);
   // The watering can, on fields where it matters (corn or a well).
   const usesWater = farm.tiles.some((t) => t.crop === "corn" || t.ground === "well");
   $("inventory").innerHTML = inventoryHtml(farm.inventory)
@@ -912,7 +926,7 @@ function showReward({ quest, stars, ticks, gained, rewards, pages = [], title, i
 // own little field, in the lesson card and in the book.
 
 const DEMO_STEPS_PER_SECOND = 3;
-let demo = null; // { id, ctx, out, btn, queue, pos, done, acc, state }
+let demo = null; // { id, ctx, out, btn, tick, queue, pos, done, acc, state }
 
 function codePane(label, code) {
   return el("figure", { class: "code-pane" }, el("figcaption", {}, label), el("pre", {}, el("code", {}, code)));
@@ -922,8 +936,9 @@ function exampleView(c) {
   const ex = c.example;
   const canvas = el("canvas", { width: 216, height: 216, class: "demo-field", "aria-label": `Bolt's field for the ${c.name} example` });
   const out = el("pre", { class: "demo-out", "aria-live": "polite" });
+  const tick = el("span", { class: "demo-tick" }, "Tick 0");
   const btn = el("button", { type: "button", class: "small" }, "▶ Watch Bolt do it");
-  btn.addEventListener("click", () => playExample(c, canvas, out, btn));
+  btn.addEventListener("click", () => playExample(c, canvas, out, btn, tick));
   const panes = [];
   const windows = Object.keys(ex.files ?? {});
   panes.push(codePane(windows.length ? "main window" : ex.python ? "Plain words" : "Example", ex.code));
@@ -932,10 +947,10 @@ function exampleView(c) {
   drawFarm(canvas.getContext("2d"), exampleField(c), { looks: looks(progress) });
   return el("div", { class: "example" },
     el("div", { class: "example-code" }, panes),
-    el("div", { class: "example-stage" }, canvas, btn, out));
+    el("div", { class: "example-stage" }, canvas, tick, btn, out));
 }
 
-function playExample(c, canvas, out, btn) {
+function playExample(c, canvas, out, btn, tick) {
   if (run || nextPlotTimer) {
     out.textContent = "Bolt is busy with your program. Watch again when it stops.";
     return;
@@ -947,8 +962,9 @@ function playExample(c, canvas, out, btn) {
   stopDemo();
   runId += 1;
   const state = exampleField(c);
-  demo = { id: runId, ctx: canvas.getContext("2d"), out, btn, queue: [], pos: 0, done: null, acc: 1, state };
+  demo = { id: runId, ctx: canvas.getContext("2d"), out, btn, tick, queue: [], pos: 0, done: null, acc: 1, state };
   out.textContent = "";
+  tick.textContent = "Tick 0";
   btn.disabled = true;
   drawFarm(demo.ctx, state, { looks: looks(progress) });
   worker.postMessage({
@@ -973,7 +989,10 @@ function stepDemo(dt) {
     }
     demo.pos += 1;
   }
-  if (drew) drawFarm(demo.ctx, demo.state, { looks: looks(progress) });
+  if (drew) {
+    drawFarm(demo.ctx, demo.state, { looks: looks(progress) });
+    demo.tick.textContent = `Tick ${demo.state.tick}`;
+  }
   if (demo.done && demo.pos >= demo.queue.length && demo.acc >= 1) {
     if (demo.done.status !== "ok") demo.out.textContent += demo.done.message;
     demo.btn.disabled = false;
