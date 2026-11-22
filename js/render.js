@@ -59,6 +59,7 @@ const HATS = {
 const GEMS = {
   crown_1: ["#b5c44f"], // hay
   crown_2: ["#b8862a"], // wheat
+  crown_carrot: ["#f59a23"], // carrot
   crown_3: ["#d9363e"], // strawberry
   crown_4: ["#e8761e"], // pumpkin
   crown_5: ["#a0522d"], // mushroom

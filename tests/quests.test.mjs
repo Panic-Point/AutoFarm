@@ -116,7 +116,7 @@ test("a goal that isn't met says what's missing", () => {
 });
 
 test("slower solutions earn fewer stars", () => {
-  const quest = QUESTS.find((q) => q.id === "3-3");
+  const quest = QUESTS.find((q) => q.id === "4-3");
   const slow = `
 repeat 5 times:
     repeat 4 times:
@@ -132,7 +132,7 @@ repeat 5 times:
 });
 
 test("losing an unripe crop fails a careful quest", () => {
-  const quest = QUESTS.find((q) => q.id === "4-1");
+  const quest = QUESTS.find((q) => q.id === "5-1");
   const { result } = play(quest, "repeat 4 times:\n    harvest()\n    move(EAST)\nharvest()\n");
   assert.equal(result.met, false);
   assert.match(result.problems.join(" "), /picked 2 crops before they were ripe/);
@@ -166,8 +166,8 @@ test("a command without brackets stops the run and points at its line", () => {
 });
 
 test("a loop that never ends is a loss, even if Bolt ends up in the right place", () => {
-  const quest = QUESTS.find((q) => q.id === "5-1");
-  const { run, result } = play(quest, "repeat forever:\n    move(EAST)\n");
+  const quest = QUESTS.find((q) => q.id === "3-1");
+  const { run, result } = play(quest, "repeat until is_ripe():\n    move(EAST)\n");
   assert.equal(run.status, "out_of_ticks");
   // Bolt stops soon instead of walking into the fence for 5,000 ticks.
   assert.equal(run.ticks, tickLimit(quest));
@@ -251,14 +251,14 @@ test("every Fix Bolt's code quest starts with code that needs fixing", () => {
 });
 
 test("pumpkins need else if: a rotten one has to be tilled", () => {
-  const quest = QUESTS.find((q) => q.id === "4-5");
+  const quest = QUESTS.find((q) => q.id === "5-5");
   const { result } = play(quest, "repeat 4 times:\n    if is_ripe():\n        harvest()\n    move(EAST)\nif is_ripe():\n    harvest()\n");
   assert.equal(result.met, false);
   assert.match(result.problems.join(" "), /2 tiles still aren't right/);
 });
 
 test("test plots catch a program that only knows where the first mushroom is", () => {
-  const quest = QUESTS.find((q) => q.id === "5-6");
+  const quest = QUESTS.find((q) => q.id === "6-2");
   const fixed = "repeat forever:\n    if position() == (3, 0):\n        harvest()\n        break\n    move(EAST)\nrepeat 3 times:\n    move(WEST)\n";
   const { result } = play(quest, fixed);
   assert.equal(result.met, false);
@@ -266,7 +266,7 @@ test("test plots catch a program that only knows where the first mushroom is", (
 });
 
 test("watering every dry tile wastes water on the ripe corn", () => {
-  const quest = QUESTS.find((q) => q.id === "6-5");
+  const quest = QUESTS.find((q) => q.id === "7-5");
   const careless = "repeat 5 times:\n    if is_dry():\n        water()\n    if is_ripe():\n        harvest()\n    if can_move(EAST):\n        move(EAST)\n";
   const { result } = play(quest, careless);
   assert.equal(result.met, false);
@@ -275,14 +275,14 @@ test("watering every dry tile wastes water on the ripe corn", () => {
 });
 
 test("skipping the young corn leaves it thirsty", () => {
-  const quest = QUESTS.find((q) => q.id === "6-5");
+  const quest = QUESTS.find((q) => q.id === "7-5");
   const lazy = "repeat 5 times:\n    if is_ripe() and true:\n        harvest()\n    if can_move(EAST):\n        move(EAST)\n";
   const { result } = play(quest, lazy);
   assert.deepEqual(result.problems, ["2 corn on dry soil didn't get any water."]);
 });
 
 test("the Mayor's Order fails when Bolt picks extra produce", () => {
-  const quest = QUESTS.find((q) => q.id === "8-4");
+  const quest = QUESTS.find((q) => q.id === "9-4");
   const greedy = "set basket to []\nrepeat 5 times:\n    if crop_here() in order():\n        harvest()\n        add crop_here() to basket\n    move(EAST)\nharvest()\n";
   const { result } = play(quest, greedy);
   assert.equal(result.met, false);
@@ -292,8 +292,9 @@ test("the Mayor's Order fails when Bolt picks extra produce", () => {
 test("golden quests are well formed and come after the festival", () => {
   const golden = QUESTS.filter((q) => q.golden);
   assert.equal(golden.length, 8);
-  golden.forEach((q, i) => {
-    assert.equal(q.from, i + 1, `${q.id}: one golden quest per chapter, in order`);
+  // One per chapter, in order. Chapter 3's while loops are already in G-1 and G-2.
+  assert.deepEqual(golden.map((q) => q.from), [1, 2, 4, 5, 6, 7, 8, 9]);
+  golden.forEach((q) => {
     assert.ok(questPlots(q).length >= 2, `${q.id}: golden quests use test plots`);
     questPlots(q).forEach((plot, n) => {
       const size = plot.map.length;

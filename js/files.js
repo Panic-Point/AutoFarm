@@ -51,7 +51,7 @@ export function newWindow(name, code, i = 0) {
   return { name, code, x: 16 + i * 28, y: 16 + i * 28, w: 420, h: 300, hidden: false };
 }
 
-// A new player starts with one window. Using other windows is taught in chapter 7.
+// A new player starts with one window. Using other windows is taught in chapter 8.
 export function starterWorkspace() {
   return { windows: [newWindow("main", STARTER_MAIN)], active: "main" };
 }
