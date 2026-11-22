@@ -113,4 +113,12 @@ test("the real bridge reports lines in step mode only", async () => {
   bridge.start(newFarmState(3));
   bridge.run(api, { code, name: "main" });
   assert.deepEqual(events.map((e) => e.kind), ["frame", "log"]);
+  // A move into the fence still makes a frame, marked as a bump on its line.
+  events.length = 0;
+  bridge.start(newFarmState(3));
+  bridge.run(api, { code: "move(EAST)\nmove(EAST)\nmove(EAST)\nharvest()\n", name: "main" });
+  const frames = events.filter((e) => e.kind === "frame");
+  assert.deepEqual(frames.map((e) => e.bump ?? null), [null, null, [1, 0], null]);
+  assert.deepEqual(frames[2].at, { name: "main", line: 3 });
+  assert.equal(frames[2].state.x, 2);
 });
