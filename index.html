@@ -30,7 +30,7 @@
 
       <div class="title-view" id="title-confirm" hidden>
         <h2>Start a new game?</h2>
-        <p>This erases your stars, badges, crowns, ribbons, shop items, everything in the barn and your code windows. It can't be undone.</p>
+        <p>This erases your stars, badges, crowns, ribbons, shop items, everything in the barn and your code windows. It can't be undone. Code you saved in your Library is kept.</p>
         <p class="title-summary" id="title-confirm-summary"></p>
         <div class="title-row">
           <button id="title-confirm-yes" class="danger" type="button">Erase and start over</button>
@@ -81,6 +81,7 @@
           <button id="lesson-btn" class="secondary small" type="button" hidden>📖 What's new</button>
           <button id="hint-btn" class="secondary small" type="button">Hint</button>
           <button id="starter-btn" class="secondary small" type="button" hidden>Put Bolt's code back</button>
+          <button id="last-code-btn" class="secondary small" type="button" hidden title="Put the code you had in main last time back">↩ My code from last time</button>
           <button id="next-btn" class="small" type="button" hidden></button>
           <button id="contract-btn" class="secondary small" type="button" hidden>Put the contract back</button>
         </div>
@@ -165,6 +166,13 @@
     </div>
   </dialog>
 
+  <dialog id="library-dialog" class="panel-dialog" aria-labelledby="library-heading">
+    <div class="dialog-head"><h2 id="library-heading">📚 Library</h2><button class="close secondary small" type="button">Close</button></div>
+    <p class="dialog-note">Code you saved with the 💾 button on a code window. <span id="library-note"></span></p>
+    <p class="dialog-message" id="library-message" aria-live="polite"></p>
+    <ul class="library" id="library-list"></ul>
+  </dialog>
+
   <dialog id="lesson-dialog" class="panel-dialog lesson-dialog" aria-labelledby="lesson-heading">
     <div class="dialog-head"><h2 id="lesson-heading">Something new!</h2><button class="close secondary small" type="button">Close</button></div>
     <p class="lesson-step" id="lesson-step"></p>
@@ -180,6 +188,7 @@
     <h2 id="reward-heading"></h2>
     <p id="reward-text"></p>
     <ul id="reward-lines"></ul>
+    <p class="reward-keep-row"><button id="reward-keep" class="secondary small" type="button" hidden>💾 Save this code in its own window</button></p>
     <div class="reward-actions">
       <button id="reward-again" class="secondary" type="button">Try again</button>
       <button id="reward-next" type="button">Next quest</button>

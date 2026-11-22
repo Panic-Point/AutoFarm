@@ -2,7 +2,8 @@
 // worker's snapshots, and the map, shop and shelf.
 import { CAN_SIZE, ITEMS, emptyInventory, newFarmState } from "./game.js";
 import { drawBoltIcon, drawFarm } from "./render.js";
-import { loadWorkspace } from "./files.js";
+import { enterQuest, isEmptyCode, loadWorkspace, windowNameFor } from "./files.js";
+import { deletePiece, loadLibrary, preview, renamePiece, savePiece } from "./library.js";
 import { Desk } from "./windows.js";
 import * as playback from "./playback.js";
 import { CHAPTERS, QUESTS, chapterOf, findQuest } from "./chapters.js";
@@ -27,6 +28,7 @@ const STORE_FILES = "autofarm.files";
 const STORE_FARM = "autofarm.farm";
 const STORE_PROGRESS = "autofarm.progress";
 const STORE_MODE = "autofarm.mode";
+const STORE_LIBRARY = "autofarm.library";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("farm");
@@ -51,6 +53,8 @@ if (!Object.keys(progress.harvested).length) {
 }
 // What the player is doing: the home farm (free play) or a quest.
 let mode = loadMode(load(STORE_MODE));
+// Code the player saved with a window's 💾 button. A new game keeps it.
+const library = loadLibrary(load(STORE_LIBRARY));
 // The quest plot on the field: the one Bolt is running, or the one picked to look at.
 let plot = 0;
 // Plots that passed in the current try, while a quest with test plots runs.
@@ -197,6 +201,7 @@ function renderQuestCard(bubble) {
     $("quest-targets").hidden = false;
     renderPlots(quest);
     $("starter-btn").hidden = !quest.starter;
+    $("last-code-btn").hidden = !lastCode(quest);
     $("lesson-btn").hidden = !lessonsFor(quest.id).length;
     $("hint-btn").hidden = false;
     $("hint-btn").textContent = hintsShown >= quest.hints.length ? "No more hints" : "Hint";
@@ -221,6 +226,7 @@ function renderQuestCard(bubble) {
     $("quest-targets").hidden = false;
     $("quest-plots").hidden = true;
     $("starter-btn").hidden = true;
+    $("last-code-btn").hidden = true;
     $("lesson-btn").hidden = true;
     $("hint-btn").hidden = true;
     hintEl.hidden = true;
@@ -242,6 +248,7 @@ function renderQuestCard(bubble) {
     $("quest-targets").hidden = true;
     $("quest-plots").hidden = true;
     $("starter-btn").hidden = true;
+    $("last-code-btn").hidden = true;
     $("lesson-btn").hidden = true;
     $("hint-btn").hidden = true;
     hintEl.hidden = true;
@@ -285,6 +292,39 @@ function starterName(quest) {
   return quest.starter?.name ?? `fix_${quest.id.replace(/-/g, "_")}`;
 }
 
+// A new quest starts with a fresh main window. The code that was there is
+// kept as the old quest's "code from last time".
+function freshStart(quest) {
+  const code = enterQuest(desk.workspace, quest);
+  if (code !== null) desk.openWindow("main", code, true);
+  desk.save();
+}
+
+function mainWindow() {
+  return desk.workspace.windows.find((w) => w.name === "main") ?? null;
+}
+
+// The program the player had in main the last time they played this quest.
+function lastCode(quest) {
+  const code = quest && desk.workspace.lastCode[quest.id];
+  return code && code !== mainWindow()?.code ? code : null;
+}
+
+// Put the code from last time back in main. What was in main is kept in its
+// place, so pressing again swaps back.
+function restoreLastCode() {
+  const quest = currentQuest();
+  const code = lastCode(quest);
+  if (!code) return;
+  if (run) stopRun();
+  const now = mainWindow()?.code ?? "";
+  if (isEmptyCode(now)) delete desk.workspace.lastCode[quest.id];
+  else desk.workspace.lastCode[quest.id] = now;
+  desk.openWindow("main", code, true);
+  renderQuestCard();
+  log(`Your code from last time is back in main.${isEmptyCode(now) ? "" : " Press the button again to swap back."}`, "note");
+}
+
 function openStarter(quest, fresh = false) {
   if (!quest?.starter) return;
   const code = typeof quest.starter === "string" ? quest.starter : quest.starter.code;
@@ -317,6 +357,7 @@ function playQuest(id, replay = null) {
   mode = replay ? { quest: id, replay } : { quest: id };
   plot = 0;
   farm = questField(findQuest(id));
+  freshStart(findQuest(id));
   openStarter(findQuest(id));
   save(STORE_MODE, mode);
   consoleEl.textContent = "";
@@ -457,6 +498,7 @@ function startRun(name = desk.active, plotIndex = 0, results = [], stepping = fa
   };
   save(STORE_FILES, desk.workspace);
   const program = desk.program(name);
+  run.code = program.code;
   const maxTicks = quest ? tickLimit(quest) : currentContract()?.ticks;
   const data = quest ? plotData(quest, plot) : {};
   worker.postMessage({ type: "run", runId, ...program, state: farm, locked: locked(progress), maxTicks, data, step: stepping });
@@ -499,7 +541,7 @@ function stopRun() {
 function completeRun(done) {
   const start = run.start;
   const questId = run.quest;
-  const { name, results, contract, stepping } = run;
+  const { name, results, contract, stepping, code } = run;
   const { status, message, ticks } = done;
   const cls = status === "ok" ? "status" : "error";
   finishRun(`${message} (${ticks} ${ticks === 1 ? "tick" : "ticks"})`, cls);
@@ -569,7 +611,7 @@ function completeRun(done) {
   saveAll();
   renderAll(`Beep boop! ${starText(result.stars)}`);
   beep(true);
-  const reward = () => showReward({ quest, stars: result.stars, ticks: result.ticks, gained: result.gained, rewards, pages });
+  const reward = () => showReward({ quest, stars: result.stars, ticks: result.ticks, gained: result.gained, rewards, pages, code });
   // Finishing Festival Day for the first time plays the festival, then the stars.
   if (festival) playFestival(reward);
   else reward();
@@ -871,7 +913,7 @@ function renderShelf() {
   $("practice").checked = progress.practice;
 }
 
-function showReward({ quest, stars, ticks, gained, rewards, pages = [], title, icon = "📖", lines: extra = [] }) {
+function showReward({ quest, stars, ticks, gained, rewards, pages = [], title, icon = "📖", lines: extra = [], code = null }) {
   $("reward-stars").textContent = quest ? starText(stars) : icon;
   $("reward-heading").textContent = quest ? `${quest.title}: done!` : title;
   const lines = [];
@@ -894,6 +936,18 @@ function showReward({ quest, stars, ticks, gained, rewards, pages = [], title, i
   if (goOn && step.why) lines.push(`What's next: ${step.why}`);
   $("reward-lines").replaceChildren(...lines.map((l) => el("li", {}, l)));
   $("reward-again").hidden = !quest;
+  // The next quest starts with a fresh main window, so offer to keep this code.
+  const keep = $("reward-keep");
+  keep.hidden = !(quest && code && !isEmptyCode(code));
+  keep.disabled = false;
+  keep.textContent = "💾 Save this code in its own window";
+  keep.onclick = () => {
+    const name = windowNameFor(quest.title, desk.names());
+    desk.addHidden(name, code);
+    keep.disabled = true;
+    keep.textContent = `Saved in the window ${name} ✓`;
+    log(`Saved your code for "${quest.title}" in the window ${name}. Pick it in the bar above the code to open it.`, "note");
+  };
   const nextQ = step?.id ? findQuest(step.id) : null;
   let nextText = "Next quest";
   if (nextQ?.festival) nextText = `Event ${nextQ.festival.event} of 3: ${nextQ.festival.name}!`;
@@ -905,6 +959,82 @@ function showReward({ quest, stars, ticks, gained, rewards, pages = [], title, i
   };
   $("reward-again").onclick = () => $("reward-dialog").close();
   $("reward-dialog").showModal();
+}
+
+// ---- The Library ----
+// Code saved with a window's 💾 button: open it in a new window, insert it
+// into the active window at the cursor, rename it or delete it.
+
+function openLibrary() {
+  renderLibrary();
+  $("library-dialog").showModal();
+}
+
+function saveLibrary(message = "") {
+  save(STORE_LIBRARY, library);
+  renderLibrary(message);
+}
+
+function renderLibrary(message = "") {
+  $("library-message").textContent = message;
+  $("library-note").textContent = library.length
+    ? `Insert puts a piece into the ${desk.active} window, where the cursor is.`
+    : "";
+  const list = $("library-list");
+  if (!library.length) {
+    list.replaceChildren(el("li", { class: "library-empty" },
+      "Nothing saved yet. Press 💾 on a code window to keep its code here, so you can use it again later."));
+    return;
+  }
+  list.replaceChildren(...library.map((piece) => libraryItem(piece)));
+}
+
+function libraryItem(piece) {
+  const from = piece.quest ? `From quest ${piece.quest}${piece.questTitle ? `, ${piece.questTitle}` : ""}` : "From your farm";
+  const head = el("div", { class: "piece-head" }, el("b", {}, piece.name), el("span", { class: "piece-from" }, from));
+  const actions = el("div", { class: "piece-actions" },
+    el("button", { type: "button", class: "small", title: "Open this code in a new window", onclick: () => {
+      const name = windowNameFor(piece.name, desk.names());
+      desk.openWindow(name, piece.code);
+      $("library-dialog").close();
+      log(`Opened "${piece.name}" in the window ${name}.`, "note");
+    } }, "Open"),
+    el("button", { type: "button", class: "small secondary", title: `Put this code into ${desk.active} at the cursor`, onclick: () => {
+      $("library-dialog").close();
+      desk.insert(piece.code);
+      log(`Put "${piece.name}" into ${desk.active}.`, "note");
+    } }, `Insert into ${desk.active}`),
+    el("button", { type: "button", class: "small secondary", onclick: () => startPieceRename(item, piece) }, "Rename"),
+    el("button", { type: "button", class: "small secondary", onclick: () => {
+      actions.replaceChildren(
+        el("span", {}, `Delete "${piece.name}"?`),
+        el("button", { type: "button", class: "small danger", onclick: () => {
+          deletePiece(library, piece);
+          saveLibrary(`Deleted "${piece.name}".`);
+        } }, "Delete"),
+        el("button", { type: "button", class: "small secondary", onclick: () => renderLibrary() }, "Keep"));
+    } }, "Delete"));
+  const item = el("li", { class: "piece" }, head, el("pre", { class: "piece-preview" }, preview(piece.code)), actions);
+  return item;
+}
+
+function startPieceRename(item, piece) {
+  const input = el("input", { value: piece.name, maxlength: "30", "aria-label": "New name" });
+  const problem = el("span", { class: "piece-problem", "aria-live": "polite" });
+  const form = el("form", { class: "piece-rename", onsubmit: (e) => {
+    e.preventDefault();
+    const old = piece.name;
+    const why = renamePiece(library, piece, input.value);
+    if (why) problem.textContent = why;
+    else saveLibrary(old === piece.name ? "" : `Renamed "${old}" to "${piece.name}".`);
+  } },
+  input,
+  el("button", { type: "submit", class: "small" }, "Save"),
+  el("button", { type: "button", class: "small secondary", onclick: () => renderLibrary() }, "Cancel"),
+  problem);
+  item.querySelector(".piece-head").replaceWith(form);
+  input.focus();
+  input.select();
 }
 
 // ---- Example programs ----
@@ -1290,6 +1420,7 @@ $("starter-btn").addEventListener("click", () => {
   openStarter(currentQuest(), true);
   log("Bolt's code is back the way it started.", "note");
 });
+$("last-code-btn").addEventListener("click", restoreLastCode);
 $("hint-btn").addEventListener("click", () => {
   hintsShown += 1;
   renderQuestCard();
@@ -1307,6 +1438,17 @@ const desk = new Desk({
   },
   onRun: (name) => startRun(name),
   onMessage: (text, cls) => log(text, cls),
+  saveName: (name) => (name === "main" || name.startsWith("fix_") ? currentQuest()?.title ?? "My farm code" : name),
+  saveCode: (name, code, replace) => {
+    const quest = currentQuest();
+    const result = savePiece(library, { name, code, quest: quest?.id ?? null, questTitle: quest?.title ?? null }, replace);
+    if (result.piece) {
+      save(STORE_LIBRARY, library);
+      if ($("library-dialog").open) renderLibrary();
+    }
+    return result;
+  },
+  onLibrary: () => openLibrary(),
 });
 
 function updateRunButton() {
@@ -1366,6 +1508,7 @@ $("reset").addEventListener("click", () => {
   render();
 });
 
+freshStart(currentQuest());
 openStarter(currentQuest());
 save(STORE_FILES, desk.workspace);
 saveAll();
