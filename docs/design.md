@@ -96,7 +96,7 @@ Crops are written by name, like directions: `plant(WHEAT)`, `crop_here() == MUSH
 
 ## Code windows
 
-Code can be split across several named windows, like files. Make one with **+ New window**, drag windows around by their title bar, and double-click a name to rename it. Any window can use the commands and classes another window makes:
+Code can be split across several named windows, like files. Until chapter 7 (Teach Bolt) there is one window with no buttons of its own; **+ New window**, hiding, deleting and renaming show up with chapter 7, when windows are needed. Make one with **+ New window**, drag windows around by their title bar, and double-click a name to rename it. Any window can use the commands and classes another window makes:
 
 ```
 use helper                  # everything from the helper window
@@ -107,3 +107,12 @@ use go_home from helper     # just one command
 Python's `from helper import *` and `import helper` work too. Every window has its own run button, and **Run** at the top runs the window used last. A window you use runs once per run, the first time it's used, and an error inside it says which window and line it came from. Windows can't import anything except each other.
 
 `py/plain_words.py` rewrites these lines into Python before the program runs, one line for one line, so error messages keep the player's line numbers. A line that starts like a plain-word statement but isn't written right gets a hint instead of a Python syntax error.
+
+## A simple screen for young players
+
+A new player sees only what the first quest needs. The rest shows up as it's earned (see `js/simple.js`):
+
+- Crop counters show only crops the player has harvested, has in the barn, or that grow on the field.
+- **Map** shows after the first star, **Shop** once something is for sale, and **Shelf** once there's a badge, crown, almanac page or ribbon on it. Practice mode (and `?testing`) shows them all.
+- **Run** reads **▶ Run** while there is one window. **Keep going** only shows while stepping through code.
+- Under the Run button, tap-to-insert buttons hold the quest's words (`move(EAST)`, `harvest()`, `repeat 5 times:` and the newest ideas learned), so brackets and `_` don't have to be typed on a tablet. A line word goes on a new line with the right indent; a word like `is_ripe()` goes where the cursor is.

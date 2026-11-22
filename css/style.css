@@ -131,6 +131,24 @@ select { font: inherit; padding: 4px; border-radius: 6px; }
 .chip.is-hidden { color: var(--muted); border-style: dashed; }
 .chip.running::before { content: "\25B6  "; color: var(--accent); }
 .chip.add { font-family: inherit; color: var(--accent); border-color: var(--accent); }
+.window-chips[hidden], .barn[hidden], .tap-words[hidden] { display: none; }
+
+/* Before the chapter with more windows, a window has no buttons of its own. */
+.desk.no-tools .win-run, .desk.no-tools .win-hide, .desk.no-tools .win-delete { display: none; }
+
+/* Words to tap into the code, big enough for a finger. */
+.tap-words { display: flex; gap: 6px; flex-wrap: wrap; }
+.tap-word {
+  padding: 6px 12px;
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--desk);
+  color: var(--ink);
+  font: 14px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  touch-action: manipulation;
+}
+.tap-word:hover { border-color: var(--accent); }
 
 .desk {
   position: relative;

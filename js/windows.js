@@ -3,6 +3,7 @@
 // with `use <name>`.
 import { nameProblem, newWindow, nextName, normalizeName } from "./files.js";
 import { backspaceDedent, lineDedent } from "./indent.js";
+import { insertWord } from "./simple.js";
 
 const SMALL_SCREEN = window.matchMedia("(max-width: 760px)");
 const MIN_W = 220;
@@ -14,6 +15,9 @@ export class Desk {
     Object.assign(this, opts);
     this.views = new Map(); // name -> { el, textarea, nameEl, data }
     this.runningName = null;
+    // Making, hiding, deleting and renaming windows. Off until the chapter
+    // that needs more than one window (see setTools).
+    this.tools = true;
     for (const data of this.workspace.windows) this.addView(data);
     this.focusOrder();
     this.renderBar();
@@ -46,6 +50,43 @@ export class Desk {
 
   save() {
     this.onChange(this.workspace);
+  }
+
+  // Turn the window tools on or off. With them off, each window has no
+  // buttons of its own, and with only one window the chips above the desk
+  // go too. Hidden windows come back, since they can't be hidden any more.
+  setTools(on) {
+    this.tools = on;
+    this.desk.classList.toggle("no-tools", !on);
+    for (const view of this.views.values()) view.nameEl.title = on ? "Double-click to rename" : "";
+    if (!on) {
+      for (const view of this.views.values()) {
+        if (view.data.hidden) {
+          view.data.hidden = false;
+          this.clamp(view);
+          this.updateView(view);
+        }
+      }
+    }
+    this.renderBar();
+  }
+
+  // Put a tapped word into the active window, at the cursor (see insertWord).
+  insert(word) {
+    const view = this.views.get(this.active);
+    if (!view) return;
+    const ta = view.textarea;
+    const out = insertWord(ta.value, ta.selectionStart, word);
+    ta.value = out.code;
+    ta.setSelectionRange(out.at, out.at);
+    ta.dispatchEvent(new Event("input"));
+    // Show the new line, without opening a tablet's keyboard.
+    const { height, pad } = this.lineBox(view);
+    const line = out.code.slice(0, out.at).split("\n").length;
+    const top = pad + (line - 1) * height;
+    if (top < ta.scrollTop || top + height > ta.scrollTop + ta.clientHeight - pad) {
+      ta.scrollTop = Math.max(0, top - ta.clientHeight + height + pad);
+    }
   }
 
   // ---- Marking a line ----
@@ -138,6 +179,7 @@ export class Desk {
       mark: el.querySelector(".line-mark"),
     };
     view.textarea.value = data.code;
+    if (!this.tools) view.nameEl.title = "";
     this.views.set(data.name, view);
     this.desk.append(el);
     this.updateView(view);
@@ -333,6 +375,7 @@ export class Desk {
   }
 
   hide(name) {
+    if (!this.tools) return;
     const view = this.views.get(name);
     view.data.hidden = true;
     // The next visible window on top becomes active.
@@ -346,6 +389,7 @@ export class Desk {
   }
 
   askDelete(view) {
+    if (!this.tools) return;
     if (this.views.size === 1) {
       this.onMessage("You need at least one code window, so this one can't be deleted.", "note");
       return;
@@ -399,7 +443,7 @@ export class Desk {
   }
 
   startRename(view) {
-    if (view.el.querySelector(".win-name-input")) return;
+    if (!this.tools || view.el.querySelector(".win-name-input")) return;
     const input = document.createElement("input");
     input.className = "win-name-input";
     input.value = view.data.name;
@@ -461,6 +505,8 @@ export class Desk {
 
   renderBar() {
     this.bar.textContent = "";
+    // One window and nothing to make: no chips needed.
+    this.bar.hidden = !this.tools && this.workspace.windows.length === 1;
     for (const w of [...this.workspace.windows].sort((a, b) => a.name.localeCompare(b.name))) {
       const chip = document.createElement("button");
       chip.type = "button";
@@ -475,13 +521,14 @@ export class Desk {
       chip.addEventListener("click", () => this.focus(w.name));
       this.bar.append(chip);
     }
+    const allHidden = this.workspace.windows.every((w) => w.hidden);
+    this.desk.classList.toggle("empty", allHidden);
+    if (!this.tools) return;
     const add = document.createElement("button");
     add.type = "button";
     add.className = "chip add";
     add.textContent = "+ New window";
     add.addEventListener("click", () => this.create());
     this.bar.append(add);
-    const allHidden = this.workspace.windows.every((w) => w.hidden);
-    this.desk.classList.toggle("empty", allHidden);
   }
 }
