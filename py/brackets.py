@@ -92,10 +92,38 @@ def message(name, kind):
 
 _SPACED = re.compile(r"\s*(?P<name>[A-Za-z_]\w*)\s+(?P<rest>[A-Za-z_\"'(\d].*?)\s*(?:#.*)?$")
 
+# Farm commands that work on the tile Bolt stands on, so nothing goes in
+# their brackets: `harvest the grass` is `harvest()`.
+_EMPTY = {
+    "harvest": " Bolt picks whatever it's standing on.",
+    "till": " Bolt tills the tile it's standing on.",
+    "water": " Bolt waters the tile it's standing on.",
+    "wait": "", "refill": "", "is_ripe": "", "is_rotten": "", "is_dry": "", "water_left": "",
+    "crop_here": "", "ground_here": "", "position": "", "field_size": "", "ticks": "",
+    "order": "", "design": "",
+}
+_DIRECTIONS = {"NORTH", "SOUTH", "EAST", "WEST", "UP", "DOWN", "LEFT", "RIGHT"}
+_CROPS = {"GRASS", "WHEAT", "CARROT", "LETTUCE", "STRAWBERRY", "BLUEBERRY",
+          "PUMPKIN", "MUSHROOM", "CORN", "SUNFLOWER"}
+# What goes in the brackets of commands that take one word, like `move east`.
+_ONE_WORD = {"move": (_DIRECTIONS, "a direction"), "can_move": (_DIRECTIONS, "a direction"),
+             "plant": (_CROPS, "a crop"), "count": (_CROPS, "a crop")}
+# Little words a player might put before the word that matters: `move to the east`.
+_FILLER = {"the", "a", "an", "some", "to", "one", "step", "go"}
+
+
+def _parses(code):
+    try:
+        ast.parse(code)
+    except SyntaxError:
+        return False
+    return True
+
 
 def spaced_hint(line, commands):
     """A hint for `move EAST` (a command and its input with a space instead of
-    brackets), or None. Used when the line has a syntax error."""
+    brackets), or None. Used when the line has a syntax error. The code it
+    suggests always works when copied."""
     m = _SPACED.match(line)
     if not m or m["name"] not in commands:
         return None
@@ -104,4 +132,14 @@ def spaced_hint(line, commands):
         return None  # `move (EAST)` is fine; the problem is somewhere else.
     if re.match(r"(?:if|else|and|or|not|in|is)\b", rest):
         return None
-    return f"`{name}` needs brackets around what goes in it. Write `{name}({rest})`."
+    if name in _EMPTY:
+        return f"`{name}` needs brackets, with nothing inside. Write `{name}()`.{_EMPTY[name]}"
+    if name in _ONE_WORD:
+        allowed, what = _ONE_WORD[name]
+        words = [w for w in re.split(r"[\s,]+", rest.strip("\"'")) if w.lower() not in _FILLER]
+        if len(words) == 1 and words[0].upper() in allowed:
+            return f"`{name}` needs brackets around what goes in it. Write `{name}({words[0].upper()})`."
+        return f"`{name}` needs brackets with {what} inside. Write `{example(name)}`."
+    if _parses(f"{name}({rest})"):
+        return f"`{name}` needs brackets around what goes in it. Write `{name}({rest})`."
+    return f"`{name}` needs brackets around what goes in it, like `{example(name)}`."
