@@ -150,6 +150,75 @@ def translate(code, tags=None):
     return "\n".join(out)
 
 
+# ---- Indent mistakes in plain words ----
+
+_OPENER_LINE = re.compile(r"on line (\d+)")
+
+
+def _block_kind(opener):
+    """What a block line is, in the player's own words: repeat, if, else or define."""
+    word = (_FIRST_WORD.match(opener) or {"word": ""})["word"]
+    if word in ("repeat", "for", "while"):
+        return "loop"
+    if word == "else" and not re.match(r"else\s+if\b", opener):
+        return "else"
+    if word in ("if", "elif", "else"):
+        return "if"
+    if word in ("define", "def"):
+        return "define"
+    return "block"
+
+
+_UNDER = {
+    "loop": "The lines Bolt should repeat need to be pushed in under `{opener}`",
+    "if": "The lines Bolt should do when this is true need to be pushed in under `{opener}`",
+    "else": "The lines Bolt should do otherwise need to be pushed in under `{opener}`",
+    "define": "The lines of your new command need to be pushed in under `{opener}`",
+    "block": "The lines that belong to `{opener}` need to be pushed in under it",
+}
+_EMPTY = {
+    "loop": "Write the lines Bolt should repeat under `{opener}`, pushed in by 4 spaces.",
+    "if": "Write the lines Bolt should do when this is true under `{opener}`, pushed in by 4 spaces.",
+    "else": "Write the lines Bolt should do otherwise under `{opener}`, pushed in by 4 spaces.",
+    "define": "Write the lines of your new command under `{opener}`, pushed in by 4 spaces.",
+    "block": "Write the lines that belong to `{opener}` under it, pushed in by 4 spaces.",
+}
+
+
+def indent_message(error, code):
+    """A friendly message for an IndentationError in the player's code, in
+    the player's own words (never `for` when they wrote `repeat`).
+    Returns (line, message), or None if it isn't an indent mistake."""
+    if not isinstance(error, IndentationError) or not error.lineno:
+        return None
+    lines = code.split("\n")
+    line = error.lineno
+    msg = error.msg or ""
+    if msg.startswith("expected an indented block"):
+        found = _OPENER_LINE.search(msg)
+        opener_line = int(found.group(1)) if found else line - 1
+        if not 1 <= opener_line <= len(lines):
+            return None
+        opener = lines[opener_line - 1].strip()
+        kind = _block_kind(opener)
+        # No lines under it at all: the block is empty.
+        rest = [n for n in range(opener_line + 1, len(lines) + 1) if lines[n - 1].strip()]
+        if line <= opener_line or not rest:
+            return opener_line, _EMPTY[kind].format(opener=opener)
+        return line, (_UNDER[kind].format(opener=opener) +
+                      ". Put 4 spaces in front of each one, or highlight them and press Tab.")
+    if msg.startswith("unexpected indent"):
+        return line, ("This line is pushed in, but it isn't under a line that ends in a colon, "
+                      "like `repeat 3 times:`. Take the spaces off the front with Backspace "
+                      "or Shift+Tab.")
+    if msg.startswith("unindent does not match"):
+        return line, ("This line is pushed in by a different amount from the lines above it. "
+                      "Line it up with them: 4 spaces for each step in.")
+    if isinstance(error, TabError):
+        return line, "Use spaces to push lines in, not a mix of tabs and spaces."
+    return None
+
+
 # ---- Helpers the translated code calls ----
 
 def _times(n):

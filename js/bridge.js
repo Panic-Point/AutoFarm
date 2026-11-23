@@ -1,12 +1,13 @@
 // The `_farm` module that the player's Python talks to. It runs one program
 // against a copy of the farm and collects a snapshot per action, plus print()
 // output. Used by the worker, and by the tests that run quest solutions.
-import { Game, ripeAt } from "./game.js";
+import { DIRECTIONS, Game, ripeAt } from "./game.js";
 
 export const MAX_TICKS = 5000;
 
 export class FarmBridge {
   // onEvents(events) is called with batches of { kind: "frame"|"log", ... },
+  // where a frame from a move that hit the fence has bump: [dx, dy],
   // plus, in step mode, { kind: "line", at } for every line the program runs
   // and one { kind: "line_limit" } once it stops reporting them.
   constructor(onEvents = () => {}, batch = 100) {
@@ -16,10 +17,10 @@ export class FarmBridge {
     this.startTick = 0;
     this.events = [];
     this.data = {};
-    const act = (fn) => this.act(fn);
+    const act = (fn, bump) => this.act(fn, bump);
     const game = () => this.game;
     this.module = {
-      move: (d) => act(() => game().move(d)),
+      move: (d) => act(() => game().move(d), DIRECTIONS[d]),
       till: () => act(() => game().till()),
       plant: (c) => act(() => game().plant(c)),
       harvest: () => act(() => game().harvest()),
@@ -76,10 +77,14 @@ export class FarmBridge {
     return this.game.tick - this.startTick;
   }
 
-  act(fn) {
+  // bump: for a move, its [dx, dy]. If the move fails, Bolt bumped the fence,
+  // and the frame says so.
+  act(fn, bump = null) {
     if (this.ticks >= this.maxTicks) return -1;
     const ok = fn();
-    this.events.push({ kind: "frame", state: this.game.snapshot(), at: this.where });
+    const frame = { kind: "frame", state: this.game.snapshot(), at: this.where };
+    if (!ok && bump) frame.bump = [...bump];
+    this.events.push(frame);
     if (this.events.length >= this.batch) this.flush();
     return ok ? 1 : 0;
   }
@@ -127,4 +132,4 @@ export class FarmBridge {
 }
 
 // The Python files the worker loads, in order.
-export const PY_FILES = ["plain_words.py", "words.py", "brackets.py", "farm_api.py"];
+export const PY_FILES = ["plain_words.py", "words.py", "brackets.py", "friendly.py", "farm_api.py"];

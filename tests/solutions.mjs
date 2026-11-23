@@ -8,8 +8,8 @@ export const SOLUTIONS = {
   "1-3": `harvest()\nmove(EAST)\nharvest()\nmove(EAST)\nharvest()`,
   "1-4": `move(NORTH)\nmove(NORTH)\nharvest()\nmove(EAST)\nmove(EAST)\nharvest()`,
   "1-5": `move(EAST)\nmove(EAST)\nharvest()\nmove(WEST)\nmove(WEST)`,
-
   "1-6": `move(EAST)\nharvest()\nmove(EAST)\nmove(EAST)\nharvest()`,
+
   "2-1": `
 repeat 4 times:
     harvest()
@@ -45,24 +45,62 @@ repeat 4 times:
     harvest()
     move(WEST)
 harvest()`,
-
   "2-6": `
 repeat 5 times:
     move(EAST)
 harvest()`,
+
   "3-1": `
-repeat 2 times:
-    repeat 3 times:
-        plant(WHEAT)
-        move(EAST)
-    plant(WHEAT)
-    move(NORTH)
-    repeat 3 times:
-        plant(WHEAT)
-        move(WEST)
-    plant(WHEAT)
-    move(NORTH)`,
+repeat while can_move(EAST):
+    move(EAST)`,
   "3-2": `
+repeat until is_ripe():
+    wait()
+harvest()`,
+  "3-3": `
+repeat while can_move(EAST):
+    harvest()
+    move(EAST)
+harvest()`,
+  "3-4": `
+repeat until is_ripe():
+    move(EAST)
+harvest()`,
+  "3-5": `
+repeat while can_move(WEST):
+    move(WEST)
+repeat while can_move(SOUTH):
+    move(SOUTH)`,
+  "3-6": `
+repeat 3 times:
+    harvest()
+    plant(CARROT)
+    move(EAST)
+harvest()
+plant(CARROT)
+repeat 3 times:
+    move(WEST)
+repeat until is_ripe():
+    wait()
+repeat 3 times:
+    harvest()
+    move(EAST)
+    wait()
+harvest()`,
+
+  "4-1": `
+repeat 2 times:
+    repeat 3 times:
+        plant(WHEAT)
+        move(EAST)
+    plant(WHEAT)
+    move(NORTH)
+    repeat 3 times:
+        plant(WHEAT)
+        move(WEST)
+    plant(WHEAT)
+    move(NORTH)`,
+  "4-2": `
 repeat 2 times:
     repeat 3 times:
         harvest()
@@ -74,7 +112,7 @@ repeat 2 times:
         move(WEST)
     harvest()
     move(NORTH)`,
-  "3-3": `
+  "4-3": `
 repeat 2 times:
     repeat 4 times:
         harvest()
@@ -90,7 +128,7 @@ repeat 4 times:
     harvest()
     move(EAST)
 harvest()`,
-  "3-4": `
+  "4-4": `
 repeat 2 times:
     repeat 4 times:
         plant(WHEAT)
@@ -106,8 +144,7 @@ repeat 4 times:
     plant(WHEAT)
     move(EAST)
 plant(WHEAT)`,
-
-  "3-5": `
+  "4-5": `
 plant(STRAWBERRY)
 move(EAST)
 plant(STRAWBERRY)
@@ -124,8 +161,7 @@ move(EAST)
 harvest()
 move(NORTH)
 harvest()`,
-
-  "3-6": `
+  "4-6": `
 repeat 2 times:
     repeat 3 times:
         harvest()
@@ -135,7 +171,7 @@ repeat 2 times:
         move(WEST)
     move(NORTH)
     print("row done")`,
-  "3-7": `
+  "4-7": `
 repeat 3 times:
     repeat 2 times:
         harvest()
@@ -143,7 +179,7 @@ repeat 3 times:
     repeat 2 times:
         harvest()
         move(WEST)`,
-  "3-8": `
+  "4-8": `
 repeat 2 times:
     repeat 3 times:
         harvest()
@@ -163,7 +199,7 @@ repeat 2 times:
     till()
     plant(WHEAT)
     move(NORTH)`,
-  "3-9": `
+  "4-9": `
 repeat 2 times:
     plant(STRAWBERRY)
     move(EAST)
@@ -184,7 +220,7 @@ repeat 2 times:
     move(WEST)
     harvest()
     move(NORTH)`,
-  "3-10": `
+  "4-10": `
 repeat 2 times:
     repeat 2 times:
         harvest()
@@ -196,7 +232,7 @@ repeat 2 times:
         move(WEST)
     harvest()
     move(NORTH)`,
-  "3-11": `
+  "4-11": `
 repeat 2 times:
     repeat 3 times:
         till()
@@ -212,14 +248,15 @@ repeat 2 times:
     till()
     plant(WHEAT)
     move(NORTH)`,
-  "4-1": `
+
+  "5-1": `
 repeat 4 times:
     if is_ripe():
         harvest()
     move(EAST)
 if is_ripe():
     harvest()`,
-  "4-2": `
+  "5-2": `
 repeat 2 times:
     repeat 3 times:
         if is_ripe():
@@ -235,7 +272,7 @@ repeat 2 times:
     if is_ripe():
         harvest()
     move(NORTH)`,
-  "4-3": `
+  "5-3": `
 repeat 2 times:
     repeat 3 times:
         if ground_here() == "grass":
@@ -251,7 +288,7 @@ repeat 2 times:
     if ground_here() == "grass":
         till()
     move(NORTH)`,
-  "4-4": `
+  "5-4": `
 repeat 3 times:
     if is_ripe():
         harvest()
@@ -259,8 +296,7 @@ repeat 3 times:
         plant(WHEAT)
     move(EAST)
 plant(WHEAT)`,
-
-  "4-5": `
+  "5-5": `
 repeat 4 times:
     if is_ripe():
         harvest()
@@ -271,7 +307,7 @@ if is_ripe():
     harvest()
 else if is_rotten():
     till()`,
-  "4-6": `
+  "5-6": `
 repeat 4 times:
     plant(LETTUCE)
     move(EAST)
@@ -286,8 +322,7 @@ repeat 4 times:
         harvest()
     move(EAST)
 harvest()`,
-
-  "4-7": `
+  "5-7": `
 repeat 2 times:
     repeat 3 times:
         if is_ripe():
@@ -311,7 +346,7 @@ repeat 2 times:
     else if is_rotten():
         till()
     move(NORTH)`,
-  "4-8": `
+  "5-8": `
 repeat 2 times:
     repeat 3 times:
         if crop_here() == CARROT:
@@ -331,7 +366,7 @@ repeat 2 times:
         if is_ripe():
             harvest()
     move(NORTH)`,
-  "4-9": `
+  "5-9": `
 repeat 2 times:
     repeat 3 times:
         if crop_here() == CARROT:
@@ -359,7 +394,7 @@ repeat 2 times:
     else:
         plant(WHEAT)
     move(NORTH)`,
-  "4-10": `
+  "5-10": `
 repeat 3 times:
     plant(LETTUCE)
     move(EAST)
@@ -375,7 +410,7 @@ repeat 2 times:
     if is_ripe():
         harvest()
     plant(LETTUCE)`,
-  "4-11": `
+  "5-11": `
 repeat 2 times:
     repeat 4 times:
         if is_ripe():
@@ -386,7 +421,7 @@ repeat 2 times:
     repeat 4 times:
         move(WEST)
     move(NORTH)`,
-  "4-12": `
+  "5-12": `
 repeat 2 times:
     repeat 3 times:
         if is_ripe():
@@ -419,29 +454,15 @@ repeat 2 times:
         plant(WHEAT)
     move(NORTH)`,
 
-  "5-1": `
-repeat while can_move(EAST):
-    move(EAST)`,
-  "5-2": `
-repeat until is_ripe():
-    wait()
-harvest()`,
-  "5-3": `
-repeat while can_move(EAST):
-    harvest()
-    move(EAST)
-harvest()`,
-  "5-4": `
-repeat until is_ripe():
-    move(EAST)
-harvest()`,
-  "5-5": `
-repeat while can_move(WEST):
-    move(WEST)
-repeat while can_move(SOUTH):
-    move(SOUTH)`,
-
-  "5-6": `
+  "6-1": `
+repeat forever:
+    if position() == (0, 0):
+        break
+    if can_move(WEST):
+        move(WEST)
+    else:
+        move(SOUTH)`,
+  "6-2": `
 repeat forever:
     if crop_here() == MUSHROOM:
         harvest()
@@ -449,25 +470,7 @@ repeat forever:
     move(EAST)
 repeat until position() == (0, 0):
     move(WEST)`,
-  "5-7": `
-repeat 3 times:
-    harvest()
-    plant(CARROT)
-    move(EAST)
-harvest()
-plant(CARROT)
-repeat 3 times:
-    move(WEST)
-repeat 3 times:
-    repeat until is_ripe():
-        wait()
-    harvest()
-    move(EAST)
-repeat until is_ripe():
-    wait()
-harvest()`,
-
-  "5-8": `
+  "6-3": `
 repeat forever:
     if crop_here() == MUSHROOM:
         harvest()
@@ -478,12 +481,13 @@ repeat forever:
         repeat while can_move(WEST):
             move(WEST)
         move(NORTH)`,
-  "6-1": `
+
+  "7-1": `
 harvest()
 repeat until count("hay") == 7:
     move(EAST)
     harvest()`,
-  "6-2": `
+  "7-2": `
 set planted to 0
 repeat forever:
     plant(CARROT)
@@ -491,7 +495,7 @@ repeat forever:
     if planted == 10:
         break
     move(EAST)`,
-  "6-3": `
+  "7-3": `
 for row from 1 to 5:
     repeat row - 1 times:
         plant(WHEAT)
@@ -500,7 +504,7 @@ for row from 1 to 5:
     repeat row - 1 times:
         move(WEST)
     move(NORTH)`,
-  "6-4": `
+  "7-4": `
 harvest()
 repeat until count("hay") == 3:
     move(EAST)
@@ -510,8 +514,7 @@ harvest()
 repeat until count(WHEAT) == 4:
     move(EAST)
     harvest()`,
-
-  "6-5": `
+  "7-5": `
 repeat 5 times:
     if is_dry() and not is_ripe():
         water()
@@ -519,7 +522,7 @@ repeat 5 times:
         harvest()
     if can_move(EAST):
         move(EAST)`,
-  "6-6": `
+  "7-6": `
 set way to EAST
 repeat until count(BLUEBERRY) >= 14:
     if is_ripe():
@@ -530,8 +533,7 @@ repeat until count(BLUEBERRY) >= 14:
         set way to WEST
     else:
         set way to EAST`,
-
-  "6-7": `
+  "7-7": `
 refill()
 move(NORTH)
 repeat 5 times:
@@ -548,7 +550,8 @@ repeat 5 times:
     move(EAST)
     if is_dry() and not is_ripe():
         water()`,
-  "7-1": `
+
+  "8-1": `
 define row_east:
     repeat 4 times:
         harvest()
@@ -566,7 +569,7 @@ move(NORTH)
 row_west()
 move(NORTH)
 row_east()`,
-  "7-2": {
+  "8-2": {
     main: `
 use helper
 plant_row(EAST)
@@ -579,7 +582,7 @@ define plant_row(way):
         move(way)
     plant(WHEAT)`,
   },
-  "7-3": `
+  "8-3": `
 define go(way, steps):
     repeat steps times:
         move(way)
@@ -590,8 +593,7 @@ go(NORTH, 4)
 harvest()
 go(EAST, 3)
 harvest()`,
-
-  "7-4": `
+  "8-4": `
 define ripe_in_row(y):
     set n to 0
     for x from 0 to 4:
@@ -614,7 +616,7 @@ for y from 1 to 3:
             pick_row(EAST)
         else:
             pick_row(WEST)`,
-  "7-5": `
+  "8-5": `
 define ripe_in_row(y):
     set n to 0
     for x from 0 to 4:
@@ -634,18 +636,19 @@ repeat 4 times:
     move(EAST)
 if is_ripe():
     harvest()`,
-  "8-1": `
+
+  "9-1": `
 set plan to [WHEAT, CARROT, WHEAT, CARROT, WHEAT]
 for each crop in plan:
     plant(crop)
     if can_move(EAST):
         move(EAST)`,
-  "8-2": `
+  "9-2": `
 for each n in [1, 2, 1]:
     repeat n times:
         move(EAST)
     harvest()`,
-  "8-3": `
+  "9-3": `
 set a to [WHEAT, CARROT, WHEAT, CARROT, WHEAT]
 set b to [CARROT, WHEAT, CARROT, WHEAT, CARROT]
 
@@ -660,7 +663,7 @@ move(NORTH)
 plant_row(b, WEST)
 move(NORTH)
 plant_row(a, EAST)`,
-  "8-4": `
+  "9-4": `
 set basket to []
 repeat forever:
     set crop to crop_here()
@@ -670,7 +673,7 @@ repeat forever:
     if len(basket) == len(order()):
         break
     move(EAST)`,
-  "8-5": `
+  "9-5": `
 set size to field_size()
 
 define pick:
@@ -689,7 +692,7 @@ repeat size / 2 times:
     row(WEST)
     if can_move(NORTH):
         move(NORTH)`,
-  "8-6": `
+  "9-6": `
 set way to EAST
 repeat until crop_here() == CARROT:
     if can_move(way):
@@ -705,7 +708,7 @@ repeat until position()[0] == 0:
     move(WEST)
 repeat until position()[1] == 0:
     move(SOUTH)`,
-  "8-7": {
+  "9-7": {
     main: `
 use helper
 set way to EAST

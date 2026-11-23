@@ -15,7 +15,8 @@ import types
 import _farm
 from brackets import defined_commands, find_missing, spaced_hint
 from brackets import message as brackets_message
-from plain_words import HELPERS, PlainWordsError, translate
+from friendly import name_error, stored_names, syntax_hint, type_error, wrong_count
+from plain_words import HELPERS, PlainWordsError, indent_message, translate
 from words import API_WORDS, find_words
 
 NORTH = "north"
@@ -103,13 +104,20 @@ def _act(result):
     return result == 1
 
 
+def _check(value, allowed, command, names):
+    """`value` if it's one of `allowed` ("EAST" works like EAST), or a
+    FarmError that lists what goes in the command's brackets."""
+    if isinstance(value, str) and value.lower() in allowed:
+        return value.lower()
+    raise FarmError(f"`{command}()` needs {names}, not {value!r}.")
+
+
 # ---- Actions: each takes one tick ----
 
 def move(direction):
     """Step one tile NORTH, SOUTH, EAST or WEST (UP, DOWN, LEFT or RIGHT work too).
     Returns False at the edge."""
-    if direction not in _DIRECTIONS:
-        raise ValueError("move() needs " + _DIRECTION_NAMES + ", got " + repr(direction))
+    direction = _check(direction, _DIRECTIONS, "move", _DIRECTION_NAMES)
     _here()
     return _act(_farm.move(direction))
 
@@ -122,8 +130,7 @@ def till():
 
 def plant(crop):
     """Plant a crop on this tile. Returns False if it cannot be planted here."""
-    if crop not in _CROPS:
-        raise ValueError("plant() needs " + _CROP_NAMES + ", got " + repr(crop))
+    crop = _check(crop, _CROPS, "plant", _CROP_NAMES)
     if crop == Crop.MUSHROOM:
         raise FarmError("Mushrooms can't be planted. They only grow by themselves, in the fog.")
     if not _farm.has_seed(crop):
@@ -187,7 +194,7 @@ def ripe_at(x, y):
     so Bolt can see them from anywhere on the field."""
     for v in (x, y):
         if isinstance(v, bool) or not isinstance(v, int):
-            raise ValueError("ripe_at() needs two whole numbers, like ripe_at(2, 3), got " + repr(v))
+            raise FarmError(f"`ripe_at()` needs two whole numbers, like `ripe_at(2, 3)`, not {v!r}.")
     return bool(_farm.ripe_at(x, y))
 
 
@@ -205,8 +212,7 @@ def ground_here():
 def can_move(direction):
     """True if Bolt can step that way, False at the edge of the field.
     Takes the same directions as move(), UP, DOWN, LEFT and RIGHT included."""
-    if direction not in _DIRECTIONS:
-        raise ValueError("can_move() needs " + _DIRECTION_NAMES + ", got " + repr(direction))
+    direction = _check(direction, _DIRECTIONS, "can_move", _DIRECTION_NAMES)
     return bool(_farm.can_move(direction))
 
 
@@ -225,8 +231,7 @@ def count(item):
     count(GRASS) counts hay, since that's what grass gives."""
     if item == Crop.GRASS:
         item = "hay"
-    if item not in _ITEMS:
-        raise ValueError("count() needs " + _ITEM_NAMES + ", got " + repr(item))
+    item = _check(item, _ITEMS, "count", _ITEM_NAMES)
     return _farm.count(item)
 
 
@@ -274,6 +279,9 @@ API = {
     **_CROP_CONSTANTS, "SOIL": SOIL,
     "print": _print, "design": design, "order": order,
 }
+# Small-letter names work too, so `move(east)` and `plant(wheat)` do what a
+# young player means. The lessons still teach the capital ones.
+API.update({k.lower(): v for k, v in API.items() if isinstance(v, str)})
 
 # Every code window the player writes compiles under a filename like
 # "<file:helper>", so tracebacks and the line counter know which code is theirs.
@@ -405,6 +413,8 @@ class _Loader:
         # Names that are commands, so `harvest` without brackets is a mistake.
         self.commands = API_WORDS | {"print", "design"} | defined_commands(files)
         self.used = set()
+        # Every name the player's code sets, for suggesting the closest word.
+        self.names = set()
         self.modules = {}
         self.loading = []
         self.builtins = dict(_SAFE_BUILTINS)
@@ -422,10 +432,15 @@ class _Loader:
             tree = ast.parse(code, _filename(name))
         except SyntaxError as e:
             where = _where(name, self.main, e.lineno)
+            indent = indent_message(e, self.files[name])
+            if indent:
+                line, text = indent
+                raise PlayerError(f"{_where(name, self.main, line)}: {text}", name, line) from None
             lines = self.files[name].split("\n")
             hint = None
-            if e.lineno and e.lineno <= len(lines):
-                hint = spaced_hint(lines[e.lineno - 1], self.commands)
+            if e.lineno and e.lineno <= len(lines) and not isinstance(e, IndentationError):
+                line = lines[e.lineno - 1]
+                hint = spaced_hint(line, self.commands) or syntax_hint(line, self.commands)
             msg = f"{where}: {hint}" if hint else f"{where}: SyntaxError: {e.msg}"
             raise PlayerError(msg, name, e.lineno) from None
         _check_sandbox(tree, name, self.main, self.files)
@@ -434,6 +449,12 @@ class _Loader:
         if missing:
             line, command, kind = missing
             raise PlayerError(f"{_where(name, self.main, line)}: {brackets_message(command, kind)}", name, line)
+        stored = stored_names(tree)
+        self.names |= stored
+        wrong = wrong_count(tree, API, stored | defined_commands(self.files))
+        if wrong:
+            line, msg = wrong
+            raise PlayerError(f"{_where(name, self.main, line)}: {msg}", name, line)
         return compile(tree, _filename(name), "exec")
 
     def _check_words(self, tree, tags, name):
@@ -500,6 +521,17 @@ def used_words():
     return list(_used)
 
 
+def _friendly(e, loader):
+    """Bolt's words for a mistake Python found while running, or None."""
+    if isinstance(e, FarmError):
+        return str(e)
+    if type(e) is NameError and getattr(e, "name", None):
+        return name_error(e.name, API, loader.commands, loader.names)
+    if type(e) is TypeError:
+        return type_error(str(e))
+    return None
+
+
 def run(code, files=None, name="main", locked=None, step=False):
     """Run a player's program. `code` is the code window being run and `name`
     is its name. `files` maps the names of the other code windows to their code
@@ -542,7 +574,7 @@ def run(code, files=None, name="main", locked=None, step=False):
         found = _user_frame(e)
         if found:
             _error_at = list(found)
-        msg = str(e) if isinstance(e, FarmError) else f"{type(e).__name__}: {e}"
+        msg = _friendly(e, loader) or f"{type(e).__name__}: {e}"
         return ["error", f"{_where(found[0], name, found[1])}: {msg}" if found else msg]
     finally:
         sys.settrace(None)

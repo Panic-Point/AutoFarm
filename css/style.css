@@ -91,6 +91,16 @@ canvas {
 .inventory { display: flex; gap: 14px; flex-wrap: wrap; }
 .inventory span b { font-variant-numeric: tabular-nums; }
 .tick { color: var(--muted); font-variant-numeric: tabular-nums; }
+/* The counter bumps each time Bolt uses a tick, so players see them being counted. */
+#tick { display: inline-block; font-weight: 700; color: var(--ink); }
+.tick.bump #tick { animation: tick-bump 0.3s ease-out; }
+@keyframes tick-bump {
+  from { transform: scale(1.5); color: var(--accent); }
+  to { transform: scale(1); color: var(--ink); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tick.bump #tick { animation: none; }
+}
 
 .code-panel { display: flex; flex-direction: column; gap: 10px; }
 
@@ -131,6 +141,24 @@ select { font: inherit; padding: 4px; border-radius: 6px; }
 .chip.is-hidden { color: var(--muted); border-style: dashed; }
 .chip.running::before { content: "\25B6  "; color: var(--accent); }
 .chip.add { font-family: inherit; color: var(--accent); border-color: var(--accent); }
+.window-chips[hidden], .barn[hidden], .tap-words[hidden] { display: none; }
+
+/* Before the chapter with more windows, a window has no buttons of its own. */
+.desk.no-tools .win-run, .desk.no-tools .win-hide, .desk.no-tools .win-delete { display: none; }
+
+/* Words to tap into the code, big enough for a finger. */
+.tap-words { display: flex; gap: 6px; flex-wrap: wrap; }
+.tap-word {
+  padding: 6px 12px;
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--desk);
+  color: var(--ink);
+  font: 14px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  touch-action: manipulation;
+}
+.tap-word:hover { border-color: var(--accent); }
 
 .desk {
   position: relative;
@@ -174,6 +202,24 @@ select { font: inherit; padding: 4px; border-radius: 6px; }
   background: color-mix(in srgb, var(--accent) 28%, transparent);
   border-left: 4px solid var(--accent);
 }
+/* Shading under the lines inside each loop, if and define, with a bar
+   under the start of the line they belong to. */
+.indent-guides {
+  position: absolute;
+  left: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.indent-guides .guide {
+  position: absolute;
+  right: -100000px;
+  border-left: 3px solid rgba(90, 160, 90, 0.75);
+  background: rgba(90, 160, 90, 0.10);
+  border-radius: 2px;
+}
+.indent-guides .guide.if { border-left-color: rgba(70, 130, 220, 0.75); background: rgba(70, 130, 220, 0.10); }
+.indent-guides .guide.define { border-left-color: rgba(170, 100, 200, 0.75); background: rgba(170, 100, 200, 0.10); }
+.indent-guides .guide.block { border-left-color: rgba(150, 150, 150, 0.6); background: rgba(150, 150, 150, 0.08); }
 /* Paused here while stepping through the program, one line at a time. */
 .line-mark.step {
   background: rgba(240, 190, 40, 0.32);
@@ -258,6 +304,26 @@ select { font: inherit; padding: 4px; border-radius: 6px; }
 .win-confirm span { flex: 1; }
 .win-confirm button { padding: 2px 10px; font-size: 13px; }
 .win-confirm .secondary { color: var(--code-ink); }
+.win-save {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--window-bar);
+  color: var(--code-ink);
+  font-size: 13px;
+}
+.win-save[hidden] { display: none; }
+.win-save label { flex: 1; display: flex; gap: 6px; align-items: center; min-width: 0; white-space: nowrap; }
+.win-save input { flex: 1; min-width: 80px; font: inherit; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--accent); }
+.win-save button { padding: 2px 10px; font-size: 13px; }
+.win-save .secondary { color: var(--code-ink); }
+.win-save-note { flex-basis: 100%; margin: 0; }
+.win-save-note[hidden] { display: none; }
+.chip.library { font-family: inherit; }
+
 button.danger { background: var(--error); border-color: var(--error); color: #fff; }
 
 .console {
@@ -274,6 +340,7 @@ button.danger { background: var(--error); border-color: var(--error); color: #ff
 .console .error { color: var(--error); }
 .console .status { color: var(--ok); }
 .console .note { color: #9aa190; }
+.console .bump { color: #e8b830; }
 
 code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92em; }
 
@@ -719,9 +786,38 @@ canvas.demo-field { width: 216px; height: 216px; }
   white-space: pre-wrap;
 }
 .demo-out:empty { display: none; }
+.demo-tick { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 640px) {
   .book { grid-template-columns: 1fr; }
   .book-index { position: static; max-height: 180px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
   .example-stage { width: 100%; }
 }
+
+/* ---- The Library of saved code ---- */
+
+.library { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.library-empty { color: var(--muted); padding: 12px 0; }
+.piece {
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--card);
+}
+.piece-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.piece-from { color: var(--muted); font-size: 13px; }
+.piece-preview {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font: 13px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  white-space: pre;
+  overflow-x: auto;
+}
+.piece-actions, .piece-rename { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.piece-rename input { font: inherit; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--accent); min-width: 0; flex: 1; }
+.piece-problem { flex-basis: 100%; color: var(--error); font-size: 13px; }
+.reward-keep-row { margin: 4px 0 12px; }

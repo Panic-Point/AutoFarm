@@ -99,7 +99,7 @@ test("lessons come before the quests that first need them", () => {
   assert.deepEqual(lessonsFor("2-4").map((c) => c.id), ["till", "plant"]);
   assert.deepEqual(lessonsFor("1-4"), []);
   // Crops have no lesson card.
-  assert.ok(lessonsFor("3-5").every((c) => c.group !== "crops"));
+  assert.ok(lessonsFor("4-5").every((c) => c.group !== "crops"));
 });
 
 test("the book only lists what's open", () => {

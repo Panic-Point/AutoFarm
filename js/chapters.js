@@ -171,7 +171,7 @@ export const CHAPTERS = [
         stars: { two: 10, three: 9 },
         hints: [
           "Do you see something you're doing over and over?",
-          "repeat 4 times: runs the lines under it 4 times. Indent them with 4 spaces. In Python it's for i in range(4):",
+          "repeat 4 times: runs the lines under it 4 times. Push them in with 4 spaces: Enter does it for you after the colon, and Backspace brings you back out. In Python it's for i in range(4):",
           "repeat 4 times: harvest() and move(EAST), then one more harvest().",
         ],
       },
@@ -256,14 +256,115 @@ export const CHAPTERS = [
   },
   {
     n: 3,
-    title: "Loops in Loops",
-    who: "Hazel",
-    intro: "Hazel the baker needs wheat for festival bread. Bolt learns to put a loop inside a loop.",
-    badge: "Nest Badge",
+    title: "Until It's Done",
+    who: "Wren",
+    intro: "Fog rolls in and Bolt can't see the edge. Bolt learns to repeat until something is true.",
+    badge: "Fog Badge",
     starsToOpen: 12,
     quests: [
       {
         id: "3-1",
+        title: "Into the Fog",
+        who: "Wren",
+        story: "Hoo! The fog is thick. Walk east until you reach the fence.",
+        goalText: "Walk to the east edge of the field.",
+        field: { map: [".......", ".......", ".......", ".......", ".......", ".......", "......."], fog: true },
+        goal: { at: [6, 0], needs: [["repeat_until", "repeat_while"]] },
+        stars: { two: 7, three: 6 },
+        hints: [
+          "You don't know how far it is, so repeat 5 times won't do.",
+          "can_move(EAST) is True while there's room to step east.",
+          "repeat while can_move(EAST): move(EAST)",
+        ],
+      },
+      {
+        id: "3-2",
+        title: "Wait for It",
+        who: "Wren",
+        story: "This carrot is still tiny. Wait until it's ripe, then pick it.",
+        goalText: "Harvest the carrot when it is ripe.",
+        field: { map: ["...", "...", "c.."] },
+        goal: { gain: { carrot: 1 }, noLoss: true, needs: [["repeat_until", "repeat_while"]] },
+        stars: { two: 17, three: 15 },
+        hints: [
+          "repeat until ...: keeps going until something is true.",
+          "repeat until is_ripe(): wait()",
+          "After the loop, harvest().",
+        ],
+      },
+      {
+        id: "3-3",
+        title: "Fog Harvest",
+        who: "Wren",
+        story: "There's grass somewhere in the fog. Harvest the whole row.",
+        goalText: "Harvest every grass tile in the row.",
+        field: { map: [".......", ".......", ".......", ".......", ".......", ".......", "GGGGGGG"], fog: true },
+        goal: { gain: { hay: 7 }, needs: [["repeat_until", "repeat_while"]] },
+        stars: { two: 15, three: 13 },
+        hints: [
+          "Harvest, then step, until you can't step any more.",
+          "repeat while can_move(EAST): harvest() and move(EAST).",
+          "Don't forget the last tile after the loop!",
+        ],
+      },
+      {
+        id: "3-4",
+        title: "Find the Carrot",
+        who: "Wren",
+        story: "I dropped a ripe carrot in the fog. Can you find it?",
+        goalText: "Walk east until you find the ripe carrot, then harvest it.",
+        field: { map: [".......", ".......", ".......", ".......", ".......", ".......", "....C.."], fog: true },
+        goal: { gain: { carrot: 1 }, needs: [["repeat_until", "repeat_while"]] },
+        stars: { two: 7, three: 5 },
+        hints: [
+          "Keep walking until Bolt is on something ripe.",
+          "repeat until is_ripe(): move(EAST)",
+          "Then harvest().",
+        ],
+      },
+      {
+        id: "3-5",
+        title: "Home Through the Fog",
+        who: "Wren",
+        story: "Bolt is lost in the far corner. Find the way home!",
+        goalText: "Walk to the south-west corner.",
+        field: { map: [".......", ".......", ".......", ".......", ".......", ".......", "......."], start: [6, 6], fog: true },
+        goal: { at: [0, 0], needs: [["repeat_until", "repeat_while"]] },
+        stars: { two: 14, three: 12 },
+        hints: [
+          "Home is as far west and as far south as you can go.",
+          "Walk west while you can, then south while you can.",
+          "Two loops: repeat while can_move(WEST), then repeat while can_move(SOUTH).",
+        ],
+      },
+      {
+        id: "3-6",
+        bonus: true,
+        title: "Wheat Then Carrots",
+        who: "Wren",
+        story: "Carrots grow best where wheat just grew. Plant one where you picked wheat and it gives 2 carrots!",
+        goalText: "Pick the wheat, plant carrots in the same spots, and harvest 8 carrots.",
+        field: { map: ["....", "....", "....", "WWWW"], inventory: { wheat: 4 } },
+        goal: { gain: { carrot: 8 }, noLoss: true, needs: [["repeat_until", "repeat_while"]] },
+        stars: { two: 32, three: 25 },
+        hints: [
+          "After you pick wheat, the soil remembers. A carrot planted there right away gives 2.",
+          "On each tile: harvest() the wheat, then plant(CARROT) in the same spot.",
+          "Walk back to the first carrot and repeat until is_ripe(): wait(). The next one is ripe 3 ticks later, so harvest, step and wait one tick each time.",
+        ],
+      },
+    ],
+  },
+  {
+    n: 4,
+    title: "Loops in Loops",
+    who: "Hazel",
+    intro: "Hazel the baker needs wheat for festival bread. Bolt learns to put a loop inside a loop.",
+    badge: "Nest Badge",
+    starsToOpen: 17,
+    quests: [
+      {
+        id: "4-1",
         title: "Hazel's Garden",
         who: "Hazel",
         story: "My garden is empty. Could you plant wheat everywhere?",
@@ -278,7 +379,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-2",
+        id: "4-2",
         title: "Bread Day",
         who: "Hazel",
         story: "The wheat is ripe! Bring me all 16.",
@@ -293,7 +394,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-3",
+        id: "4-3",
         title: "The Big Hay Sweep",
         who: "Hazel",
         story: "The horses want hay too. Can you sweep the whole meadow?",
@@ -308,7 +409,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-4",
+        id: "4-4",
         title: "Festival Wheat",
         who: "Hazel",
         story: "For the festival I need a whole field of wheat!",
@@ -323,7 +424,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-5",
+        id: "4-5",
         bonus: true,
         title: "Berry Friends",
         who: "Hazel",
@@ -339,7 +440,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-6",
+        id: "4-6",
         bonus: true,
         title: "The Tangled Sweep",
         who: "Hazel",
@@ -356,7 +457,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-7",
+        id: "4-7",
         bonus: true,
         title: "Back and Forth",
         who: "Daisy",
@@ -372,7 +473,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-8",
+        id: "4-8",
         bonus: true,
         title: "From Hay to Bread",
         who: "Hazel",
@@ -388,7 +489,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-9",
+        id: "4-9",
         bonus: true,
         title: "The Big Berry Patch",
         who: "Hazel",
@@ -404,7 +505,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-10",
+        id: "4-10",
         bonus: true,
         title: "Just Enough Flour",
         who: "Hazel",
@@ -420,7 +521,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "3-11",
+        id: "4-11",
         bonus: true,
         title: "Bolt's Backwards Planting",
         who: "Bolt",
@@ -439,15 +540,15 @@ export const CHAPTERS = [
     ],
   },
   {
-    n: 4,
+    n: 5,
     title: "Look Before You Act",
     who: "Pip",
-    intro: "Pip the rabbit only wants ripe carrots. Bolt learns to look first with if.",
+    intro: "Pip the rabbit only wants ripe carrots. Bolt learns to choose with if.",
     badge: "If Badge",
-    starsToOpen: 17,
+    starsToOpen: 22,
     quests: [
       {
-        id: "4-1",
+        id: "5-1",
         title: "Only the Ripe Ones",
         who: "Pip",
         story: "Only pick the big orange carrots. The little ones aren't ready!",
@@ -456,13 +557,13 @@ export const CHAPTERS = [
         goal: { gain: { carrot: 3 }, noLoss: true, needs: [["if"]] },
         stars: { two: 9, three: 7 },
         hints: [
-          "is_ripe() is True when the crop under Bolt is ready.",
+          "You know is_ripe() from the fog. It's True when the crop under Bolt is ready.",
           "if is_ripe(): runs the lines under it only when the crop is ripe.",
           "repeat 4 times: (if is_ripe(): harvest()), then move(EAST).",
         ],
       },
       {
-        id: "4-2",
+        id: "5-2",
         title: "Pip's Garden",
         who: "Pip",
         story: "My whole garden is a mix of ripe and little carrots.",
@@ -477,7 +578,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-3",
+        id: "5-3",
         title: "Weed Patrol",
         who: "Pip",
         story: "Weeds are growing in my garden! Turn the grassy tiles into soil.",
@@ -492,7 +593,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-4",
+        id: "5-4",
         title: "Pip's Choice",
         who: "Pip",
         story: "Pick the ripe carrots, and plant wheat in the empty spots.",
@@ -507,7 +608,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-5",
+        id: "5-5",
         title: "Pip's Pumpkin Patch",
         who: "Pip",
         story: "My pumpkins! Some are ripe, some are still growing, and some went rotten. Yuck!",
@@ -522,7 +623,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-6",
+        id: "5-6",
         bonus: true,
         title: "Crunchy Lettuce",
         who: "Pip",
@@ -538,7 +639,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-7",
+        id: "5-7",
         bonus: true,
         title: "Pumpkin Patrol",
         who: "Pip",
@@ -563,7 +664,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-8",
+        id: "5-8",
         bonus: true,
         title: "Carrots Only, Please",
         who: "Pip",
@@ -588,7 +689,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-9",
+        id: "5-9",
         bonus: true,
         title: "Carrots Into Pumpkins",
         who: "Pip",
@@ -613,7 +714,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-10",
+        id: "5-10",
         bonus: true,
         title: "Lettuce for Tomorrow",
         who: "Pip",
@@ -629,7 +730,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-11",
+        id: "5-11",
         bonus: true,
         title: "Bolt's Pumpkin Mix-Up",
         who: "Bolt",
@@ -646,7 +747,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "4-12",
+        id: "5-12",
         bonus: true,
         title: "Pip's Big Tidy-Up",
         who: "Pip",
@@ -677,90 +778,34 @@ export const CHAPTERS = [
     ],
   },
   {
-    n: 5,
-    title: "Until It's Done",
+    n: 6,
+    title: "Way Out of the Fog",
     who: "Wren",
-    intro: "Fog rolls in and Bolt can't see the edge. Bolt learns to repeat until something is true.",
-    badge: "Fog Badge",
-    starsToOpen: 24,
+    intro: "The fog is back, thicker than ever. Bolt learns to loop forever, and to break out the moment the job is done.",
+    badge: "Lantern Badge",
+    starsToOpen: 28,
     quests: [
       {
-        id: "5-1",
-        title: "Into the Fog",
+        id: "6-1",
+        title: "Home Before Dark",
         who: "Wren",
-        story: "Hoo! The fog is thick. Walk east until you reach the fence.",
-        goalText: "Walk to the east edge of the field.",
-        field: { map: [".......", ".......", ".......", ".......", ".......", ".......", "......."], fog: true },
-        goal: { at: [6, 0], needs: [["repeat_until", "repeat_while", "repeat_forever"]] },
-        stars: { two: 7, three: 6 },
+        story: "Hoo! The fog is so thick, Bolt could be anywhere. Walk west if you can, south if you can't, and stop the moment you're home.",
+        goalText: "On all 3 plots: walk home to the south-west corner, then stop.",
+        field: [
+          { map: [".....", ".....", ".....", ".....", "....."], start: [4, 2], fog: true },
+          { map: ["......", "......", "......", "......", "......", "......"], start: [2, 5], fog: true },
+          { map: [".......", ".......", ".......", ".......", ".......", ".......", "......."], start: [6, 6], fog: true },
+        ],
+        goal: { at: [0, 0], needs: [["repeat_forever"], ["stop"]] },
+        stars: { two: 32, three: 25 },
         hints: [
-          "You don't know how far it is, so repeat 5 times won't do.",
-          "can_move(EAST) is True while there's room to step east.",
-          "repeat while can_move(EAST): move(EAST)",
+          "repeat forever: never stops by itself. break jumps out of the loop right away.",
+          "Home is where position() == (0, 0). When Bolt gets there, break.",
+          "Inside repeat forever: if position() == (0, 0): break. Else if can_move(WEST): move(WEST). Else: move(SOUTH).",
         ],
       },
       {
-        id: "5-2",
-        title: "Wait for It",
-        who: "Wren",
-        story: "This carrot is still tiny. Wait until it's ripe, then pick it.",
-        goalText: "Harvest the carrot when it is ripe.",
-        field: { map: ["...", "...", "c.."] },
-        goal: { gain: { carrot: 1 }, noLoss: true, needs: [["repeat_until", "repeat_while"]] },
-        stars: { two: 17, three: 15 },
-        hints: [
-          "repeat until ...: keeps going until something is true.",
-          "repeat until is_ripe(): wait()",
-          "After the loop, harvest().",
-        ],
-      },
-      {
-        id: "5-3",
-        title: "Fog Harvest",
-        who: "Wren",
-        story: "There's grass somewhere in the fog. Harvest the whole row.",
-        goalText: "Harvest every grass tile in the row.",
-        field: { map: [".......", ".......", ".......", ".......", ".......", ".......", "GGGGGGG"], fog: true },
-        goal: { gain: { hay: 7 }, needs: [["repeat_until", "repeat_while", "repeat_forever"]] },
-        stars: { two: 15, three: 13 },
-        hints: [
-          "Harvest, then step, until you can't step any more.",
-          "repeat while can_move(EAST): harvest() and move(EAST).",
-          "Don't forget the last tile after the loop!",
-        ],
-      },
-      {
-        id: "5-4",
-        title: "Find the Carrot",
-        who: "Wren",
-        story: "I dropped a ripe carrot in the fog. Can you find it?",
-        goalText: "Walk east until you find the ripe carrot, then harvest it.",
-        field: { map: [".......", ".......", ".......", ".......", ".......", ".......", "....C.."], fog: true },
-        goal: { gain: { carrot: 1 }, needs: [["repeat_until", "repeat_while"]] },
-        stars: { two: 7, three: 5 },
-        hints: [
-          "Keep walking until Bolt is on something ripe.",
-          "repeat until is_ripe(): move(EAST)",
-          "Then harvest().",
-        ],
-      },
-      {
-        id: "5-5",
-        title: "Home Through the Fog",
-        who: "Wren",
-        story: "Bolt is lost in the far corner. Find the way home!",
-        goalText: "Walk to the south-west corner.",
-        field: { map: [".......", ".......", ".......", ".......", ".......", ".......", "......."], start: [6, 6], fog: true },
-        goal: { at: [0, 0], needs: [["repeat_until", "repeat_while", "repeat_forever"]] },
-        stars: { two: 14, three: 12 },
-        hints: [
-          "Home is as far west and as far south as you can go.",
-          "Walk west while you can, then south while you can.",
-          "Two loops: repeat while can_move(WEST), then repeat while can_move(SOUTH).",
-        ],
-      },
-      {
-        id: "5-6",
+        id: "6-2",
         title: "Mushroom in the Fog",
         who: "Wren",
         story: "A mushroom pops up somewhere along this row on foggy days. Find it, then bring it home!",
@@ -779,23 +824,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "5-7",
-        bonus: true,
-        title: "Wheat Then Carrots",
-        who: "Wren",
-        story: "Carrots grow best where wheat just grew. Plant one where you picked wheat and it gives 2 carrots!",
-        goalText: "Pick the wheat, plant carrots in the same spots, and harvest 8 carrots.",
-        field: { map: ["....", "....", "....", "WWWW"], inventory: { wheat: 4 } },
-        goal: { gain: { carrot: 8 }, noLoss: true, needs: [["repeat_until", "repeat_while"]] },
-        stars: { two: 32, three: 25 },
-        hints: [
-          "After you pick wheat, the soil remembers. A carrot planted there right away gives 2.",
-          "On each tile: harvest() the wheat, then plant(CARROT) in the same spot.",
-          "The first carrot you planted is ripe first. Walk back to it, then repeat until is_ripe(): wait() before each harvest.",
-        ],
-      },
-      {
-        id: "5-8",
+        id: "6-3",
         bonus: true,
         title: "Wren's Basket",
         who: "Wren",
@@ -817,7 +846,7 @@ export const CHAPTERS = [
     ],
   },
   {
-    n: 6,
+    n: 7,
     title: "Keeping Count",
     who: "Mayor Maple",
     intro: "It's market day, and the mayor orders exact amounts. Bolt learns to keep count.",
@@ -825,7 +854,7 @@ export const CHAPTERS = [
     starsToOpen: 32,
     quests: [
       {
-        id: "6-1",
+        id: "7-1",
         title: "Seven Bales",
         who: "Mayor Maple",
         story: "I need exactly 7 hay for the market. Not 6, not 8!",
@@ -840,7 +869,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "6-2",
+        id: "7-2",
         title: "Ten Carrots",
         who: "Mayor Maple",
         story: "Plant exactly 10 carrots, then stop. Here's some wheat to pay for them.",
@@ -855,7 +884,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "6-3",
+        id: "7-3",
         title: "Wheat Stairs",
         who: "Mayor Maple",
         story: "Let's make wheat stairs: 1 in the first row, 2 in the next, and so on.",
@@ -870,7 +899,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "6-4",
+        id: "7-4",
         title: "Two Orders",
         who: "Mayor Maple",
         story: "Today's order: exactly 3 hay and exactly 4 wheat.",
@@ -885,7 +914,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "6-5",
+        id: "7-5",
         title: "Thirsty Corn",
         who: "Mayor Maple",
         story: "Corn only grows on wet soil. Water the thirsty ones, but don't waste a drop! The ripe ones are done drinking.",
@@ -900,7 +929,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "6-6",
+        id: "7-6",
         bonus: true,
         title: "Two Old Bushes",
         who: "Mayor Maple",
@@ -916,7 +945,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "6-7",
+        id: "7-7",
         bonus: true,
         title: "Trips to the Well",
         who: "Mayor Maple",
@@ -934,7 +963,7 @@ export const CHAPTERS = [
     ],
   },
   {
-    n: 7,
+    n: 8,
     title: "Teach Bolt",
     who: "Bolt",
     intro: "Bolt gets tired of long instructions. Teach Bolt new commands with define.",
@@ -942,7 +971,7 @@ export const CHAPTERS = [
     starsToOpen: 38,
     quests: [
       {
-        id: "7-1",
+        id: "8-1",
         title: "Harvest Row",
         who: "Bolt",
         story: "Bzzt. So many words! Teach me one word for a whole row.",
@@ -957,7 +986,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "7-2",
+        id: "8-2",
         title: "A Helper Window",
         who: "Bolt",
         story: "Let's keep my new commands in their own window.",
@@ -972,7 +1001,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "7-3",
+        id: "8-3",
         title: "Go Three Steps",
         who: "Bolt",
         story: "Teach me to go a number of steps, like go_east(3).",
@@ -987,7 +1016,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "7-4",
+        id: "8-4",
         title: "Sunflower Rows",
         who: "Bolt",
         story: "Sunflowers are so tall I can see them from anywhere! Only some rows are worth the walk.",
@@ -1002,7 +1031,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "7-5",
+        id: "8-5",
         bonus: true,
         title: "The Best Row First",
         who: "Bolt",
@@ -1020,7 +1049,7 @@ export const CHAPTERS = [
     ],
   },
   {
-    n: 8,
+    n: 9,
     title: "Big Farm Plans",
     who: "Aunt Juniper",
     intro: "The Harvest Festival is coming! Bolt learns to follow a plan written as a list.",
@@ -1028,7 +1057,7 @@ export const CHAPTERS = [
     starsToOpen: 44,
     quests: [
       {
-        id: "8-1",
+        id: "9-1",
         title: "Festival Row",
         who: "Aunt Juniper",
         story: "I'm back for the festival! Plant this row from my list.",
@@ -1043,7 +1072,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "8-2",
+        id: "9-2",
         title: "Treasure Steps",
         who: "Aunt Juniper",
         story: "My map says: 1 step, harvest. 2 steps, harvest. 1 step, harvest.",
@@ -1058,7 +1087,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "8-3",
+        id: "9-3",
         title: "The Festival Field",
         who: "Aunt Juniper",
         story: "The judges love patterns. Plant all three rows from my plan.",
@@ -1076,7 +1105,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "8-4",
+        id: "9-4",
         title: "The Mayor's Order",
         who: "Mayor Maple",
         story: "Market day! order() tells you what I want today, one of each. Bring exactly that, and nothing extra!",
@@ -1104,7 +1133,7 @@ export const CHAPTERS = [
       // Festival Day: three events in a row, each on test plots and judged
       // by a neighbor. The chapter is done when all three have a star.
       {
-        id: "8-5",
+        id: "9-5",
         title: "The Big Basket",
         who: "Daisy and Hazel",
         festival: { event: 1, name: "The Big Basket" },
@@ -1129,7 +1158,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "8-6",
+        id: "9-6",
         title: "The Fog Race",
         who: "Wren",
         festival: { event: 2, name: "The Fog Race" },
@@ -1149,7 +1178,7 @@ export const CHAPTERS = [
         ],
       },
       {
-        id: "8-7",
+        id: "9-7",
         title: "The Grand Display",
         who: "Aunt Juniper",
         festival: { event: 3, name: "The Grand Display" },
@@ -1205,7 +1234,7 @@ for (const ch of CHAPTERS) {
   }
 }
 
-// Golden quests (js/postgame.js) come after the festival, as chapter 9.
+// Golden quests (js/postgame.js) come after the festival, as chapter 10.
 export const QUESTS = [
   ...CHAPTERS.flatMap((ch) => ch.quests.map((q) => ({ ...q, chapter: ch.n }))),
   ...GOLDEN.map((q) => ({ ...q, chapter: AFTER_FESTIVAL, golden: true })),

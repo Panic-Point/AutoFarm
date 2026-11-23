@@ -14,13 +14,14 @@ A quest gives 1 star for meeting its goal, 2 stars within one tick limit and 3 w
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | [First Steps](#chapter-1-first-steps) | Aunt Juniper | sequencing, commands (function calls), algorithms, debugging | move, harvest | 1-1 to 1-6 | 0 stars |
 | 2 | [Do It Again](#chapter-2-do-it-again) | Daisy | loops, the loop body and indentation, off-by-one, state changes over time | till, plant, wait, repeat | 2-1 to 2-6 | 6 stars |
-| 3 | [Loops in Loops](#chapter-3-loops-in-loops) | Hazel | nested loops, finding the pattern, coordinates and grids | a loop inside a loop | 3-1 to 3-11 | 12 stars |
-| 4 | [Look Before You Act](#chapter-4-look-before-you-act) | Pip | conditionals, Booleans, comparison, sensing (input) | if and else, else if, comparing with == and <, is_ripe, is_rotten, crop_here, ground_here | 4-1 to 4-12 | 17 stars |
-| 5 | [Until It's Done](#chapter-5-until-its-done) | Wren | loops that stop on a condition, infinite loops and `break`, searching, generalising | repeat until, repeat while, repeat forever, break, can_move, position, field_size | 5-1 to 5-8 | 24 stars |
-| 6 | [Keeping Count](#chapter-6-keeping-count) | Mayor Maple | variables, counters and accumulators, counting loops, Boolean logic, resources and constraints | set and change, count, ticks, for ... from ... to, and, or and not, the watering can | 6-1 to 6-7 | 32 stars |
-| 7 | [Teach Bolt](#chapter-7-teach-bolt) | Bolt | functions, parameters and arguments, return values, abstraction, modules | define, use, give back, ripe_at | 7-1 to 7-5 | 38 stars |
-| 8 | [Big Farm Plans](#chapter-8-big-farm-plans) | Aunt Juniper | lists, iterating over a list, building and checking lists, data-driven programs, putting it together | lists, add ... to, order | 8-1 to 8-7 | 44 stars |
-| | [After the Festival](#after-the-festival) | everyone | generalisation and testing, optimisation and planning, more Python | old words on new fields | G-1 to G-8, c-1 to c-12 | finishing chapter 8 |
+| 3 | [Until It's Done](#chapter-3-until-its-done) | Wren | loops that stop on a condition, Booleans, sensing (input), off-by-one again | repeat until, repeat while, can_move, is_ripe | 3-1 to 3-6 | 12 stars |
+| 4 | [Loops in Loops](#chapter-4-loops-in-loops) | Hazel | nested loops, finding the pattern, coordinates and grids | a loop inside a loop | 4-1 to 4-11 | 17 stars |
+| 5 | [Look Before You Act](#chapter-5-look-before-you-act) | Pip | conditionals, Booleans, again, comparison, sensing and deciding | if and else, else if, comparing with == and <, is_rotten, crop_here, ground_here | 5-1 to 5-12 | 22 stars |
+| 6 | [Way Out of the Fog](#chapter-6-way-out-of-the-fog) | Wren | infinite loops and `break`, searching, generalising | repeat forever, break, position, field_size | 6-1 to 6-3 | 28 stars |
+| 7 | [Keeping Count](#chapter-7-keeping-count) | Mayor Maple | variables, counters and accumulators, counting loops, Boolean logic, resources and constraints | set and change, count, ticks, for ... from ... to, and, or and not, the watering can | 7-1 to 7-7 | 32 stars |
+| 8 | [Teach Bolt](#chapter-8-teach-bolt) | Bolt | functions, parameters and arguments, return values, abstraction, modules | define, use, give back, ripe_at | 8-1 to 8-5 | 38 stars |
+| 9 | [Big Farm Plans](#chapter-9-big-farm-plans) | Aunt Juniper | lists, iterating over a list, building and checking lists, data-driven programs, putting it together | lists, add ... to, order | 9-1 to 9-7 | 44 stars |
+| | [After the Festival](#after-the-festival) | everyone | generalisation and testing, optimisation and planning, more Python | old words on new fields | G-1 to G-8, c-1 to c-12 | finishing chapter 9 |
 
 ## Chapter 1: First Steps
 
@@ -142,11 +143,85 @@ Grass grows back by itself after it's picked, and wheat (free, ripe after 8 tick
 | 2-5 | Daisy's Big Lunch | Daisy | Harvest both rows of grass. | repeat | repeat |  |
 | 2-6 | One Step Too Many | Daisy | Fix the number in Bolt's code so it stops at the fence instead of bumping it. | repeat | repeat | Bonus, Fix Bolt's code |
 
-## Chapter 3: Loops in Loops
+## Chapter 3: Until It's Done
+
+**Wren:** "Fog rolls in and Bolt can't see the edge. Bolt learns to repeat until something is true."
+
+Opens when chapter 2 is finished and the player has 12 stars. Finishing its 5 core quests earns the **Fog Badge**.
+
+### Programming concepts
+
+**Loops that stop on a condition.** `repeat until` and `repeat while` (Python's `while`) keep going until something becomes true, rather than a set number of times. This is *indefinite iteration*: you use it when you don't know in advance how many steps it will take, like walking to the edge in the fog. It comes straight after `repeat`, so it's a new kind of the loop the player already knows.
+
+**Booleans.** `can_move(EAST)` and `is_ripe()` give back one of two values: `True` or `False`. These are called *Boolean* values. Here they're the question a loop asks each time round ("is there room to step?", "is it ripe yet?"), one at a time and without `if`.
+
+**Sensing (input).** In the fog Bolt can't count the steps, so it has to look at the world before it acts. Reading input instead of fixing numbers in advance is how programs handle situations the programmer didn't see coming.
+
+**Off-by-one again.** A loop that picks and steps while it can stops at the edge before the last pick, so 3-3 needs one more `harvest()` after the loop, just like the counted loops in chapter 2.
+
+### Coding words
+
+#### repeat until
+
+Keeps going round until the check becomes true. Good when you don't know how many times it will take.
+
+Written as: `repeat until ...:`, `while not ...:`.
+
+```python
+repeat until is_ripe():
+    wait()
+```
+
+#### repeat while
+
+Keeps going round as long as the check stays true.
+
+Written as: `repeat while ...:`, `while ...:`.
+
+```python
+repeat while can_move(EAST):
+    move(EAST)
+```
+
+#### can_move
+
+Checks whether Bolt can step that way. It's false at the edge of the field.
+
+```python
+repeat while can_move(NORTH):
+    move(NORTH)
+```
+
+#### is_ripe
+
+Checks whether the crop on Bolt's tile is ready to pick. Looking is free: it takes no ticks.
+
+```python
+repeat until is_ripe():
+    wait()
+harvest()
+```
+
+### New on the farm
+
+**Fog** hides every tile more than one step from Bolt (3-1, 3-3 to 3-5), so counting steps stops working and Bolt has to look instead. Carrots (2 wheat, ripe after 14 ticks) first grow here, and crops can now be picked too early: `noLoss` quests fail if Bolt picks an unripe crop (3-2). **Crop swap:** carrots planted where wheat was just picked give 2 (3-6). Nothing here needs `if` yet: `is_ripe()` and `can_move()` are only used as the question a loop asks.
+
+### Quests
+
+| Quest | Title | From | Goal | Practices | Must use | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 3-1 | Into the Fog | Wren | Walk to the east edge of the field. | repeat while, can_move | repeat until or repeat while | Fog |
+| 3-2 | Wait for It | Wren | Harvest the carrot when it is ripe. | repeat until, is_ripe | repeat until or repeat while |  |
+| 3-3 | Fog Harvest | Wren | Harvest every grass tile in the row. | repeat while, can_move | repeat until or repeat while | Fog |
+| 3-4 | Find the Carrot | Wren | Walk east until you find the ripe carrot, then harvest it. | repeat until, is_ripe | repeat until or repeat while | Fog |
+| 3-5 | Home Through the Fog | Wren | Walk to the south-west corner. | repeat while, can_move | repeat until or repeat while | Fog |
+| 3-6 | Wheat Then Carrots | Wren | Pick the wheat, plant carrots in the same spots, and harvest 8 carrots. | repeat until, is_ripe | repeat until or repeat while | Bonus |
+
+## Chapter 4: Loops in Loops
 
 **Hazel:** "Hazel the baker needs wheat for festival bread. Bolt learns to put a loop inside a loop."
 
-Opens when chapter 2 is finished and the player has 12 stars. Finishing its 4 core quests earns the **Nest Badge**.
+Opens when chapter 3 is finished and the player has 17 stars. Finishing its 4 core quests earns the **Nest Badge**.
 
 ### Programming concepts
 
@@ -171,39 +246,39 @@ repeat 2 times:
 
 ### New on the farm
 
-Strawberries (3 wheat, ripe after 12 ticks) arrive with the **Friends** rule: each one gives 1 more for every strawberry right next to it when it ripens, so a 2 by 2 square of 4 makes 12 (3-5, 3-9). Quests 3-6 and 3-11 are Fix Bolt's code quests. Quest 3-10 is the first with an **exact** goal: harvesting too much fails it.
+Strawberries (3 wheat, ripe after 12 ticks) arrive with the **Friends** rule: each one gives 1 more for every strawberry right next to it when it ripens, so a 2 by 2 square of 4 makes 12 (4-5, 4-9). Quests 4-6 and 4-11 are Fix Bolt's code quests. Quest 4-10 is the first with an **exact** goal: harvesting too much fails it.
 
 ### Quests
 
 | Quest | Title | From | Goal | Practices | Must use | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| 3-1 | Hazel's Garden | Hazel | Plant wheat on the whole field with a loop inside a loop. | a loop inside a loop | a loop inside a loop |  |
-| 3-2 | Bread Day | Hazel | Harvest all the wheat. | a loop inside a loop | a loop inside a loop |  |
-| 3-3 | The Big Hay Sweep | Hazel | Harvest all 25 grass tiles. | a loop inside a loop | a loop inside a loop |  |
-| 3-4 | Festival Wheat | Hazel | Plant wheat on the whole 5 by 5 field. | a loop inside a loop | a loop inside a loop |  |
-| 3-5 | Berry Friends | Hazel | You have wheat for 4 strawberries. Grow 12 strawberries with them. | earlier words: plant, wait, repeat |  | Bonus |
-| 3-6 | The Tangled Sweep | Hazel | Fix Bolt's code so it harvests all 8 grass tiles. | a loop inside a loop | a loop inside a loop | Bonus, Fix Bolt's code |
-| 3-7 | Back and Forth | Daisy | Harvest 12 hay from the 3 grass tiles, never pick grass before it's ripe, and end back at the barn. | a loop inside a loop | a loop inside a loop | Bonus |
-| 3-8 | From Hay to Bread | Hazel | Harvest all 16 grass tiles, then turn every tile into wheat. | a loop inside a loop | a loop inside a loop | Bonus |
-| 3-9 | The Big Berry Patch | Hazel | Plant 8 strawberries and grow 28 strawberries with them. Don't pick any too soon! | earlier words: plant, repeat |  | Bonus |
-| 3-10 | Just Enough Flour | Hazel | Harvest exactly 12 wheat. Not 11, not 13! | a loop inside a loop | a loop inside a loop | Bonus |
-| 3-11 | Bolt's Backwards Planting | Bolt | Fix Bolt's code so every tile of the grassy field gets wheat. | a loop inside a loop | a loop inside a loop | Bonus, Fix Bolt's code |
+| 4-1 | Hazel's Garden | Hazel | Plant wheat on the whole field with a loop inside a loop. | a loop inside a loop | a loop inside a loop |  |
+| 4-2 | Bread Day | Hazel | Harvest all the wheat. | a loop inside a loop | a loop inside a loop |  |
+| 4-3 | The Big Hay Sweep | Hazel | Harvest all 25 grass tiles. | a loop inside a loop | a loop inside a loop |  |
+| 4-4 | Festival Wheat | Hazel | Plant wheat on the whole 5 by 5 field. | a loop inside a loop | a loop inside a loop |  |
+| 4-5 | Berry Friends | Hazel | You have wheat for 4 strawberries. Grow 12 strawberries with them. | earlier words: plant, wait, repeat |  | Bonus |
+| 4-6 | The Tangled Sweep | Hazel | Fix Bolt's code so it harvests all 8 grass tiles. | a loop inside a loop | a loop inside a loop | Bonus, Fix Bolt's code |
+| 4-7 | Back and Forth | Daisy | Harvest 12 hay from the 3 grass tiles, never pick grass before it's ripe, and end back at the barn. | a loop inside a loop | a loop inside a loop | Bonus |
+| 4-8 | From Hay to Bread | Hazel | Harvest all 16 grass tiles, then turn every tile into wheat. | a loop inside a loop | a loop inside a loop | Bonus |
+| 4-9 | The Big Berry Patch | Hazel | Plant 8 strawberries and grow 28 strawberries with them. Don't pick any too soon! | earlier words: plant, repeat |  | Bonus |
+| 4-10 | Just Enough Flour | Hazel | Harvest exactly 12 wheat. Not 11, not 13! | a loop inside a loop | a loop inside a loop | Bonus |
+| 4-11 | Bolt's Backwards Planting | Bolt | Fix Bolt's code so every tile of the grassy field gets wheat. | a loop inside a loop | a loop inside a loop | Bonus, Fix Bolt's code |
 
-## Chapter 4: Look Before You Act
+## Chapter 5: Look Before You Act
 
-**Pip:** "Pip the rabbit only wants ripe carrots. Bolt learns to look first with if."
+**Pip:** "Pip the rabbit only wants ripe carrots. Bolt learns to choose with if."
 
-Opens when chapter 3 is finished and the player has 17 stars. Finishing its 5 core quests earns the **If Badge**.
+Opens when chapter 4 is finished and the player has 22 stars. Finishing its 5 core quests earns the **If Badge**.
 
 ### Programming concepts
 
 **Conditionals.** `if` lets a program make a choice: the lines under it only run when the check is true, and the lines under `else` run when it's false. `else if` (Python's `elif`) adds more choices, tried in order until one is true. Until now Bolt did the same thing every time; now it can react.
 
-**Booleans.** A check like `is_ripe()` gives back one of two values: `True` or `False`. These are called *Boolean* values, and every `if` and every loop condition is a Boolean in the end.
+**Booleans, again.** The checks from chapter 3 (`is_ripe()`, `can_move()`) are the same `True` or `False` values an `if` asks about. Every `if` and every loop condition is a Boolean in the end.
 
 **Comparison.** `==` asks whether two things are the same (`crop_here() == CARROT`), and `!=`, `<`, `>`, `<=` and `>=` compare in other ways. Each comparison gives back a Boolean. Note that `==` compares, while a single `=` (in Python) stores a value.
 
-**Sensing (input).** `is_ripe()`, `crop_here()` and `ground_here()` let the program look at the world before it acts. Reading input and deciding what to do with it is how programs handle situations the programmer didn't see in advance. Test plots (4-7) prove it: the same program has to work on fields it's never seen.
+**Sensing and deciding.** `crop_here()`, `ground_here()` and `is_rotten()` let the program look at more of the world, and `if` decides what to do with what it sees. Test plots (5-7) prove it: the same program has to work on fields it's never seen.
 
 ### Coding words
 
@@ -244,15 +319,6 @@ if crop_here() == CARROT:
     harvest()
 ```
 
-#### is_ripe
-
-Checks whether the crop on Bolt's tile is ready to pick. Looking is free: it takes no ticks.
-
-```python
-if is_ripe():
-    harvest()
-```
-
 #### is_rotten
 
 Checks whether the pumpkin on Bolt's tile has rotted. A rotten pumpkin can't be picked, only tilled away.
@@ -282,64 +348,40 @@ if ground_here() == GRASS:
 
 ### New on the farm
 
-Crops can now be picked too early, so `noLoss` quests fail if Bolt picks an unripe crop. **Pumpkins** rot 30 ticks after ripening (4-5, 4-7). **Lettuce** wilts 8 ticks after it's ripe and gives nothing, so the first planted must be the first picked (4-6). Quest 4-7 is the first with **test plots**: the same program runs on 2 different fields. Quest 4-11 is a Fix Bolt's code quest.
+`is_ripe()` is already known from chapter 3, so the one new idea is making a choice. **Pumpkins** rot 30 ticks after ripening (5-5, 5-7). **Lettuce** wilts 8 ticks after it's ripe and gives nothing, so the first planted must be the first picked (5-6). Quest 5-7 is the first with **test plots**: the same program runs on 2 different fields. Quest 5-11 is a Fix Bolt's code quest.
 
 ### Quests
 
 | Quest | Title | From | Goal | Practices | Must use | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| 4-1 | Only the Ripe Ones | Pip | Harvest the 3 ripe carrots without losing any. | if and else, is_ripe | if and else |  |
-| 4-2 | Pip's Garden | Pip | Harvest every ripe carrot and lose none. | if and else, is_ripe |  |  |
-| 4-3 | Weed Patrol | Pip | Make every tile soil. Tilling soil turns it back into grass! | if and else, comparing with == and <, ground_here |  |  |
-| 4-4 | Pip's Choice | Pip | Harvest every carrot and plant wheat on every empty tile. | if and else, is_ripe | if and else |  |
-| 4-5 | Pip's Pumpkin Patch | Pip | Pick the ripe pumpkins, till away the rotten ones, and leave the young ones alone. | if and else, else if, is_ripe, is_rotten | else if |  |
-| 4-6 | Crunchy Lettuce | Pip | Plant 5 lettuce in the row, then pick all 5 before any of them wilt. | if and else, is_ripe |  | Bonus |
-| 4-7 | Pumpkin Patrol | Pip | On both test plots: pick every ripe pumpkin, till every rotten one, and lose none. | if and else, else if, is_ripe, is_rotten | else if; a loop inside a loop | Bonus, 2 test plots |
-| 4-8 | Carrots Only, Please | Pip | On both test plots: harvest every ripe carrot, leave the wheat standing, and lose nothing. | if and else, comparing with == and <, is_ripe, crop_here | crop_here; a loop inside a loop | Bonus, 2 test plots |
-| 4-9 | Carrots Into Pumpkins | Pip | On both test plots: pick each carrot and plant a pumpkin in its spot, and plant wheat on every bare tile. | if and else, comparing with == and <, crop_here | if and else; a loop inside a loop | Bonus, 2 test plots |
-| 4-10 | Lettuce for Tomorrow | Pip | Harvest 8 lettuce before any wilt, and leave lettuce growing on all 4 tiles of the first row. | if and else, is_ripe | a loop inside a loop | Bonus |
-| 4-11 | Bolt's Pumpkin Mix-Up | Bolt | Fix Bolt's code so it picks only ripe pumpkins, tills the rotten ones, and loses none. | if and else, else if, is_ripe, is_rotten | else if | Bonus, Fix Bolt's code |
-| 4-12 | Pip's Big Tidy-Up | Pip | On all 3 test plots: harvest every ripe crop, till every rotten pumpkin, plant wheat on every bare tile, and lose nothing. | if and else, else if, comparing with == and <, is_ripe, is_rotten, crop_here | else if; a loop inside a loop | Bonus, 3 test plots |
+| 5-1 | Only the Ripe Ones | Pip | Harvest the 3 ripe carrots without losing any. | if and else | if and else |  |
+| 5-2 | Pip's Garden | Pip | Harvest every ripe carrot and lose none. | if and else |  |  |
+| 5-3 | Weed Patrol | Pip | Make every tile soil. Tilling soil turns it back into grass! | if and else, comparing with == and <, ground_here |  |  |
+| 5-4 | Pip's Choice | Pip | Harvest every carrot and plant wheat on every empty tile. | if and else | if and else |  |
+| 5-5 | Pip's Pumpkin Patch | Pip | Pick the ripe pumpkins, till away the rotten ones, and leave the young ones alone. | if and else, else if, is_rotten | else if |  |
+| 5-6 | Crunchy Lettuce | Pip | Plant 5 lettuce in the row, then pick all 5 before any of them wilt. | if and else |  | Bonus |
+| 5-7 | Pumpkin Patrol | Pip | On both test plots: pick every ripe pumpkin, till every rotten one, and lose none. | if and else, else if, is_rotten | else if; a loop inside a loop | Bonus, 2 test plots |
+| 5-8 | Carrots Only, Please | Pip | On both test plots: harvest every ripe carrot, leave the wheat standing, and lose nothing. | if and else, comparing with == and <, crop_here | crop_here; a loop inside a loop | Bonus, 2 test plots |
+| 5-9 | Carrots Into Pumpkins | Pip | On both test plots: pick each carrot and plant a pumpkin in its spot, and plant wheat on every bare tile. | if and else, comparing with == and <, crop_here | if and else; a loop inside a loop | Bonus, 2 test plots |
+| 5-10 | Lettuce for Tomorrow | Pip | Harvest 8 lettuce before any wilt, and leave lettuce growing on all 4 tiles of the first row. | if and else | a loop inside a loop | Bonus |
+| 5-11 | Bolt's Pumpkin Mix-Up | Bolt | Fix Bolt's code so it picks only ripe pumpkins, tills the rotten ones, and loses none. | if and else, else if, is_rotten | else if | Bonus, Fix Bolt's code |
+| 5-12 | Pip's Big Tidy-Up | Pip | On all 3 test plots: harvest every ripe crop, till every rotten pumpkin, plant wheat on every bare tile, and lose nothing. | if and else, else if, comparing with == and <, is_rotten, crop_here | else if; a loop inside a loop | Bonus, 3 test plots |
 
-## Chapter 5: Until It's Done
+## Chapter 6: Way Out of the Fog
 
-**Wren:** "Fog rolls in and Bolt can't see the edge. Bolt learns to repeat until something is true."
+**Wren:** "The fog is back, thicker than ever. Bolt learns to loop forever, and to break out the moment the job is done."
 
-Opens when chapter 4 is finished and the player has 24 stars. Finishing its 6 core quests earns the **Fog Badge**.
+Opens when chapter 5 is finished and the player has 28 stars. Finishing its 2 core quests earns the **Lantern Badge**.
 
 ### Programming concepts
-
-**Loops that stop on a condition.** `repeat until` and `repeat while` (Python's `while`) keep going until something becomes true, rather than a set number of times. This is *indefinite iteration*: you use it when you don't know in advance how many steps it will take, like walking to the edge in the fog.
 
 **Infinite loops and `break`.** `repeat forever` (`while True:`) never stops on its own. `break` jumps straight out of the loop when the job is done. Forgetting the way out is the classic *infinite loop* bug, and the game stops a run that goes too long.
 
 **Searching.** Finding the mushroom in the fog means checking places one at a time until it turns up: a *search*. Walking every tile in order is a *linear search*, and the golden version (G-5) searches a whole grid.
 
-**Generalising.** `can_move()`, `position()` and `field_size()` replace fixed numbers with things the program finds out for itself, so one program fits any field. Code that doesn't hard-code its numbers is more general and easier to reuse.
+**Generalising.** `position()` and `field_size()` replace fixed numbers with things the program finds out for itself, so one program fits any field. In 6-1 Bolt starts somewhere different on each plot, and the same program brings it home every time.
 
 ### Coding words
-
-#### repeat until
-
-Keeps going round until the check becomes true. Good when you don't know how many times it will take.
-
-Written as: `repeat until ...:`, `while not ...:`.
-
-```python
-repeat until is_ripe():
-    wait()
-```
-
-#### repeat while
-
-Keeps going round as long as the check stays true.
-
-Written as: `repeat while ...:`, `while ...:`.
-
-```python
-repeat while can_move(EAST):
-    move(EAST)
-```
 
 #### repeat forever
 
@@ -367,15 +409,6 @@ repeat forever:
     move(EAST)
 ```
 
-#### can_move
-
-Checks whether Bolt can step that way. It's false at the edge of the field.
-
-```python
-if can_move(NORTH):
-    move(NORTH)
-```
-
 #### position
 
 Gives back where Bolt is, as `(x, y)`. `(0, 0)` is the south-west corner. `position()[0]` is just x, and `position()[1]` is just y.
@@ -396,26 +429,21 @@ repeat field_size() - 1 times:
 
 ### New on the farm
 
-**Fog** hides every tile more than one step from Bolt (5-1, 5-3 to 5-5), so counting steps stops working. **Mushrooms** grow wild in the fog, in a different spot on each test plot (5-6, 5-8). **Crop swap:** carrots planted where wheat was just picked give 2 (5-7).
+The fog comes back, and now Bolt needs `if` to know when to stop. In 6-1 Bolt starts somewhere different on each test plot and has to `break` out of the loop once `position()` is home. **Mushrooms** grow wild in the fog, in a different spot on each test plot (6-2, 6-3).
 
 ### Quests
 
 | Quest | Title | From | Goal | Practices | Must use | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| 5-1 | Into the Fog | Wren | Walk to the east edge of the field. | repeat while, can_move | repeat until or repeat while or repeat forever | Fog |
-| 5-2 | Wait for It | Wren | Harvest the carrot when it is ripe. | repeat until | repeat until or repeat while |  |
-| 5-3 | Fog Harvest | Wren | Harvest every grass tile in the row. | repeat while, can_move | repeat until or repeat while or repeat forever | Fog |
-| 5-4 | Find the Carrot | Wren | Walk east until you find the ripe carrot, then harvest it. | repeat until | repeat until or repeat while | Fog |
-| 5-5 | Home Through the Fog | Wren | Walk to the south-west corner. | repeat while, can_move | repeat until or repeat while or repeat forever | Fog |
-| 5-6 | Mushroom in the Fog | Wren | On all 3 plots: walk east until you find the mushroom, pick it, then go home to the corner. | repeat until, repeat forever, break, position | repeat forever; break | 3 test plots |
-| 5-7 | Wheat Then Carrots | Wren | Pick the wheat, plant carrots in the same spots, and harvest 8 carrots. | repeat until | repeat until or repeat while | Bonus |
-| 5-8 | Wren's Basket | Wren | On all 3 plots: find the mushroom and pick it. Stop as soon as you have it. | repeat while, repeat forever, break, can_move | break | Bonus, 3 test plots |
+| 6-1 | Home Before Dark | Wren | On all 3 plots: walk home to the south-west corner, then stop. | repeat forever, break, position | repeat forever; break | 3 test plots |
+| 6-2 | Mushroom in the Fog | Wren | On all 3 plots: walk east until you find the mushroom, pick it, then go home to the corner. | repeat forever, break, position | repeat forever; break | 3 test plots |
+| 6-3 | Wren's Basket | Wren | On all 3 plots: find the mushroom and pick it. Stop as soon as you have it. | repeat forever, break | break | Bonus, 3 test plots |
 
-## Chapter 6: Keeping Count
+## Chapter 7: Keeping Count
 
 **Mayor Maple:** "It's market day, and the mayor orders exact amounts. Bolt learns to keep count."
 
-Opens when chapter 5 is finished and the player has 32 stars. Finishing its 5 core quests earns the **Counter Badge**.
+Opens when chapter 6 is finished and the player has 32 stars. Finishing its 5 core quests earns the **Counter Badge**.
 
 ### Programming concepts
 
@@ -423,7 +451,7 @@ Opens when chapter 5 is finished and the player has 32 stars. Finishing its 5 co
 
 **Counters and accumulators.** Starting at 0 and adding 1 each time something happens is a *counter*, one of the most common patterns in programming. `count("hay")` and `ticks()` are counters the game keeps for you.
 
-**Counting loops.** `for x from 1 to 5:` (`for x in range(1, 6):`) is a loop with a variable that changes each time round, so the loop body can use the number. The wheat staircase (6-3) plants a longer row each time because the row number grows.
+**Counting loops.** `for x from 1 to 5:` (`for x in range(1, 6):`) is a loop with a variable that changes each time round, so the loop body can use the number. The wheat staircase (7-3) plants a longer row each time because the row number grows.
 
 **Boolean logic.** `and`, `or` and `not` combine checks: `is_dry() and not is_ripe()` is only true when both parts are. These are the *logical operators*, and with them one `if` can express a precise rule.
 
@@ -497,25 +525,25 @@ if is_dry():
 
 ### New on the farm
 
-More goals now ask for an *exact* number. **Corn** only grows while its soil is wet, so it needs the watering can and trips to the well (6-5, 6-7). **Blueberry bushes** stay after a ripe harvest and are ripe again 10 ticks later, giving more each time (6-6).
+More goals now ask for an *exact* number. **Corn** only grows while its soil is wet, so it needs the watering can and trips to the well (7-5, 7-7). **Blueberry bushes** stay after a ripe harvest and are ripe again 10 ticks later, giving more each time (7-6).
 
 ### Quests
 
 | Quest | Title | From | Goal | Practices | Must use | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| 6-1 | Seven Bales | Mayor Maple | Harvest exactly 7 hay. | count | set and change or count |  |
-| 6-2 | Ten Carrots | Mayor Maple | Plant exactly 10 carrots. | set and change | set and change or for ... from ... to |  |
-| 6-3 | Wheat Stairs | Mayor Maple | Plant the wheat staircase. | for ... from ... to | for ... from ... to |  |
-| 6-4 | Two Orders | Mayor Maple | Harvest exactly 3 hay and exactly 4 wheat. | count | set and change or count |  |
-| 6-5 | Thirsty Corn | Mayor Maple | Harvest the ripe corn, and water only the young corn on dry soil. | and, or and not, the watering can | and, or and not |  |
-| 6-6 | Two Old Bushes | Mayor Maple | Pick at least 14 blueberries from the two bushes without losing a bush. | set and change, count | count or set and change | Bonus |
-| 6-7 | Trips to the Well | Mayor Maple | Water every young corn on dry soil without wasting any. Refill the can at the well. | and, or and not, the watering can | and, or and not | Bonus |
+| 7-1 | Seven Bales | Mayor Maple | Harvest exactly 7 hay. | count | set and change or count |  |
+| 7-2 | Ten Carrots | Mayor Maple | Plant exactly 10 carrots. | set and change | set and change or for ... from ... to |  |
+| 7-3 | Wheat Stairs | Mayor Maple | Plant the wheat staircase. | for ... from ... to | for ... from ... to |  |
+| 7-4 | Two Orders | Mayor Maple | Harvest exactly 3 hay and exactly 4 wheat. | count | set and change or count |  |
+| 7-5 | Thirsty Corn | Mayor Maple | Harvest the ripe corn, and water only the young corn on dry soil. | and, or and not, the watering can | and, or and not |  |
+| 7-6 | Two Old Bushes | Mayor Maple | Pick at least 14 blueberries from the two bushes without losing a bush. | set and change, count | count or set and change | Bonus |
+| 7-7 | Trips to the Well | Mayor Maple | Water every young corn on dry soil without wasting any. Refill the can at the well. | and, or and not, the watering can | and, or and not | Bonus |
 
-## Chapter 7: Teach Bolt
+## Chapter 8: Teach Bolt
 
 **Bolt:** "Bolt gets tired of long instructions. Teach Bolt new commands with define."
 
-Opens when chapter 6 is finished and the player has 38 stars. Finishing its 4 core quests earns the **Teacher Badge**.
+Opens when chapter 7 is finished and the player has 38 stars. Finishing its 4 core quests earns the **Teacher Badge**.
 
 ### Programming concepts
 
@@ -578,23 +606,23 @@ if ripe_at(2, 3):
 
 ### New on the farm
 
-Code can be split across several named **code windows**, and one window can use another (7-2). **Sunflowers** are tall, so `ripe_at(x, y)` can check any of them from anywhere (7-4, 7-5).
+Code can be split across several named **code windows**, and one window can use another (8-2). **Sunflowers** are tall, so `ripe_at(x, y)` can check any of them from anywhere (8-4, 8-5).
 
 ### Quests
 
 | Quest | Title | From | Goal | Practices | Must use | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| 7-1 | Harvest Row | Bolt | Make a harvest_row command and use it 3 times. | define | define |  |
-| 7-2 | A Helper Window | Bolt | Put a command in another code window, use it, and plant two rows of wheat. | define, use | use |  |
-| 7-3 | Go Three Steps | Bolt | Harvest the 3 grass tiles. | define | define |  |
-| 7-4 | Sunflower Rows | Bolt | Teach Bolt ripe_in_row(y) that gives back how many sunflowers are ripe in a row. Only harvest rows with 3 or more. | define, give back, ripe_at | define; give back |  |
-| 7-5 | The Best Row First | Bolt | Find the row with the most ripe sunflowers, walk there, and harvest 5. | define, give back, ripe_at | give back; set and change | Bonus |
+| 8-1 | Harvest Row | Bolt | Make a harvest_row command and use it 3 times. | define | define |  |
+| 8-2 | A Helper Window | Bolt | Put a command in another code window, use it, and plant two rows of wheat. | define, use | use |  |
+| 8-3 | Go Three Steps | Bolt | Harvest the 3 grass tiles. | define | define |  |
+| 8-4 | Sunflower Rows | Bolt | Teach Bolt ripe_in_row(y) that gives back how many sunflowers are ripe in a row. Only harvest rows with 3 or more. | define, give back, ripe_at | define; give back |  |
+| 8-5 | The Best Row First | Bolt | Find the row with the most ripe sunflowers, walk there, and harvest 5. | define, give back, ripe_at | give back; set and change | Bonus |
 
-## Chapter 8: Big Farm Plans
+## Chapter 9: Big Farm Plans
 
 **Aunt Juniper:** "The Harvest Festival is coming! Bolt learns to follow a plan written as a list."
 
-Opens when chapter 7 is finished and the player has 44 stars. Finishing its 7 core quests earns the **Festival Ribbon**.
+Opens when chapter 8 is finished and the player has 44 stars. Finishing its 7 core quests earns the **Festival Ribbon**.
 
 ### Programming concepts
 
@@ -602,7 +630,7 @@ Opens when chapter 7 is finished and the player has 44 stars. Finishing its 7 co
 
 **Iterating over a list.** `for each crop in plan:` (`for crop in plan:`) runs the loop once per item, with the variable holding each item in turn. No counting is needed: the list says how many times.
 
-**Building and checking lists.** `add crop to basket` (`basket.append(crop)`) grows a list as the program runs. `crop in basket` checks whether something is already there, and `len(basket)` says how many items it holds. The Mayor's Order (8-4) uses all three to pick exactly one of each crop.
+**Building and checking lists.** `add crop to basket` (`basket.append(crop)`) grows a list as the program runs. `crop in basket` checks whether something is already there, and `len(basket)` says how many items it holds. The Mayor's Order (9-4) uses all three to pick exactly one of each crop.
 
 **Data-driven programs.** `order()` and `design()` hand the program a list that's different on each plot. The program's job is to follow the data, not to know the answer in advance. Separating *what to do* (the data) from *how to do it* (the code) is how most real software works.
 
@@ -644,23 +672,23 @@ if crop_here() in order():
 
 ### New on the farm
 
-Chapter 8 ends with **Festival Day**: The Big Basket (8-5), The Fog Race (8-6) and The Grand Display (8-7), each on test plots and judged by a neighbor. `design()` gives the rows to plant on each plot in 8-7. Finishing all three plays the festival.
+Chapter 9 ends with **Festival Day**: The Big Basket (9-5), The Fog Race (9-6) and The Grand Display (9-7), each on test plots and judged by a neighbor. `design()` gives the rows to plant on each plot in 9-7. Finishing all three plays the festival.
 
 ### Quests
 
 | Quest | Title | From | Goal | Practices | Must use | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| 8-1 | Festival Row | Aunt Juniper | Plant wheat, carrot, wheat, carrot, wheat. | lists | lists |  |
-| 8-2 | Treasure Steps | Aunt Juniper | Follow the steps [1, 2, 1] and harvest after each. | lists | lists |  |
-| 8-3 | The Festival Field | Aunt Juniper | Plant the checkered rows of wheat and carrots. | lists | lists |  |
-| 8-4 | The Mayor's Order | Mayor Maple | On both test plots: walk the row and harvest one of each crop in order(). Keep a basket list of what you've picked, and stop when the basket is full. | lists, add ... to, order | add ... to | 2 test plots |
-| 8-5 | The Big Basket | Daisy and Hazel | On both plots, harvest every ripe crop. Leave the young ones, and don't let the lettuce wilt. | earlier words: repeat, if and else, is_ripe, can_move, field_size, set and change, define | if and else | 2 test plots |
-| 8-6 | The Fog Race | Wren | On all 3 plots, find the carrot, harvest it, and end back at the barn where Bolt started. | lists | repeat until or repeat while or repeat forever | 3 test plots |
-| 8-7 | The Grand Display | Aunt Juniper | On both plots, plant the rows from design(), starting at the south row. | lists | lists | 2 test plots |
+| 9-1 | Festival Row | Aunt Juniper | Plant wheat, carrot, wheat, carrot, wheat. | lists | lists |  |
+| 9-2 | Treasure Steps | Aunt Juniper | Follow the steps [1, 2, 1] and harvest after each. | lists | lists |  |
+| 9-3 | The Festival Field | Aunt Juniper | Plant the checkered rows of wheat and carrots. | lists | lists |  |
+| 9-4 | The Mayor's Order | Mayor Maple | On both test plots: walk the row and harvest one of each crop in order(). Keep a basket list of what you've picked, and stop when the basket is full. | lists, add ... to, order | add ... to | 2 test plots |
+| 9-5 | The Big Basket | Daisy and Hazel | On both plots, harvest every ripe crop. Leave the young ones, and don't let the lettuce wilt. | earlier words: repeat, can_move, is_ripe, if and else, field_size, set and change, define | if and else | 2 test plots |
+| 9-6 | The Fog Race | Wren | On all 3 plots, find the carrot, harvest it, and end back at the barn where Bolt started. | lists | repeat until or repeat while or repeat forever | 3 test plots |
+| 9-7 | The Grand Display | Aunt Juniper | On both plots, plant the rows from design(), starting at the south row. | lists | lists | 2 test plots |
 
 ## After the Festival
 
-After chapter 8 the map gets a ninth page. No new words are taught here, but anything no chapter teaches (classes, `lambda`, `try` and so on) opens. Golden quests take one old quest's idea per chapter and run it on 2 or 3 test plots the player hasn't seen, so the program has to look around rather than count. Each gives a golden star (they don't count toward chapter stars) and a trophy. The contract board has 12 orders from the neighbors, 3 at a time, filled on the home farm with the player's own seeds within a tick budget. Contracts have no fixed answer, so they aren't in the solutions doc.
+After chapter 9 the map gets a tenth page. No new words are taught here, but anything no chapter teaches (classes, `lambda`, `try` and so on) opens. Golden quests take one old quest's idea per chapter and run it on 2 or 3 test plots the player hasn't seen, so the program has to look around rather than count. Each gives a golden star (they don't count toward chapter stars) and a trophy. The contract board has 12 orders from the neighbors, 3 at a time, filled on the home farm with the player's own seeds within a tick budget. Contracts have no fixed answer, so they aren't in the solutions doc.
 
 ### Programming concepts
 
@@ -676,12 +704,12 @@ After chapter 8 the map gets a ninth page. No new words are taught here, but any
 | --- | --- | --- | --- | --- | --- |
 | G-1 | Golden Row | Aunt Juniper | On all 3 plots, harvest the whole grass row. | Chapter 1: First Steps | move, harvest |
 | G-2 | Golden Lunch | Daisy | On all 3 plots, harvest every row of grass. | Chapter 2: Do It Again | repeat |
-| G-3 | Golden Sweep | Hazel | On all 3 plots, harvest every crop. | Chapter 3: Loops in Loops | earlier words: repeat |
-| G-4 | Golden Pumpkins | Pip | On both plots: pick every ripe pumpkin, till every rotten one, and leave the young ones alone. | Chapter 4: Look Before You Act | if and else, else if, is_ripe, is_rotten |
-| G-5 | Golden Mushroom | Wren | On all 3 plots: find the mushroom, pick it, and go home to the corner. | Chapter 5: Until It's Done | repeat until, repeat forever, break, can_move, position |
-| G-6 | Golden Corn | Mayor Maple | On all 3 plots: fill the can, then water every young corn on dry soil, and waste none. | Chapter 6: Keeping Count | set and change, and, or and not, the watering can |
-| G-7 | Golden Sunflowers | Bolt | On both plots: harvest only the rows with 3 or more ripe sunflowers, and pick nothing unripe. | Chapter 7: Teach Bolt | define, give back, ripe_at |
-| G-8 | Golden Order | Mayor Maple | On all 3 plots: walk the row and harvest exactly one of each crop in order(). | Chapter 8: Big Farm Plans | lists, add ... to, order |
+| G-3 | Golden Sweep | Hazel | On all 3 plots, harvest every crop. | Chapter 4: Loops in Loops | earlier words: repeat, can_move |
+| G-4 | Golden Pumpkins | Pip | On both plots: pick every ripe pumpkin, till every rotten one, and leave the young ones alone. | Chapter 5: Look Before You Act | if and else, else if, is_rotten |
+| G-5 | Golden Mushroom | Wren | On all 3 plots: find the mushroom, pick it, and go home to the corner. | Chapter 6: Way Out of the Fog | repeat forever, break, position |
+| G-6 | Golden Corn | Mayor Maple | On all 3 plots: fill the can, then water every young corn on dry soil, and waste none. | Chapter 7: Keeping Count | set and change, and, or and not, the watering can |
+| G-7 | Golden Sunflowers | Bolt | On both plots: harvest only the rows with 3 or more ripe sunflowers, and pick nothing unripe. | Chapter 8: Teach Bolt | define, give back, ripe_at |
+| G-8 | Golden Order | Mayor Maple | On all 3 plots: walk the row and harvest exactly one of each crop in order(). | Chapter 9: Big Farm Plans | lists, add ... to, order |
 
 ### The contract board
 

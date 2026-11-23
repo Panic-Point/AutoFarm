@@ -4,7 +4,7 @@
 
 A browser farming game where you write code to automate Bolt, a little farm robot. It's made for kids (6 and up, with a grown-up to help read) learning to program: loops and choices read like plain words, closer to Scratch, but you type them.
 
-The game is 8 chapters at Willow Creek Farm, and each one teaches one coding idea (doing things in order, repeating, loops in loops, choices, loops that stop, counting, your own commands, and lists) through short quests from the neighbors, ending with Festival Day. After the festival there are golden quests, a contract board and a home farm to play on. Players write plain-word code like `repeat 5 times:` or `set total to 0`, which turns into Python, and it all runs in the browser.
+The game is 9 chapters at Willow Creek Farm, and each one teaches one coding idea (doing things in order, repeating, loops that stop on their own, loops in loops, choices, loops you break out of, counting, your own commands, and lists) through short quests from the neighbors, ending with Festival Day. After the festival there are golden quests, a contract board and a home farm to play on. Players write plain-word code like `repeat 5 times:` or `set total to 0`, which turns into Python, and it all runs in the browser.
 
 More in [`docs/`](docs/README.md):
 

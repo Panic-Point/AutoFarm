@@ -33,7 +33,7 @@ test("Continue says where the player was", () => {
   assert.equal(continueText({ quest: first.id, replay: 1 }), `Replaying chapter 1 · Quest ${first.id}: ${first.title}`);
   assert.equal(continueText({ quest: null }), "Your home farm");
   assert.equal(continueText(null), "Your home farm");
-  const festival = CHAPTERS[7].quests.find((q) => q.festival);
+  const festival = CHAPTERS[CHAPTERS.length - 1].quests.find((q) => q.festival);
   assert.match(continueText({ quest: festival.id }), /^Festival Day · /);
 });
 
