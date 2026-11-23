@@ -56,6 +56,22 @@ const DIRECTIONS = "`NORTH`, `SOUTH`, `EAST` or `WEST` (or `UP`, `DOWN`, `LEFT` 
 export const CONCEPTS = [
   // ---- Getting started ----
   {
+    id: "tick",
+    group: "basics",
+    name: "Ticks",
+    word: null,
+    learned: "1-1",
+    short: "A tick is one Bolt action. Every action takes 1 tick.",
+    does: "A tick is one Bolt action. Every action, like a step or a harvest, takes 1 tick. The **Tick** counter under the field counts them while Bolt works. Fewer ticks means more stars!",
+    gives: null,
+    forms: ["each action = 1 tick"],
+    watch: ["Crops grow a little every tick, even while Bolt is busy.", "Bumping into the fence still uses a tick."],
+    example: {
+      code: "harvest()\nmove(EAST)\nharvest()\nmove(EAST)\nharvest()",
+      field: { map: ["...", "...", "GGG"] },
+    },
+  },
+  {
     id: "in_order",
     group: "basics",
     name: "Lines run in order",
@@ -112,7 +128,7 @@ export const CONCEPTS = [
     word: "harvest",
     learned: "1-1",
     short: "`harvest()` collects a ripe crop. An unripe crop is lost.",
-    does: "Picks the crop Bolt is standing on and puts it in the barn. Takes 1 tick.",
+    does: "Picks the crop Bolt is standing on and puts it in the barn. Takes 1 tick. A tick is one Bolt action: every action takes 1 tick.",
     gives: "`True` if Bolt picked something ripe, `False` if not.",
     forms: ["harvest()"],
     watch: ["Harvesting a crop that isn't ripe yet loses it, and you get nothing.", "Harvesting bare soil just uses a tick.", "Grass grows back by itself after you pick it."],
