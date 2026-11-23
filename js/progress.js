@@ -15,25 +15,25 @@ export const SHOP = [
   { id: "wheat_seeds", kind: "seeds", name: "Wheat seeds", text: "Plant wheat on your home farm.", cost: { hay: 3 }, after: 1, crop: "wheat" },
   { id: "field_5", kind: "growth", name: "Bigger field", text: "Your home farm grows to 5 by 5.", cost: { hay: 15 }, after: 2, size: 5 },
   { id: "carrot_seeds", kind: "seeds", name: "Carrot seeds", text: "Plant carrots. Plant them where wheat was just picked and they give 2!", cost: { wheat: 10 }, after: 3, crop: "carrot" },
-  { id: "strawberry_seeds", kind: "seeds", name: "Strawberry seeds", text: "Plant strawberries. Each one gives more for every strawberry next to it.", cost: { wheat: 12 }, after: 3, crop: "strawberry" },
-  { id: "scarecrow", kind: "looks", name: "Scarecrow", text: "A friendly scarecrow for your farm.", cost: { wheat: 8 }, after: 3 },
-  { id: "lettuce_seeds", kind: "seeds", name: "Lettuce seeds", text: "Plant lettuce. It's quick, but pick it before it wilts!", cost: { hay: 12 }, after: 4, crop: "lettuce" },
-  { id: "red_cap", kind: "hat", name: "Red cap", text: "A bright red cap for Bolt.", cost: { hay: 10 }, after: 4 },
-  { id: "cowboy_hat", kind: "hat", name: "Cowboy hat", text: "Yee-haw! A wide brown hat.", cost: { wheat: 12 }, after: 4 },
-  { id: "pumpkin_seeds", kind: "seeds", name: "Pumpkin seeds", text: "Plant pumpkins. Pick them when they're ripe, before they rot!", cost: { carrot: 3 }, after: 4, crop: "pumpkin" },
-  { id: "jack_o_lantern", kind: "looks", name: "Jack-o'-lantern", text: "A grinning pumpkin for your farm.", cost: { pumpkin: 2 }, after: 4 },
-  { id: "field_7", kind: "growth", name: "Even bigger field", text: "Your home farm grows to 7 by 7.", cost: { hay: 20, wheat: 20 }, after: 5, size: 7 },
-  { id: "blueberry_seeds", kind: "seeds", name: "Blueberry seeds", text: "Plant blueberry bushes. They grow back and give more each time.", cost: { carrot: 6 }, after: 5, crop: "blueberry" },
-  { id: "mushroom_hat", kind: "hat", name: "Mushroom hat", text: "A red spotty cap, like the mushrooms in the fog.", cost: { mushroom: 3 }, after: 5 },
-  { id: "berry_hat", kind: "hat", name: "Berry hat", text: "A sun hat with strawberries and blueberries on it.", cost: { strawberry: 10, blueberry: 10 }, after: 6 },
-  { id: "fence", kind: "looks", name: "Fence", text: "A wooden fence around your farm.", cost: { hay: 25 }, after: 6 },
-  { id: "flower_crown", kind: "hat", name: "Flower crown", text: "Daisies and buttercups for Bolt.", cost: { carrot: 5 }, after: 6 },
-  { id: "corn_seeds", kind: "seeds", name: "Corn seeds", text: "Plant corn. It only grows on wet soil, so water() it. Each one gives 2!", cost: { lettuce: 5 }, after: 6, crop: "corn" },
-  { id: "well", kind: "looks", name: "Well", text: "A well in the corner of your farm. Stand on it and refill() the watering can.", cost: { wheat: 15 }, after: 6 },
-  { id: "dog", kind: "looks", name: "Farm dog", text: "A puppy that follows Bolt around.", cost: { carrot: 8 }, after: 7 },
-  { id: "sunflower_seeds", kind: "seeds", name: "Sunflower seeds", text: "Plant sunflowers. They're so tall Bolt can see them from anywhere with ripe_at(x, y).", cost: { pumpkin: 4 }, after: 7, crop: "sunflower" },
-  { id: "sunflower_hat", kind: "hat", name: "Sunflower hat", text: "A big sunny flower for Bolt's head.", cost: { sunflower: 5 }, after: 7 },
-  { id: "field_10", kind: "growth", name: "Giant field", text: "Your home farm grows to 10 by 10.", cost: { carrot: 20 }, after: 8, size: 10 },
+  { id: "strawberry_seeds", kind: "seeds", name: "Strawberry seeds", text: "Plant strawberries. Each one gives more for every strawberry next to it.", cost: { wheat: 12 }, after: 4, crop: "strawberry" },
+  { id: "scarecrow", kind: "looks", name: "Scarecrow", text: "A friendly scarecrow for your farm.", cost: { wheat: 8 }, after: 4 },
+  { id: "lettuce_seeds", kind: "seeds", name: "Lettuce seeds", text: "Plant lettuce. It's quick, but pick it before it wilts!", cost: { hay: 12 }, after: 5, crop: "lettuce" },
+  { id: "red_cap", kind: "hat", name: "Red cap", text: "A bright red cap for Bolt.", cost: { hay: 10 }, after: 5 },
+  { id: "cowboy_hat", kind: "hat", name: "Cowboy hat", text: "Yee-haw! A wide brown hat.", cost: { wheat: 12 }, after: 5 },
+  { id: "pumpkin_seeds", kind: "seeds", name: "Pumpkin seeds", text: "Plant pumpkins. Pick them when they're ripe, before they rot!", cost: { carrot: 3 }, after: 5, crop: "pumpkin" },
+  { id: "jack_o_lantern", kind: "looks", name: "Jack-o'-lantern", text: "A grinning pumpkin for your farm.", cost: { pumpkin: 2 }, after: 5 },
+  { id: "field_7", kind: "growth", name: "Even bigger field", text: "Your home farm grows to 7 by 7.", cost: { hay: 20, wheat: 20 }, after: 6, size: 7 },
+  { id: "blueberry_seeds", kind: "seeds", name: "Blueberry seeds", text: "Plant blueberry bushes. They grow back and give more each time.", cost: { carrot: 6 }, after: 6, crop: "blueberry" },
+  { id: "mushroom_hat", kind: "hat", name: "Mushroom hat", text: "A red spotty cap, like the mushrooms in the fog.", cost: { mushroom: 3 }, after: 6 },
+  { id: "berry_hat", kind: "hat", name: "Berry hat", text: "A sun hat with strawberries and blueberries on it.", cost: { strawberry: 10, blueberry: 10 }, after: 7 },
+  { id: "fence", kind: "looks", name: "Fence", text: "A wooden fence around your farm.", cost: { hay: 25 }, after: 7 },
+  { id: "flower_crown", kind: "hat", name: "Flower crown", text: "Daisies and buttercups for Bolt.", cost: { carrot: 5 }, after: 7 },
+  { id: "corn_seeds", kind: "seeds", name: "Corn seeds", text: "Plant corn. It only grows on wet soil, so water() it. Each one gives 2!", cost: { lettuce: 5 }, after: 7, crop: "corn" },
+  { id: "well", kind: "looks", name: "Well", text: "A well in the corner of your farm. Stand on it and refill() the watering can.", cost: { wheat: 15 }, after: 7 },
+  { id: "dog", kind: "looks", name: "Farm dog", text: "A puppy that follows Bolt around.", cost: { carrot: 8 }, after: 8 },
+  { id: "sunflower_seeds", kind: "seeds", name: "Sunflower seeds", text: "Plant sunflowers. They're so tall Bolt can see them from anywhere with ripe_at(x, y).", cost: { pumpkin: 4 }, after: 8, crop: "sunflower" },
+  { id: "sunflower_hat", kind: "hat", name: "Sunflower hat", text: "A big sunny flower for Bolt's head.", cost: { sunflower: 5 }, after: 8 },
+  { id: "field_10", kind: "growth", name: "Giant field", text: "Your home farm grows to 10 by 10.", cost: { carrot: 20 }, after: 9, size: 10 },
   // Rewards from the contract board.
   { id: "blue_cap", kind: "hat", name: "Blue cap", text: "Daisy's thank-you: a sky blue cap.", cost: { hay: 10 }, contract: "c-1" },
   { id: "baker_hat", kind: "hat", name: "Baker's hat", text: "Hazel's thank-you: a tall white hat for bread days.", cost: { wheat: 10 }, contract: "c-2" },
@@ -56,15 +56,17 @@ export const SHOP = [
 // ---- Golden crowns: a free gift for each finished chapter ----
 // Each has its chapter's crop on it. Aunt Juniper gives the last one at the
 // Harvest Festival.
+// The ids are older than the chapter order, so crown_3 belongs to chapter 4.
 export const CROWNS = [
   { id: "crown_1", chapter: 1, name: "Hay Crown", crop: "hay" },
   { id: "crown_2", chapter: 2, name: "Wheat Crown", crop: "wheat" },
-  { id: "crown_3", chapter: 3, name: "Strawberry Crown", crop: "strawberry" },
-  { id: "crown_4", chapter: 4, name: "Pumpkin Crown", crop: "pumpkin" },
-  { id: "crown_5", chapter: 5, name: "Mushroom Crown", crop: "mushroom" },
-  { id: "crown_6", chapter: 6, name: "Corn Crown", crop: "corn" },
-  { id: "crown_7", chapter: 7, name: "Sunflower Crown", crop: "sunflower" },
-  { id: "crown_8", chapter: 8, name: "Festival Crown", crop: "festival" },
+  { id: "crown_carrot", chapter: 3, name: "Carrot Crown", crop: "carrot" },
+  { id: "crown_3", chapter: 4, name: "Strawberry Crown", crop: "strawberry" },
+  { id: "crown_4", chapter: 5, name: "Pumpkin Crown", crop: "pumpkin" },
+  { id: "crown_5", chapter: 6, name: "Mushroom Crown", crop: "mushroom" },
+  { id: "crown_6", chapter: 7, name: "Corn Crown", crop: "corn" },
+  { id: "crown_7", chapter: 8, name: "Sunflower Crown", crop: "sunflower" },
+  { id: "crown_8", chapter: 9, name: "Festival Crown", crop: "festival" },
 ];
 
 export function crownFor(chapter) {
@@ -96,6 +98,57 @@ export const ALMANAC = [
 ];
 
 // ---- Saving ----
+
+// Quest IDs from before version 5 (see MIGRATIONS) and their IDs now.
+export const MOVED_V5 = {
+  "5-1": "3-1", "5-2": "3-2", "5-3": "3-3", "5-4": "3-4", "5-5": "3-5", "5-7": "3-6",
+  "5-6": "6-2", "5-8": "6-3",
+};
+for (let i = 1; i <= 11; i++) MOVED_V5[`3-${i}`] = `4-${i}`;
+for (let i = 1; i <= 12; i++) MOVED_V5[`4-${i}`] = `5-${i}`;
+for (let i = 1; i <= 7; i++) MOVED_V5[`6-${i}`] = `7-${i}`;
+for (let i = 1; i <= 5; i++) MOVED_V5[`7-${i}`] = `8-${i}`;
+for (let i = 1; i <= 7; i++) MOVED_V5[`8-${i}`] = `9-${i}`;
+
+// Chapter numbers from before version 5 and the chapters they are now.
+const CHAPTERS_V5 = { 1: [1], 2: [2], 3: [4], 4: [5], 5: [3, 6], 6: [7], 7: [8], 8: [9] };
+
+function renumberQuest(id) {
+  return MOVED_V5[id] ?? id;
+}
+
+// The rest of a save lives outside progress: the quest being played (mode)
+// and the code windows. `from` is the version the saved progress had before
+// it was loaded (1 if it had none). Returns updated copies.
+export function migrateMode(mode, from) {
+  if (!mode || typeof mode !== "object" || from >= 5 || typeof mode.quest !== "string") return mode;
+  const quest = renumberQuest(mode.quest);
+  const out = { ...mode, quest };
+  if (mode.replay) out.replay = Number(quest.split("-")[0]);
+  return out;
+}
+
+// Fix Bolt's code quests open their code in a window named after the quest
+// (fix_3_6). Rename those windows with their quest, so changes the player made
+// stay with the right quest.
+export function migrateWorkspace(workspace, from) {
+  if (!workspace || !Array.isArray(workspace.windows) || from >= 5) return workspace;
+  const starters = ["3-6", "3-11", "4-11"];
+  const rename = Object.fromEntries(starters.map((id) => [`fix_${id.replace("-", "_")}`, `fix_${renumberQuest(id).replace("-", "_")}`]));
+  const kept = workspace.windows.map((w) => w?.name).filter((name) => !(name in rename));
+  const newName = (name) => (name in rename && !kept.includes(rename[name]) ? rename[name] : name);
+  return {
+    ...workspace,
+    windows: workspace.windows.map((w) => (w && typeof w === "object" ? { ...w, name: newName(w.name) } : w)),
+    active: newName(workspace.active),
+  };
+}
+
+// The version a raw save was made with. No save at all needs no migrating.
+export function saveVersion(raw) {
+  if (!raw || typeof raw !== "object") return SAVE_VERSION;
+  return Number.isInteger(raw.version) ? raw.version : 1;
+}
 
 // Saves carry a version. When quests are added, moved or given new IDs, a
 // migration below brings older saves up to date, so nothing earned is lost.
@@ -151,6 +204,25 @@ export const MIGRATIONS = [
         const out = {};
         for (const [id, n] of Object.entries(old)) out[moved[id] ?? id] = n;
         saved[key] = out;
+      }
+    },
+  },
+  {
+    // Version 5 moves the loops that stop on their own up to chapter 3, after
+    // repeat (#47). Old chapter 5 split in two: its while loops are the new
+    // chapter 3 (Until It's Done), and repeat forever and break are the new
+    // chapter 6 (Way Out of the Fog). Every other chapter moved along, so
+    // quests get new IDs and finished chapters get new numbers.
+    version: 5,
+    run(saved) {
+      for (const key of ["stars", "best"]) {
+        const out = {};
+        for (const [id, n] of Object.entries(saved[key] ?? {})) out[renumberQuest(id)] = n;
+        saved[key] = out;
+      }
+      if (Array.isArray(saved.finished)) {
+        const now = saved.finished.flatMap((n) => CHAPTERS_V5[n] ?? []);
+        saved.finished = [...new Set(now)].sort((a, b) => a - b);
       }
     },
   },
@@ -253,7 +325,7 @@ export function unlockAll(p) {
   giveCrowns(p);
   for (const page of ALMANAC) if (!p.almanac.includes(page.item)) p.almanac.push(page.item);
   for (const c of CONCEPTS) markSeen(p, c.id);
-  // The festival scene plays when chapter 8 is first finished by playing it.
+  // The festival scene plays when the last chapter is first finished by playing it.
   p.festivalSeen = true;
 }
 
@@ -282,7 +354,7 @@ export function isChapterDone(p, n) {
 }
 
 // A chapter opens once the one before it is finished and the player has
-// enough stars. Chapter 9 means "after the Harvest Festival". A chapter the
+// enough stars. AFTER_FESTIVAL (10) means "after the Harvest Festival". A chapter the
 // player has already played in stays open, even if more stars are needed
 // to open it now.
 export function isChapterOpen(p, n) {
@@ -542,7 +614,7 @@ export function recordResult(p, id, stars, ticks) {
     lines.push(`You earned the ${CHAPTERS[n - 1].badge}!`);
     const crown = crownFor(n);
     if (crown && n !== CHAPTERS.length) lines.push(`A gift: the ${crown.name}! Bolt can wear it. Find it on the shelf.`);
-    if (crown && n === CHAPTERS.length) lines.push(`Aunt Juniper gave Bolt the ${crown.name}, the last of the 8 golden crowns!`);
+    if (crown && n === CHAPTERS.length) lines.push(`Aunt Juniper gave Bolt the ${crown.name}, the last of the ${CROWNS.length} golden crowns!`);
   }
   for (const n of added("chapters")) lines.push(`Chapter ${n}, ${CHAPTERS[n - 1].title}, is open!`);
   const words = added("words").filter((w) => WORDS[w].chapter !== AFTER_FESTIVAL);

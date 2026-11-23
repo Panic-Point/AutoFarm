@@ -13,7 +13,7 @@ export function hasSave(p, barn = {}) {
     || Object.values(barn).some((n) => n > 0);
 }
 
-// Where Continue picks up: "Chapter 3 · Quest 3-2: Berry Friends".
+// Where Continue picks up: "Chapter 4 · Quest 4-2: Berry Friends".
 export function continueText(mode) {
   const quest = mode?.quest ? findQuest(mode.quest) : null;
   if (quest?.golden) return `After the Festival · ${quest.title}`;

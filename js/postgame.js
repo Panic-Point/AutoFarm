@@ -1,7 +1,8 @@
 // After the Harvest Festival: golden quests and the contract board, as plain
 // data. No DOM code here.
 //
-// Golden quests are old quests on test plots, one per chapter, so the same
+// Golden quests are old quests on test plots, one per chapter (but none for
+// chapter 3, whose while loops the first two already use), so the same
 // idea has to work on fields the player hasn't seen. They use the same quest
 // format as js/chapters.js, plus `from`: the chapter whose idea they test.
 // Each one finished gives a golden star and a trophy on the shelf.
@@ -49,7 +50,7 @@ export const GOLDEN = [
   },
   {
     id: "G-3",
-    from: 3,
+    from: 4,
     title: "Golden Sweep",
     who: "Hazel",
     story: "The old festival field, now in three sizes. One sweep has to fit them all.",
@@ -69,7 +70,7 @@ export const GOLDEN = [
   },
   {
     id: "G-4",
-    from: 4,
+    from: 5,
     title: "Golden Pumpkins",
     who: "Pip",
     story: "My patch again! Ripe, young and rotten pumpkins, all in new places on each plot.",
@@ -88,7 +89,7 @@ export const GOLDEN = [
   },
   {
     id: "G-5",
-    from: 5,
+    from: 6,
     title: "Golden Mushroom",
     who: "Wren",
     story: "Hoo! One mushroom, anywhere on a big foggy field. Stop the moment you find it.",
@@ -108,7 +109,7 @@ export const GOLDEN = [
   },
   {
     id: "G-6",
-    from: 6,
+    from: 7,
     title: "Golden Corn",
     who: "Mayor Maple",
     story: "Bolt starts on the well, but the well is in a different corner on each plot. The thirsty corn is in the row next to it.",
@@ -128,7 +129,7 @@ export const GOLDEN = [
   },
   {
     id: "G-7",
-    from: 7,
+    from: 8,
     title: "Golden Sunflowers",
     who: "Bolt",
     story: "Different rows are ripe on each plot. Only rows with 3 or more ripe sunflowers are worth the walk.",
@@ -147,7 +148,7 @@ export const GOLDEN = [
   },
   {
     id: "G-8",
-    from: 8,
+    from: 9,
     title: "Golden Order",
     who: "Mayor Maple",
     story: "Three market days, three different orders. One of each crop in order(), and nothing extra!",

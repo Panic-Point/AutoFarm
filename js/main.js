@@ -19,7 +19,8 @@ import {
   ALMANAC, CROWNS, HAT_NAMES, SHOP, badges, checkContract, contractBoard, contractText, crownsOwned, goldenStars,
   nextStep, recordContract, saleLockText, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
   isChapterDone, isChapterOpen, isConceptOpen, isForSale, isQuestOpen, loadProgress, locked, looks, markSeen, newProgress,
-  nextQuest, noteHarvest, recordResult, seeds, titles, totalStars, unlockAll, unreadConcepts, wear,
+  migrateMode, migrateWorkspace, nextQuest, noteHarvest, recordResult, saveVersion, seeds, titles, totalStars, unlockAll,
+  unreadConcepts, wear,
 } from "./progress.js";
 
 // Watchdog: if Python goes quiet this long, restart it.
@@ -44,7 +45,11 @@ const keepGoingBtn = $("keep-going");
 const speedEl = $("speed");
 const consoleEl = $("console");
 
-let progress = loadProgress(load(STORE_PROGRESS));
+const savedProgress = load(STORE_PROGRESS);
+// Quests moved between save versions; the quest being played and the fix-it
+// windows move with them.
+const savedVersion = saveVersion(savedProgress);
+let progress = loadProgress(savedProgress);
 let home = loadHome(load(STORE_FARM));
 // The golden crown used to be sold in the shop. It's a gift now, so pay it back.
 if (progress.refund) {
@@ -56,7 +61,7 @@ if (!Object.keys(progress.harvested).length) {
   for (const [item, n] of Object.entries(home.inventory)) if (n > 0) progress.harvested[item] = n;
 }
 // What the player is doing: the home farm (free play) or a quest.
-let mode = loadMode(load(STORE_MODE));
+let mode = loadMode(migrateMode(load(STORE_MODE), savedVersion));
 // Code the player saved with a window's 💾 button. A new game keeps it.
 const library = loadLibrary(load(STORE_LIBRARY));
 // The quest plot on the field: the one Bolt is running, or the one picked to look at.
@@ -1387,9 +1392,9 @@ $("open-book").addEventListener("click", () => openBook());
 
 const FESTIVAL_LINES = [
   ["Daisy", "Moo! You learned to repeat!"],
+  ["Wren", "Hoo! You keep going until it's done, even in the fog!"],
   ["Hazel", "Loops inside loops!"],
   ["Pip", "Look before you act!"],
-  ["Wren", "Hoo! You keep going until it's done!"],
   ["Mayor Maple", "You learned to keep count!"],
   ["Bolt", "And I learned new words you taught me!"],
   ["Aunt Juniper", "Lists and big plans! For the best farmer in Willow Creek: the Festival Crown!"],
@@ -1541,7 +1546,7 @@ $("hint-btn").addEventListener("click", () => {
 const desk = new Desk({
   desk: $("desk"),
   bar: $("window-bar"),
-  workspace: loadWorkspace(load(STORE_FILES), load(STORE_CODE)),
+  workspace: loadWorkspace(migrateWorkspace(load(STORE_FILES), savedVersion), load(STORE_CODE)),
   onChange: (workspace) => {
     save(STORE_FILES, workspace);
     updateRunButton();

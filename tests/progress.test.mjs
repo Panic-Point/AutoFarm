@@ -4,9 +4,15 @@ import { CONTRACTS } from "../js/postgame.js";
 import { CHAPTERS, QUESTS } from "../js/chapters.js";
 import { emptyInventory } from "../js/game.js";
 import {
-  CROWNS, MIGRATIONS, checkContract, contractBoard, contractText, goldenStars, recordContract, SAVE_VERSION, SHOP, buy, crownsOwned, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, migrate, newProgress, nextQuest, nextStep, wear,
-  noteHarvest, recordResult, seeds, titles, totalStars, unlockAll,
+  CROWNS, MIGRATIONS, MOVED_V5, checkContract, contractBoard, contractText, goldenStars, recordContract, SAVE_VERSION, SHOP, buy, crownsOwned, fieldSize, isChapterDone, isChapterOpen, isQuestOpen, loadProgress, locked, migrate, newProgress, nextQuest, nextStep, wear,
+  migrateMode, migrateWorkspace, noteHarvest, recordResult, saveVersion, seeds, titles, totalStars, unlockAll,
 } from "../js/progress.js";
+
+// The quest IDs of each chapter before version 5 moved them (see MIGRATIONS).
+const OLD_COUNTS = { 1: 6, 2: 6, 3: 11, 4: 12, 5: 8, 6: 7, 7: 5, 8: 7 };
+function oldIds(n) {
+  return Array.from({ length: OLD_COUNTS[n] }, (_, i) => `${n}-${i + 1}`);
+}
 
 // Finish a chapter's core quests (bonus quests aren't needed).
 function finishChapter(p, n, stars = 3) {
@@ -80,7 +86,7 @@ test("finishing the festival opens all of Python and the Master Farmer title", (
 test("practice mode opens everything", () => {
   const p = newProgress();
   p.practice = true;
-  assert.ok(isQuestOpen(p, "8-7"));
+  assert.ok(isQuestOpen(p, "9-7"));
   assert.deepEqual(locked(p), {});
 });
 
@@ -132,26 +138,31 @@ test("bonus quests give stars but aren't needed to finish a chapter", () => {
     for (const q of ch.quests) if (!q.bonus) recordResult(p, q.id, 3, 1);
   }
   assert.ok(isChapterDone(p, 3));
-  assert.ok(isQuestOpen(p, "3-5"));
+  assert.ok(isQuestOpen(p, "3-6"));
   // The next real quest comes before the bonus quest.
   assert.equal(nextQuest(p), "4-1");
-  recordResult(p, "3-5", 2, 30);
-  assert.equal(p.stars["3-5"], 2);
+  recordResult(p, "3-6", 2, 30);
+  assert.equal(p.stars["3-6"], 2);
 });
 
 test("the new seeds are sold after the chapter that fits them", () => {
   const p = newProgress();
   const barn = emptyInventory({ hay: 50, wheat: 50, carrot: 50 });
   for (const n of [1, 2]) finishChapter(p, n);
-  assert.match(buy(p, barn, "strawberry_seeds"), /after chapter 3/);
+  // Carrots grow in the fog in chapter 3, so their seeds come right after it.
+  assert.match(buy(p, barn, "carrot_seeds"), /after chapter 3/);
   finishChapter(p, 3);
-  assert.equal(buy(p, barn, "strawberry_seeds"), null);
-  assert.match(buy(p, barn, "lettuce_seeds"), /after chapter 4/);
+  assert.equal(buy(p, barn, "carrot_seeds"), null);
+  assert.match(buy(p, barn, "strawberry_seeds"), /after chapter 4/);
   finishChapter(p, 4);
-  assert.equal(buy(p, barn, "lettuce_seeds"), null);
+  assert.equal(buy(p, barn, "strawberry_seeds"), null);
+  assert.match(buy(p, barn, "lettuce_seeds"), /after chapter 5/);
   finishChapter(p, 5);
+  assert.equal(buy(p, barn, "lettuce_seeds"), null);
+  assert.match(buy(p, barn, "mushroom_hat"), /after chapter 6/);
+  finishChapter(p, 6);
   assert.equal(buy(p, barn, "blueberry_seeds"), null);
-  assert.deepEqual(seeds(p), ["grass", "strawberry", "lettuce", "blueberry"]);
+  assert.deepEqual(seeds(p), ["grass", "carrot", "strawberry", "lettuce", "blueberry"]);
   assert.deepEqual(noteHarvest(p, { strawberry: 3 }).map((a) => a.item), ["strawberry"]);
 });
 
@@ -201,45 +212,50 @@ test("each finished chapter gives a golden crown Bolt can wear", () => {
   assert.equal(p.hat, "crown_1");
   wear(p, "crown_5");
   assert.equal(p.hat, "crown_1", "a crown not earned yet can't be worn");
-  assert.equal(CROWNS.length, 8);
+  assert.equal(CROWNS.length, 9);
+  assert.deepEqual(CROWNS.map((c) => c.chapter), CHAPTERS.map((ch) => ch.n), "one crown for each chapter, in order");
   assert.ok(!SHOP.some((item) => item.id === "gold_crown"), "the crown isn't sold any more");
 });
 
-test("finishing Festival Day gives the eighth crown", () => {
+test("finishing Festival Day gives the last crown", () => {
   const p = newProgress();
-  for (const ch of CHAPTERS) finishChapter(p, ch.n);
-  assert.equal(crownsOwned(p).length, 8);
-  assert.ok(isChapterDone(p, 8));
+  for (const ch of CHAPTERS.slice(0, -1)) finishChapter(p, ch.n);
+  const r = finishChapterResult(p, 9);
+  assert.ok(r.lines.includes("Aunt Juniper gave Bolt the Festival Crown, the last of the 9 golden crowns!"));
+  assert.equal(crownsOwned(p).length, 9);
+  assert.ok(isChapterDone(p, 9));
 });
 
 test("an old save that finished the old 8-4 keeps the festival and its crown", () => {
   const stars = {};
-  for (const ch of CHAPTERS.slice(0, 7)) for (const q of ch.quests) stars[q.id] = 2;
+  for (let n = 1; n <= 7; n++) for (const id of oldIds(n)) stars[id] = 2;
   for (const id of ["8-1", "8-2", "8-3", "8-4"]) stars[id] = 3;
   const p = loadProgress({ stars, best: { "8-4": 49 }, owned: ["straw_hat", "gold_crown"], hat: "gold_crown" });
-  assert.equal(p.stars["8-4"], undefined);
-  assert.equal(p.best["8-4"], undefined);
-  assert.ok(isChapterDone(p, 8));
+  // The festival chapter is chapter 9 now, so the old 8-4 would be 9-4.
+  assert.equal(p.stars["9-4"], undefined);
+  assert.equal(p.best["9-4"], undefined);
+  assert.equal(p.stars["9-1"], 3);
+  assert.ok(isChapterDone(p, 9));
   assert.ok(p.festivalSeen);
   assert.equal(p.hat, "crown_8");
   assert.deepEqual(p.refund, { carrot: 15, wheat: 30 });
-  assert.ok(isQuestOpen(p, "8-5"));
-  assert.ok(isQuestOpen(p, "8-4"), "the new Mayor's Order is open too");
+  assert.ok(isQuestOpen(p, "9-5"));
+  assert.ok(isQuestOpen(p, "9-4"), "the new Mayor's Order is open too");
 });
 
 test("after the festival, what's next never sends the player back to 1-1", () => {
   const p = newProgress();
   for (const q of QUESTS) recordResult(p, q.id, 3, 1);
   p.contracts = CONTRACTS.map((c) => c.id);
-  p.stars["4-2"] = 1;
-  p.stars["6-1"] = 2;
-  assert.deepEqual(nextStep(p), { id: "4-2", why: "Pip's Garden has 1 star. Can you get 3?" });
+  p.stars["5-2"] = 1;
+  p.stars["7-1"] = 2;
+  assert.deepEqual(nextStep(p), { id: "5-2", why: "Pip's Garden has 1 star. Can you get 3?" });
   delete p.stars["G-2"];
   assert.deepEqual(nextStep(p), { id: "G-2", why: "Golden Lunch is a golden quest: chapter 2's idea on new fields." });
   p.contracts = [];
   assert.deepEqual(nextStep(p), { contract: "c-1", why: "Daisy has an order on the contract board: 20 hay in 60 ticks." });
-  delete p.stars["3-5"];
-  assert.deepEqual(nextStep(p), { id: "3-5", why: "Berry Friends is a bonus quest you haven't tried yet." });
+  delete p.stars["4-5"];
+  assert.deepEqual(nextStep(p), { id: "4-5", why: "Berry Friends is a bonus quest you haven't tried yet." });
 });
 
 test("golden quests open after the festival and give golden stars, not chapter stars", () => {
@@ -307,16 +323,80 @@ test("bonus quests moved to new IDs keep their stars, and nothing re-locks", () 
   for (const id of old) stars[id] = 2;
   stars["4-5"] = 3;
   const p = loadProgress({ stars, best: { "4-5": 20, "5-6": 30 } });
-  assert.equal(p.stars["4-6"], 3, "Crunchy Lettuce keeps its stars");
-  assert.equal(p.stars["5-7"], 2);
-  assert.equal(p.stars["6-6"], 2);
-  assert.equal(p.best["4-6"], 20);
-  assert.equal(p.best["5-7"], 30);
-  for (const id of ["4-5", "5-6", "6-5"]) assert.equal(p.stars[id], undefined, `new quest ${id} starts empty`);
-  assert.deepEqual(p.finished, [1, 2, 3, 4, 5, 6]);
-  for (let n = 1; n <= 7; n++) assert.ok(isChapterOpen(p, n), `chapter ${n} stays open`);
-  assert.ok(isQuestOpen(p, "4-5") && isQuestOpen(p, "4-6"));
+  // Version 4 moved them to 4-6, 5-7 and 6-6, and version 5 to 5-6, 3-6 and 7-6.
+  assert.equal(p.stars["5-6"], 3, "Crunchy Lettuce keeps its stars");
+  assert.equal(p.stars["3-6"], 2);
+  assert.equal(p.stars["7-6"], 2);
+  assert.equal(p.best["5-6"], 20);
+  assert.equal(p.best["3-6"], 30);
+  for (const id of ["5-5", "6-2", "7-5"]) assert.equal(p.stars[id], undefined, `new quest ${id} starts empty`);
+  assert.deepEqual(p.finished, [1, 2, 3, 4, 5, 6, 7]);
+  for (let n = 1; n <= 8; n++) assert.ok(isChapterOpen(p, n), `chapter ${n} stays open`);
+  assert.ok(isQuestOpen(p, "5-5") && isQuestOpen(p, "5-6"));
   // A save from version 2 is moved too, and a current one is left alone.
-  assert.equal(loadProgress({ version: 2, stars: { "6-5": 3 } }).stars["6-6"], 3);
-  assert.equal(loadProgress({ version: SAVE_VERSION, stars: { "6-5": 3 } }).stars["6-5"], 3);
+  assert.equal(loadProgress({ version: 2, stars: { "6-5": 3 } }).stars["7-6"], 3);
+  assert.equal(loadProgress({ version: SAVE_VERSION, stars: { "7-5": 3 } }).stars["7-5"], 3);
+});
+
+test("version 5: quests moved for the new chapter order keep their stars", () => {
+  // A save from version 4: chapters 1 to 4 finished (Loops in Loops and the
+  // if chapter), and the first two fog quests of the old chapter 5.
+  const stars = {};
+  for (let n = 1; n <= 4; n++) for (const id of oldIds(n)) stars[id] = 3;
+  stars["5-1"] = 2;
+  stars["5-2"] = 1;
+  const p = loadProgress({ version: 4, stars, best: { "3-6": 40, "5-2": 15 }, finished: [1, 2, 3, 4] });
+  assert.equal(p.stars["3-1"], 2, "Into the Fog is 3-1 now");
+  assert.equal(p.stars["3-2"], 1);
+  assert.equal(p.stars["4-6"], 3, "The Tangled Sweep is 4-6 now");
+  assert.equal(p.stars["5-12"], 3, "Pip's Big Tidy-Up is 5-12 now");
+  assert.equal(p.best["4-6"], 40);
+  assert.equal(p.best["3-2"], 15);
+  assert.equal(totalStars(p), 3 * (6 + 6 + 11 + 12) + 3, "no star is lost");
+  // Loops in Loops and the if chapter moved to 4 and 5. The new chapter 3 isn't finished yet.
+  assert.deepEqual(p.finished, [1, 2, 4, 5]);
+  for (let n = 1; n <= 5; n++) assert.ok(isChapterOpen(p, n), `chapter ${n} is open`);
+  assert.equal(nextQuest(p), "3-3", "the player picks up in the fog where they were");
+  // Words they could use before stay open.
+  for (const w of ["nested", "if", "repeat_while", "repeat_until"]) assert.ok(!(w in locked(p)), w);
+});
+
+test("version 5: the old chapter 5 counts as both of the fog chapters", () => {
+  const stars = {};
+  for (let n = 1; n <= 5; n++) for (const id of oldIds(n)) stars[id] = 3;
+  const p = loadProgress({ version: 4, stars, finished: [1, 2, 3, 4, 5] });
+  assert.deepEqual(p.finished, [1, 2, 3, 4, 5, 6]);
+  assert.equal(p.stars["6-2"], 3, "Mushroom in the Fog is 6-2 now");
+  assert.equal(p.stars["6-3"], 3, "Wren's Basket is 6-3 now");
+  assert.equal(p.stars["6-1"], undefined, "the new quest starts empty");
+  assert.ok(isQuestOpen(p, "6-1"));
+  assert.ok(isChapterOpen(p, 7));
+  assert.deepEqual(crownsOwned(p).map((c) => c.id), ["crown_1", "crown_2", "crown_carrot", "crown_3", "crown_4", "crown_5"]);
+  assert.equal(nextQuest(p), "6-1");
+});
+
+test("version 5: the quest being played and the fix-it windows move too", () => {
+  assert.equal(saveVersion({ version: 4 }), 4);
+  assert.equal(saveVersion({}), 1);
+  assert.equal(saveVersion(null), SAVE_VERSION, "a new player has nothing to move");
+  assert.deepEqual(migrateMode({ quest: "4-5" }, 4), { quest: "5-5" });
+  assert.deepEqual(migrateMode({ quest: "3-2", replay: 3 }, 4), { quest: "4-2", replay: 4 });
+  assert.deepEqual(migrateMode({ quest: "5-8" }, 1), { quest: "6-3" });
+  assert.deepEqual(migrateMode({ quest: "G-2" }, 4), { quest: "G-2" });
+  assert.deepEqual(migrateMode({ quest: null, contract: "c-1" }, 4), { quest: null, contract: "c-1" });
+  assert.deepEqual(migrateMode({ quest: "4-5" }, 5), { quest: "4-5" }, "a current save is left alone");
+  const files = {
+    windows: [{ name: "main", code: "a" }, { name: "fix_3_11", code: "b" }, { name: "fix_4_11", code: "c" }, { name: "fix_3_6", code: "d" }],
+    active: "fix_4_11",
+  };
+  const moved = migrateWorkspace(files, 4);
+  assert.deepEqual(moved.windows.map((w) => [w.name, w.code]), [["main", "a"], ["fix_4_11", "b"], ["fix_5_11", "c"], ["fix_4_6", "d"]]);
+  assert.equal(moved.active, "fix_5_11");
+  assert.equal(migrateWorkspace(files, 5), files);
+  // A window the player named fix_4_6 themselves isn't overwritten.
+  const own = migrateWorkspace({ windows: [{ name: "fix_4_6", code: "mine" }, { name: "fix_3_6", code: "d" }], active: "main" }, 4);
+  assert.deepEqual(own.windows.map((w) => w.name), ["fix_4_6", "fix_3_6"]);
+  // Every quest that moved still exists, and two old quests never share a new ID.
+  assert.equal(new Set(Object.values(MOVED_V5)).size, Object.keys(MOVED_V5).length);
+  for (const id of Object.values(MOVED_V5)) assert.ok(QUESTS.some((q) => q.id === id), id);
 });

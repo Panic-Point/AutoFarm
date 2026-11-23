@@ -8,12 +8,13 @@ Every program here earns 3 stars. They come from `tests/solutions.mjs`, and `npm
 
 - [Chapter 1: First Steps](#chapter-1-first-steps)
 - [Chapter 2: Do It Again](#chapter-2-do-it-again)
-- [Chapter 3: Loops in Loops](#chapter-3-loops-in-loops)
-- [Chapter 4: Look Before You Act](#chapter-4-look-before-you-act)
-- [Chapter 5: Until It's Done](#chapter-5-until-its-done)
-- [Chapter 6: Keeping Count](#chapter-6-keeping-count)
-- [Chapter 7: Teach Bolt](#chapter-7-teach-bolt)
-- [Chapter 8: Big Farm Plans](#chapter-8-big-farm-plans)
+- [Chapter 3: Until It's Done](#chapter-3-until-its-done)
+- [Chapter 4: Loops in Loops](#chapter-4-loops-in-loops)
+- [Chapter 5: Look Before You Act](#chapter-5-look-before-you-act)
+- [Chapter 6: Way Out of the Fog](#chapter-6-way-out-of-the-fog)
+- [Chapter 7: Keeping Count](#chapter-7-keeping-count)
+- [Chapter 8: Teach Bolt](#chapter-8-teach-bolt)
+- [Chapter 9: Big Farm Plans](#chapter-9-big-farm-plans)
 - [After the Festival: golden quests](#after-the-festival-golden-quests)
 
 ## Chapter 1: First Steps
@@ -269,9 +270,138 @@ harvest()
 
 </details>
 
-## Chapter 3: Loops in Loops
+## Chapter 3: Until It's Done
 
-### 3-1 Hazel's Garden
+### 3-1 Into the Fog
+
+**Goal:** Walk to the east edge of the field.
+
+**Stars:** 3 for 6 ticks or fewer, 2 for 7 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat while can_move(EAST):
+    move(EAST)
+```
+
+**Why it works:** In the fog Bolt can't count the steps, so it keeps stepping while there's room. It stops right at the east edge.
+
+</details>
+
+### 3-2 Wait for It
+
+**Goal:** Harvest the carrot when it is ripe.
+
+**Stars:** 3 for 15 ticks or fewer, 2 for 17 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat until is_ripe():
+    wait()
+harvest()
+```
+
+**Why it works:** Bolt waits until the carrot is ripe, then picks it. Not one tick is wasted, and picking early (which would lose the carrot) can't happen.
+
+</details>
+
+### 3-3 Fog Harvest
+
+**Goal:** Harvest every grass tile in the row.
+
+**Stars:** 3 for 13 ticks or fewer, 2 for 15 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat while can_move(EAST):
+    harvest()
+    move(EAST)
+harvest()
+```
+
+**Why it works:** Pick and step while there's room, and the last pick after the loop gets the tile at the edge.
+
+</details>
+
+### 3-4 Find the Carrot
+
+**Goal:** Walk east until you find the ripe carrot, then harvest it.
+
+**Stars:** 3 for 5 ticks or fewer, 2 for 7 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat until is_ripe():
+    move(EAST)
+harvest()
+```
+
+**Why it works:** Bolt walks east until it's standing on something ripe, then picks it. The loop stops on exactly the right tile.
+
+</details>
+
+### 3-5 Home Through the Fog
+
+**Goal:** Walk to the south-west corner.
+
+**Stars:** 3 for 12 ticks or fewer, 2 for 14 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat while can_move(WEST):
+    move(WEST)
+repeat while can_move(SOUTH):
+    move(SOUTH)
+```
+
+**Why it works:** Walk west to the edge, then south to the edge, and that's the corner.
+
+</details>
+
+### 3-6 Wheat Then Carrots (bonus)
+
+**Goal:** Pick the wheat, plant carrots in the same spots, and harvest 8 carrots.
+
+**Stars:** 3 for 25 ticks or fewer, 2 for 32 ticks or fewer.
+
+<details>
+<summary>Show the solution</summary>
+
+```python
+repeat 3 times:
+    harvest()
+    plant(CARROT)
+    move(EAST)
+harvest()
+plant(CARROT)
+repeat 3 times:
+    move(WEST)
+repeat until is_ripe():
+    wait()
+repeat 3 times:
+    harvest()
+    move(EAST)
+    wait()
+harvest()
+```
+
+**Why it works:** Picking wheat and planting a carrot on the same tile straight away gets the crop swap, so each carrot gives 2. Then Bolt walks back, waits for the first carrot, and picks the rest in planting order, one tick apart, without a loop inside a loop.
+
+</details>
+
+## Chapter 4: Loops in Loops
+
+### 4-1 Hazel's Garden
 
 **Goal:** Plant wheat on the whole field with a loop inside a loop.
 
@@ -298,7 +428,7 @@ repeat 2 times:
 
 </details>
 
-### 3-2 Bread Day
+### 4-2 Bread Day
 
 **Goal:** Harvest all the wheat.
 
@@ -321,11 +451,11 @@ repeat 2 times:
     move(NORTH)
 ```
 
-**Why it works:** The same snake as 3-1, with `harvest()` in place of `plant`.
+**Why it works:** The same snake as 4-1, with `harvest()` in place of `plant`.
 
 </details>
 
-### 3-3 The Big Hay Sweep
+### 4-3 The Big Hay Sweep
 
 **Goal:** Harvest all 25 grass tiles.
 
@@ -356,7 +486,7 @@ harvest()
 
 </details>
 
-### 3-4 Festival Wheat
+### 4-4 Festival Wheat
 
 **Goal:** Plant wheat on the whole 5 by 5 field.
 
@@ -383,11 +513,11 @@ repeat 4 times:
 plant(WHEAT)
 ```
 
-**Why it works:** The 3-3 snake again, planting instead of picking. Empty soil needs no tilling, so it's 25 plants and 24 steps.
+**Why it works:** The 4-3 snake again, planting instead of picking. Empty soil needs no tilling, so it's 25 plants and 24 steps.
 
 </details>
 
-### 3-5 Berry Friends (bonus)
+### 4-5 Berry Friends (bonus)
 
 **Goal:** You have wheat for 4 strawberries. Grow 12 strawberries with them.
 
@@ -419,7 +549,7 @@ harvest()
 
 </details>
 
-### 3-6 The Tangled Sweep (bonus, fix Bolt's code)
+### 4-6 The Tangled Sweep (bonus, fix Bolt's code)
 
 **Goal:** Fix Bolt's code so it harvests all 8 grass tiles.
 
@@ -444,7 +574,7 @@ repeat 2 times:
 
 </details>
 
-### 3-7 Back and Forth (bonus)
+### 4-7 Back and Forth (bonus)
 
 **Goal:** Harvest 12 hay from the 3 grass tiles, never pick grass before it's ripe, and end back at the barn.
 
@@ -467,7 +597,7 @@ repeat 3 times:
 
 </details>
 
-### 3-8 From Hay to Bread (bonus)
+### 4-8 From Hay to Bread (bonus)
 
 **Goal:** Harvest all 16 grass tiles, then turn every tile into wheat.
 
@@ -498,11 +628,11 @@ repeat 2 times:
     move(NORTH)
 ```
 
-**Why it works:** The 3-1 snake with three actions on every tile: `harvest()` for the hay, `till()` to turn grass into soil, and `plant(WHEAT)`. 48 actions and 16 steps (the last step north bumps the fence).
+**Why it works:** The 4-1 snake with three actions on every tile: `harvest()` for the hay, `till()` to turn grass into soil, and `plant(WHEAT)`. 48 actions and 16 steps (the last step north bumps the fence).
 
 </details>
 
-### 3-9 The Big Berry Patch (bonus)
+### 4-9 The Big Berry Patch (bonus)
 
 **Goal:** Plant 8 strawberries and grow 28 strawberries with them. Don't pick any too soon!
 
@@ -538,7 +668,7 @@ repeat 2 times:
 
 </details>
 
-### 3-10 Just Enough Flour (bonus)
+### 4-10 Just Enough Flour (bonus)
 
 **Goal:** Harvest exactly 12 wheat. Not 11, not 13!
 
@@ -565,7 +695,7 @@ repeat 2 times:
 
 </details>
 
-### 3-11 Bolt's Backwards Planting (bonus, fix Bolt's code)
+### 4-11 Bolt's Backwards Planting (bonus, fix Bolt's code)
 
 **Goal:** Fix Bolt's code so every tile of the grassy field gets wheat.
 
@@ -596,9 +726,9 @@ repeat 2 times:
 
 </details>
 
-## Chapter 4: Look Before You Act
+## Chapter 5: Look Before You Act
 
-### 4-1 Only the Ripe Ones
+### 5-1 Only the Ripe Ones
 
 **Goal:** Harvest the 3 ripe carrots without losing any.
 
@@ -620,7 +750,7 @@ if is_ripe():
 
 </details>
 
-### 4-2 Pip's Garden
+### 5-2 Pip's Garden
 
 **Goal:** Harvest every ripe carrot and lose none.
 
@@ -647,11 +777,11 @@ repeat 2 times:
     move(NORTH)
 ```
 
-**Why it works:** The 3-2 snake with a check before every pick.
+**Why it works:** The 4-2 snake with a check before every pick.
 
 </details>
 
-### 4-3 Weed Patrol
+### 5-3 Weed Patrol
 
 **Goal:** Make every tile soil. Tilling soil turns it back into grass!
 
@@ -682,7 +812,7 @@ repeat 2 times:
 
 </details>
 
-### 4-4 Pip's Choice
+### 5-4 Pip's Choice
 
 **Goal:** Harvest every carrot and plant wheat on every empty tile.
 
@@ -705,7 +835,7 @@ plant(WHEAT)
 
 </details>
 
-### 4-5 Pip's Pumpkin Patch
+### 5-5 Pip's Pumpkin Patch
 
 **Goal:** Pick the ripe pumpkins, till away the rotten ones, and leave the young ones alone.
 
@@ -731,7 +861,7 @@ else if is_rotten():
 
 </details>
 
-### 4-6 Crunchy Lettuce (bonus)
+### 5-6 Crunchy Lettuce (bonus)
 
 **Goal:** Plant 5 lettuce in the row, then pick all 5 before any of them wilt.
 
@@ -761,7 +891,7 @@ harvest()
 
 </details>
 
-### 4-7 Pumpkin Patrol (bonus, 2 test plots)
+### 5-7 Pumpkin Patrol (bonus, 2 test plots)
 
 **Goal:** On both test plots: pick every ripe pumpkin, till every rotten one, and lose none.
 
@@ -796,11 +926,11 @@ repeat 2 times:
     move(NORTH)
 ```
 
-**Why it works:** The 4-5 choice inside the 4-2 snake. Because it checks every tile, the same program works on both test plots.
+**Why it works:** The 5-5 choice inside the 5-2 snake. Because it checks every tile, the same program works on both test plots.
 
 </details>
 
-### 4-8 Carrots Only, Please (bonus, 2 test plots)
+### 5-8 Carrots Only, Please (bonus, 2 test plots)
 
 **Goal:** On both test plots: harvest every ripe carrot, leave the wheat standing, and lose nothing.
 
@@ -835,7 +965,7 @@ repeat 2 times:
 
 </details>
 
-### 4-9 Carrots Into Pumpkins (bonus, 2 test plots)
+### 5-9 Carrots Into Pumpkins (bonus, 2 test plots)
 
 **Goal:** On both test plots: pick each carrot and plant a pumpkin in its spot, and plant wheat on every bare tile.
 
@@ -878,7 +1008,7 @@ repeat 2 times:
 
 </details>
 
-### 4-10 Lettuce for Tomorrow (bonus)
+### 5-10 Lettuce for Tomorrow (bonus)
 
 **Goal:** Harvest 8 lettuce before any wilt, and leave lettuce growing on all 4 tiles of the first row.
 
@@ -909,7 +1039,7 @@ repeat 2 times:
 
 </details>
 
-### 4-11 Bolt's Pumpkin Mix-Up (bonus, fix Bolt's code)
+### 5-11 Bolt's Pumpkin Mix-Up (bonus, fix Bolt's code)
 
 **Goal:** Fix Bolt's code so it picks only ripe pumpkins, tills the rotten ones, and loses none.
 
@@ -935,7 +1065,7 @@ repeat 2 times:
 
 </details>
 
-### 4-12 Pip's Big Tidy-Up (bonus, 3 test plots)
+### 5-12 Pip's Big Tidy-Up (bonus, 3 test plots)
 
 **Goal:** On all 3 test plots: harvest every ripe crop, till every rotten pumpkin, plant wheat on every bare tile, and lose nothing.
 
@@ -982,105 +1112,32 @@ repeat 2 times:
 
 </details>
 
-## Chapter 5: Until It's Done
+## Chapter 6: Way Out of the Fog
 
-### 5-1 Into the Fog
+### 6-1 Home Before Dark (3 test plots)
 
-**Goal:** Walk to the east edge of the field.
+**Goal:** On all 3 plots: walk home to the south-west corner, then stop.
 
-**Stars:** 3 for 6 ticks or fewer, 2 for 7 ticks or fewer.
-
-<details>
-<summary>Show the solution</summary>
-
-```python
-repeat while can_move(EAST):
-    move(EAST)
-```
-
-**Why it works:** In the fog Bolt can't count the steps, so it keeps stepping while there's room. It stops right at the east edge.
-
-</details>
-
-### 5-2 Wait for It
-
-**Goal:** Harvest the carrot when it is ripe.
-
-**Stars:** 3 for 15 ticks or fewer, 2 for 17 ticks or fewer.
+**Stars:** 3 for 25 ticks or fewer, 2 for 32 ticks or fewer.
 
 <details>
 <summary>Show the solution</summary>
 
 ```python
-repeat until is_ripe():
-    wait()
-harvest()
+repeat forever:
+    if position() == (0, 0):
+        break
+    if can_move(WEST):
+        move(WEST)
+    else:
+        move(SOUTH)
 ```
 
-**Why it works:** Bolt waits until the carrot is ripe, then picks it. Not one tick is wasted, and picking early (which would lose the carrot) can't happen.
+**Why it works:** Each time round, Bolt first checks if it's home and breaks out if it is. Otherwise it steps west while it can and south when it can't. Every step is useful, so it's as short as the walk itself on all 3 plots.
 
 </details>
 
-### 5-3 Fog Harvest
-
-**Goal:** Harvest every grass tile in the row.
-
-**Stars:** 3 for 13 ticks or fewer, 2 for 15 ticks or fewer.
-
-<details>
-<summary>Show the solution</summary>
-
-```python
-repeat while can_move(EAST):
-    harvest()
-    move(EAST)
-harvest()
-```
-
-**Why it works:** Pick and step while there's room, and the last pick after the loop gets the tile at the edge.
-
-</details>
-
-### 5-4 Find the Carrot
-
-**Goal:** Walk east until you find the ripe carrot, then harvest it.
-
-**Stars:** 3 for 5 ticks or fewer, 2 for 7 ticks or fewer.
-
-<details>
-<summary>Show the solution</summary>
-
-```python
-repeat until is_ripe():
-    move(EAST)
-harvest()
-```
-
-**Why it works:** Bolt walks east until it's standing on something ripe, then picks it. The loop stops on exactly the right tile.
-
-</details>
-
-### 5-5 Home Through the Fog
-
-**Goal:** Walk to the south-west corner.
-
-**Stars:** 3 for 12 ticks or fewer, 2 for 14 ticks or fewer.
-
-<details>
-<summary>Show the solution</summary>
-
-```python
-repeat while can_move(WEST):
-    move(WEST)
-repeat while can_move(SOUTH):
-    move(SOUTH)
-```
-
-**Why it works:** Walk west to the edge, then south to the edge, and that's the corner.
-
-</details>
-
-### 5-6 Mushroom in the Fog (3 test plots)
+### 6-2 Mushroom in the Fog (3 test plots)
 
 **Goal:** On all 3 plots: walk east until you find the mushroom, pick it, then go home to the corner.
 
@@ -1103,39 +1160,7 @@ repeat until position() == (0, 0):
 
 </details>
 
-### 5-7 Wheat Then Carrots (bonus)
-
-**Goal:** Pick the wheat, plant carrots in the same spots, and harvest 8 carrots.
-
-**Stars:** 3 for 25 ticks or fewer, 2 for 32 ticks or fewer.
-
-<details>
-<summary>Show the solution</summary>
-
-```python
-repeat 3 times:
-    harvest()
-    plant(CARROT)
-    move(EAST)
-harvest()
-plant(CARROT)
-repeat 3 times:
-    move(WEST)
-repeat 3 times:
-    repeat until is_ripe():
-        wait()
-    harvest()
-    move(EAST)
-repeat until is_ripe():
-    wait()
-harvest()
-```
-
-**Why it works:** Picking wheat and planting a carrot on the same tile straight away gets the crop swap, so each carrot gives 2. Then Bolt walks back and waits for each carrot in planting order.
-
-</details>
-
-### 5-8 Wren's Basket (bonus, 3 test plots)
+### 6-3 Wren's Basket (bonus, 3 test plots)
 
 **Goal:** On all 3 plots: find the mushroom and pick it. Stop as soon as you have it.
 
@@ -1161,9 +1186,9 @@ repeat forever:
 
 </details>
 
-## Chapter 6: Keeping Count
+## Chapter 7: Keeping Count
 
-### 6-1 Seven Bales
+### 7-1 Seven Bales
 
 **Goal:** Harvest exactly 7 hay.
 
@@ -1183,7 +1208,7 @@ repeat until count("hay") == 7:
 
 </details>
 
-### 6-2 Ten Carrots
+### 7-2 Ten Carrots
 
 **Goal:** Plant exactly 10 carrots.
 
@@ -1206,7 +1231,7 @@ repeat forever:
 
 </details>
 
-### 6-3 Wheat Stairs
+### 7-3 Wheat Stairs
 
 **Goal:** Plant the wheat staircase.
 
@@ -1230,7 +1255,7 @@ for row from 1 to 5:
 
 </details>
 
-### 6-4 Two Orders
+### 7-4 Two Orders
 
 **Goal:** Harvest exactly 3 hay and exactly 4 wheat.
 
@@ -1255,7 +1280,7 @@ repeat until count(WHEAT) == 4:
 
 </details>
 
-### 6-5 Thirsty Corn
+### 7-5 Thirsty Corn
 
 **Goal:** Harvest the ripe corn, and water only the young corn on dry soil.
 
@@ -1278,7 +1303,7 @@ repeat 5 times:
 
 </details>
 
-### 6-6 Two Old Bushes (bonus)
+### 7-6 Two Old Bushes (bonus)
 
 **Goal:** Pick at least 14 blueberries from the two bushes without losing a bush.
 
@@ -1304,7 +1329,7 @@ repeat until count(BLUEBERRY) >= 14:
 
 </details>
 
-### 6-7 Trips to the Well (bonus)
+### 7-7 Trips to the Well (bonus)
 
 **Goal:** Water every young corn on dry soil without wasting any. Refill the can at the well.
 
@@ -1336,9 +1361,9 @@ repeat 5 times:
 
 </details>
 
-## Chapter 7: Teach Bolt
+## Chapter 8: Teach Bolt
 
-### 7-1 Harvest Row
+### 8-1 Harvest Row
 
 **Goal:** Make a harvest_row command and use it 3 times.
 
@@ -1371,7 +1396,7 @@ row_east()
 
 </details>
 
-### 7-2 A Helper Window
+### 8-2 A Helper Window
 
 **Goal:** Put a command in another code window, use it, and plant two rows of wheat.
 
@@ -1403,7 +1428,7 @@ define plant_row(way):
 
 </details>
 
-### 7-3 Go Three Steps
+### 8-3 Go Three Steps
 
 **Goal:** Harvest the 3 grass tiles.
 
@@ -1429,7 +1454,7 @@ harvest()
 
 </details>
 
-### 7-4 Sunflower Rows
+### 8-4 Sunflower Rows
 
 **Goal:** Teach Bolt ripe_in_row(y) that gives back how many sunflowers are ripe in a row. Only harvest rows with 3 or more.
 
@@ -1467,7 +1492,7 @@ for y from 1 to 3:
 
 </details>
 
-### 7-5 The Best Row First (bonus)
+### 8-5 The Best Row First (bonus)
 
 **Goal:** Find the row with the most ripe sunflowers, walk there, and harvest 5.
 
@@ -1502,9 +1527,9 @@ if is_ripe():
 
 </details>
 
-## Chapter 8: Big Farm Plans
+## Chapter 9: Big Farm Plans
 
-### 8-1 Festival Row
+### 9-1 Festival Row
 
 **Goal:** Plant wheat, carrot, wheat, carrot, wheat.
 
@@ -1525,7 +1550,7 @@ for each crop in plan:
 
 </details>
 
-### 8-2 Treasure Steps
+### 9-2 Treasure Steps
 
 **Goal:** Follow the steps [1, 2, 1] and harvest after each.
 
@@ -1545,7 +1570,7 @@ for each n in [1, 2, 1]:
 
 </details>
 
-### 8-3 The Festival Field
+### 9-3 The Festival Field
 
 **Goal:** Plant the checkered rows of wheat and carrots.
 
@@ -1575,7 +1600,7 @@ plant_row(a, EAST)
 
 </details>
 
-### 8-4 The Mayor's Order (2 test plots)
+### 9-4 The Mayor's Order (2 test plots)
 
 **Goal:** On both test plots: walk the row and harvest one of each crop in order(). Keep a basket list of what you've picked, and stop when the basket is full.
 
@@ -1600,7 +1625,7 @@ repeat forever:
 
 </details>
 
-### 8-5 The Big Basket (2 test plots)
+### 9-5 The Big Basket (2 test plots)
 
 **Goal:** On both plots, harvest every ripe crop. Leave the young ones, and don't let the lettuce wilt.
 
@@ -1634,7 +1659,7 @@ repeat size / 2 times:
 
 </details>
 
-### 8-6 The Fog Race (3 test plots)
+### 9-6 The Fog Race (3 test plots)
 
 **Goal:** On all 3 plots, find the carrot, harvest it, and end back at the barn where Bolt started.
 
@@ -1665,7 +1690,7 @@ repeat until position()[1] == 0:
 
 </details>
 
-### 8-7 The Grand Display (2 test plots)
+### 9-7 The Grand Display (2 test plots)
 
 **Goal:** On both plots, plant the rows from design(), starting at the south row.
 
@@ -1816,7 +1841,7 @@ repeat size / 2 times:
         move(NORTH)
 ```
 
-**Why it works:** The 4-7 three-way choice in a `tend` command, inside a snake sized by `field_size()`.
+**Why it works:** The 5-7 three-way choice in a `tend` command, inside a snake sized by `field_size()`.
 
 </details>
 
@@ -1849,7 +1874,7 @@ repeat until position()[1] == 0:
     move(SOUTH)
 ```
 
-**Why it works:** The 8-6 snake search, looking for a mushroom instead of a carrot, then home to the corner.
+**Why it works:** The 9-6 snake search, looking for a mushroom instead of a carrot, then home to the corner.
 
 </details>
 
@@ -1919,7 +1944,7 @@ for y from 1 to size - 1:
             pick_row(WEST)
 ```
 
-**Why it works:** The 7-4 program with every 4 replaced by `size - 1`, so it fits any field.
+**Why it works:** The 8-4 program with every 4 replaced by `size - 1`, so it fits any field.
 
 </details>
 
@@ -1944,6 +1969,6 @@ repeat forever:
     move(EAST)
 ```
 
-**Why it works:** The 8-4 basket program, on three new market days.
+**Why it works:** The 9-4 basket program, on three new market days.
 
 </details>
