@@ -11,13 +11,17 @@ import {
   indentLines,
 } from "./indent.js";
 import { insertWord } from "./simple.js";
+import { insertCode } from "./library.js";
 
 const SMALL_SCREEN = window.matchMedia("(max-width: 760px)");
 const MIN_W = 220;
 const MIN_H = 140;
 
 export class Desk {
-  // opts: { desk, bar, workspace, onChange(workspace), onRun(name), onMessage(text, cls) }
+  // opts: { desk, bar, workspace, onChange(workspace), onRun(name), onMessage(text, cls),
+  //   saveName(windowName) -> the name the 💾 Save box starts with,
+  //   saveCode(name, code, replace) -> { problem } | { exists } | { piece } (see library.js),
+  //   onLibrary() -> open the Library, hasLibrary() -> whether anything is saved in it }
   constructor(opts) {
     Object.assign(this, opts);
     this.views = new Map(); // name -> { el, textarea, nameEl, data }
@@ -167,6 +171,7 @@ export class Desk {
       <div class="window-bar">
         <button class="win-run" type="button" title="Run this window">&#9654;</button>
         <span class="win-name" tabindex="0" title="Double-click to rename"></span>
+        <button class="win-save-btn icon" type="button" title="Save this code in your Library">&#128190;</button>
         <button class="win-hide icon" type="button" title="Hide this window">&#8211;</button>
         <button class="win-delete icon" type="button" title="Delete this window">&#215;</button>
       </div>
@@ -177,13 +182,20 @@ export class Desk {
         <span></span>
         <button class="danger" type="button">Delete</button>
         <button class="secondary" type="button">Keep</button>
-      </div>`;
+      </div>
+      <form class="win-save" hidden>
+        <label>Save in your Library as <input maxlength="30" aria-label="Name for this code"></label>
+        <button class="save-yes" type="submit">Save</button>
+        <button class="save-no secondary" type="button">Cancel</button>
+        <p class="win-save-note" aria-live="polite" hidden></p>
+      </form>`;
     const view = {
       el,
       data,
       textarea: el.querySelector("textarea"),
       nameEl: el.querySelector(".win-name"),
       confirm: el.querySelector(".win-confirm"),
+      saveRow: el.querySelector(".win-save"),
       mark: el.querySelector(".line-mark"),
       guides: el.querySelector(".indent-guides"),
     };
@@ -236,6 +248,8 @@ export class Desk {
     const [yes, no] = view.confirm.querySelectorAll("button");
     yes.addEventListener("click", () => this.remove(view.data.name));
     no.addEventListener("click", () => (view.confirm.hidden = true));
+    el.querySelector(".win-save-btn").addEventListener("click", () => this.startSave(view));
+    this.wireSave(view);
     // Listen on the whole bar: dragging captures the pointer, so the
     // double-click lands on the bar rather than the name.
     el.querySelector(".window-bar").addEventListener("dblclick", (e) => {
@@ -405,6 +419,75 @@ export class Desk {
     return this.measured.width;
   }
 
+  // ---- Saving a window's code in the Library ----
+
+  startSave(view) {
+    const row = view.saveRow;
+    const input = row.querySelector("input");
+    view.confirm.hidden = true;
+    row.hidden = false;
+    row.dataset.replace = "";
+    input.disabled = false;
+    input.value = this.saveName?.(view.data.name) ?? view.data.name;
+    row.querySelector(".save-yes").textContent = "Save";
+    row.querySelector(".win-save-note").hidden = true;
+    input.focus();
+    input.select();
+  }
+
+  wireSave(view) {
+    const row = view.saveRow;
+    const input = row.querySelector("input");
+    const note = row.querySelector(".win-save-note");
+    const close = () => {
+      row.hidden = true;
+      view.textarea.focus();
+    };
+    row.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const replace = row.dataset.replace === "1";
+      const result = this.saveCode(input.value, view.data.code, replace);
+      if (result.problem) {
+        note.textContent = result.problem;
+        note.hidden = false;
+      } else if (result.exists) {
+        // Never write over a saved piece without asking.
+        note.textContent = `You already have "${result.exists}" in your Library. Replace it?`;
+        note.hidden = false;
+        row.dataset.replace = "1";
+        input.disabled = true;
+        row.querySelector(".save-yes").textContent = "Replace";
+        row.querySelector(".save-yes").focus();
+      } else {
+        close();
+        this.onMessage(`Saved "${result.piece.name}" in your Library.`, "note");
+      }
+    });
+    row.querySelector(".save-no").addEventListener("click", close);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+      }
+    });
+    input.addEventListener("input", () => (note.hidden = true));
+  }
+
+  // Put `code` into the active window at its cursor, like a building block.
+  // (The tap-to-insert words use insert() above.)
+  insertPiece(code) {
+    const view = this.views.get(this.active);
+    if (!view) return;
+    this.focus(view.data.name, false);
+    const ta = view.textarea;
+    const out = insertCode(ta.value, ta.selectionStart, ta.selectionEnd, code);
+    ta.value = out.text;
+    ta.focus();
+    ta.setSelectionRange(out.cursor, out.cursor);
+    // The input handler saves the code, clears an error mark and redraws the indent guides.
+    ta.dispatchEvent(new Event("input"));
+  }
+
   // ---- Window actions ----
 
   // Bring a window to the front (later in the desk = on top) and make it active.
@@ -489,11 +572,25 @@ export class Desk {
       view = this.addView(data);
       this.clamp(view);
     } else if (fresh) {
+      if (this.marked?.name === name) this.showLine(null);
       view.data.code = code;
       view.textarea.value = code;
       this.drawGuides(view);
     }
     this.focus(name, false);
+    this.save();
+  }
+
+  // Add a window without bringing it to the front: it waits, hidden, in the
+  // bar of windows until the player picks it.
+  addHidden(name, code) {
+    const data = newWindow(name, code, this.views.size % 6);
+    data.hidden = true;
+    this.workspace.windows.unshift(data);
+    const view = this.addView(data);
+    this.clamp(view);
+    this.focusOrder();
+    this.renderBar();
     this.save();
   }
 
@@ -572,7 +669,10 @@ export class Desk {
   renderBar() {
     this.bar.textContent = "";
     // One window and nothing to make: no chips needed.
-    this.bar.hidden = !this.tools && this.workspace.windows.length === 1;
+    // The Library chip shows with the window tools, or before then once
+    // something is saved in it.
+    const library = Boolean(this.onLibrary && (this.tools || this.hasLibrary?.()));
+    this.bar.hidden = !this.tools && this.workspace.windows.length === 1 && !library;
     for (const w of [...this.workspace.windows].sort((a, b) => a.name.localeCompare(b.name))) {
       const chip = document.createElement("button");
       chip.type = "button";
@@ -589,12 +689,22 @@ export class Desk {
     }
     const allHidden = this.workspace.windows.every((w) => w.hidden);
     this.desk.classList.toggle("empty", allHidden);
-    if (!this.tools) return;
-    const add = document.createElement("button");
-    add.type = "button";
-    add.className = "chip add";
-    add.textContent = "+ New window";
-    add.addEventListener("click", () => this.create());
-    this.bar.append(add);
+    if (this.tools) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "chip add";
+      add.textContent = "+ New window";
+      add.addEventListener("click", () => this.create());
+      this.bar.append(add);
+    }
+    if (library) {
+      const lib = document.createElement("button");
+      lib.type = "button";
+      lib.className = "chip add library";
+      lib.textContent = "📚 Library";
+      lib.title = "Code you saved with 💾";
+      lib.addEventListener("click", () => this.onLibrary());
+      this.bar.append(lib);
+    }
   }
 }
