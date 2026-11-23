@@ -97,10 +97,10 @@
 
     <section class="code-panel">
       <div class="toolbar">
-        <button id="run" disabled>Loading Python…</button>
+        <button id="run" disabled>Waking Bolt up…</button>
         <button id="stop" disabled>Stop</button>
         <button id="step" class="secondary" disabled title="Run your code one line at a time">Step</button>
-        <button id="keep-going" class="secondary" disabled title="Go back to running at the chosen speed">Keep going</button>
+        <button id="keep-going" class="secondary" disabled hidden title="Go back to running at the chosen speed">Keep going</button>
         <label class="speed">Speed
           <select id="speed">
             <option value="2">Slow</option>
@@ -112,6 +112,7 @@
         </label>
         <button id="reset" class="secondary" title="Start the farm over">Reset farm</button>
       </div>
+      <div class="tap-words" id="tap-words" aria-label="Tap a word to add it to your code" hidden></div>
       <div class="window-chips" id="window-bar" aria-label="Your code windows"></div>
       <div class="desk" id="desk">
         <p class="desk-empty">Every window is hidden. Pick one above to open it again.</p>

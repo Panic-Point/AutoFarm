@@ -13,6 +13,7 @@ import {
 import { WORDS, wordsInChapter } from "./words.js";
 import { CONCEPTS, GROUPS, TIPS, exampleData, exampleField, findConcept, lessonsFor, richText } from "./concepts.js";
 import { continueText, hasSave, replayChapters, replayNext } from "./title.js";
+import { screenParts, shownItems, tapWords } from "./simple.js";
 import {
   ALMANAC, CROWNS, HAT_NAMES, SHOP, badges, checkContract, contractBoard, contractText, crownsOwned, goldenStars,
   nextStep, recordContract, saleLockText, buy, canAfford, chapterLockReason, chapterStars, fieldSize,
@@ -29,6 +30,9 @@ const STORE_PROGRESS = "autofarm.progress";
 const STORE_MODE = "autofarm.mode";
 
 const $ = (id) => document.getElementById(id);
+// Opened with ?testing at the end of the address: the shelf (and its
+// unlock-everything button) shows from the start.
+const TESTING = new URLSearchParams(location.search).has("testing");
 const canvas = $("farm");
 const ctx = canvas.getContext("2d");
 const runBtn = $("run");
@@ -161,8 +165,9 @@ function bonkNow() {
 }
 
 const itemName = (item) => item[0].toUpperCase() + item.slice(1);
-const inventoryHtml = (inv) =>
-  ITEMS.map((item) => `<span${inv[item] ? "" : ' class="zero"'}>${itemName(item)} <b>${inv[item] ?? 0}</b></span>`).join("");
+// Counters for `items` (every crop if not given): see shownItems.
+const inventoryHtml = (inv, items = ITEMS) =>
+  items.map((item) => `<span${inv[item] ? "" : ' class="zero"'}>${itemName(item)} <b>${inv[item] ?? 0}</b></span>`).join("");
 const starText = (n, of = 3) => "★".repeat(n) + "☆".repeat(Math.max(0, of - n));
 
 // Show the tick count, and bump it when it goes up so players see each tick
@@ -190,10 +195,14 @@ function render() {
   bumpTick(farm.tick);
   // The watering can, on fields where it matters (corn or a well).
   const usesWater = farm.tiles.some((t) => t.crop === "corn" || t.ground === "well");
-  $("inventory").innerHTML = inventoryHtml(farm.inventory)
+  // Only crops the player has met, or that grow on this field.
+  const items = shownItems(progress, { inventories: [farm.inventory], field: farm });
+  $("inventory").innerHTML = inventoryHtml(farm.inventory, items)
     + (usesWater ? `<span title="Water left in the can">💧 Water <b>${farm.can ?? CAN_SIZE}/${CAN_SIZE}</b></span>` : "");
   $("inv-label").textContent = quest ? "This try" : "Barn";
-  $("barn").innerHTML = inventoryHtml(home.inventory);
+  const barn = shownItems(progress, { inventories: [home.inventory] });
+  $("barn").innerHTML = inventoryHtml(home.inventory, barn);
+  $("barn").hidden = !barn.length;
 }
 
 function renderHeader() {
@@ -204,6 +213,13 @@ function renderHeader() {
   $("open-book").title = unread ? `Everything Bolt has learned. ${unread} new ${unread === 1 ? "page" : "pages"}!` : "Everything Bolt has learned";
   const all = titles(progress);
   $("player-title").textContent = all[all.length - 1];
+  // Buttons show up once they have something in them (see simple.js).
+  const parts = screenParts(progress);
+  $("open-map").hidden = !parts.map;
+  $("open-shop").hidden = !parts.shop;
+  $("open-shelf").hidden = !parts.shelf && !TESTING;
+  if (desk.tools !== parts.windows) desk.setTools(parts.windows);
+  updateRunButton();
 }
 
 // The card above the farm: who's talking, the goal and the star targets.
@@ -232,6 +248,8 @@ function renderQuestCard(bubble) {
     hintEl.hidden = hintsShown === 0;
     hintEl.textContent = quest.hints.slice(0, hintsShown).map((h, i) => `Hint ${i + 1}: ${h}`).join("\n");
     $("mode-btn").textContent = "Home farm";
+    // A new player has no home farm to go to yet.
+    $("mode-btn").hidden = !screenParts(progress).map;
     const step = upNext();
     nextBtn.hidden = !(best && step && step.id !== quest.id);
     nextBtn.textContent = step?.why ? "What's next?" : "Next quest";
@@ -253,6 +271,7 @@ function renderQuestCard(bubble) {
     $("hint-btn").hidden = true;
     hintEl.hidden = true;
     $("mode-btn").textContent = "Map";
+    $("mode-btn").hidden = false;
     nextBtn.hidden = true;
     $("contract-btn").hidden = false;
   } else {
@@ -274,11 +293,29 @@ function renderQuestCard(bubble) {
     $("hint-btn").hidden = true;
     hintEl.hidden = true;
     $("mode-btn").textContent = "Map";
+    $("mode-btn").hidden = false;
     nextBtn.hidden = !next;
     nextBtn.textContent = isChapterDone(progress, CHAPTERS.length) ? "What's next?" : "Play the next quest";
   }
+  renderTapWords(quest);
   $("reset").textContent = quest ? "Reset field" : "Reset farm";
   $("reset").title = quest ? "Put the quest field back how it started" : "Start the farm over (the barn keeps its produce)";
+}
+
+// Buttons that put the quest's words into the code, so they don't have to be
+// typed (brackets and _ are slow on a tablet). Only in quests.
+function renderTapWords(quest) {
+  const words = quest ? tapWords(quest.id) : [];
+  const box = $("tap-words");
+  box.hidden = !words.length;
+  box.replaceChildren(...words.map((word) => el("button", {
+    type: "button",
+    class: "tap-word",
+    title: word.inline ? `Put ${word.text} where the cursor is` : `Add ${word.text} as a new line`,
+    // Keep the cursor in the code window on a computer.
+    onpointerdown: (e) => e.preventDefault(),
+    onclick: () => desk.insert(word),
+  }, word.text)));
 }
 
 // Chips for a quest's test plots: which one is on the field, and which ones
@@ -405,7 +442,7 @@ function goHome(contract = null) {
 function startWorker() {
   workerReady = false;
   runBtn.disabled = true;
-  runBtn.textContent = "Loading Python…";
+  runBtn.textContent = "Waking Bolt up…";
   worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
   worker.onmessage = onWorkerMessage;
   worker.onerror = (e) => {
@@ -418,12 +455,12 @@ function onWorkerMessage(e) {
   if (msg.type === "ready") {
     workerReady = true;
     updateRunButton();
-    log(`Python is ready. Each run can use up to ${msg.maxTicks} ticks.`, "note");
+    log("Bolt is ready!", "note");
     return;
   }
   if (msg.type === "fatal") {
-    runBtn.textContent = "Python failed to load";
-    log(`Could not load Python: ${msg.message}`, "error");
+    runBtn.textContent = "Bolt can't wake up";
+    log(`Bolt couldn't wake up. Check the internet connection and reload the page. (${msg.message})`, "error");
     return;
   }
   if (demo && msg.runId === demo.id) {
@@ -1300,7 +1337,7 @@ $("practice").addEventListener("change", (e) => {
 });
 // The unlock-everything button is for testing, so it only shows when the page
 // is opened with ?testing at the end of the address.
-$("unlock-all-row").hidden = !new URLSearchParams(location.search).has("testing");
+$("unlock-all-row").hidden = !TESTING;
 $("unlock-all").addEventListener("click", () => ($("unlock-all-confirm").hidden = false));
 $("unlock-all-no").addEventListener("click", () => ($("unlock-all-confirm").hidden = true));
 $("unlock-all-yes").addEventListener("click", () => {
@@ -1369,12 +1406,14 @@ function updateRunButton() {
   updateStepButtons();
   if (!workerReady) return;
   runBtn.disabled = Boolean(run);
-  runBtn.textContent = `Run ${desk.active}`;
+  // With one window there's only one thing to run.
+  runBtn.textContent = desk.workspace.windows.length > 1 ? `▶ Run ${desk.active}` : "▶ Run";
 }
 
 function updateStepButtons() {
   stepBtn.disabled = !workerReady;
   keepGoingBtn.disabled = !run?.stepping;
+  keepGoingBtn.hidden = !run?.stepping;
 }
 
 // Step: start a run paused on its first line, pause a run that's playing,
