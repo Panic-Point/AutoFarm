@@ -1,6 +1,7 @@
 """Tests the Python API and sandbox with a fake _farm module (plain CPython)."""
 import sys
 import types
+import re
 import unittest
 from pathlib import Path
 
@@ -117,12 +118,12 @@ class FarmApiTest(unittest.TestCase):
         for cmd in ("move", "can_move"):
             status, msg = farm_api.run(cmd + "('up')\n")
             self.assertEqual(status, "error")
-            self.assertIn(cmd + "() needs NORTH, SOUTH, EAST or WEST (or UP, DOWN, LEFT or RIGHT)", msg)
+            self.assertIn("`" + cmd + "()` needs NORTH, SOUTH, EAST or WEST (or UP, DOWN, LEFT or RIGHT)", msg)
 
     def test_error_reports_line(self):
         status, msg = farm_api.run("move(NORTH)\nplant('potato')\n")
         self.assertEqual(status, "error")
-        self.assertTrue(msg.startswith("Line 2: ValueError"), msg)
+        self.assertTrue(msg.startswith("Line 2: `plant()` needs"), msg)
 
     def test_syntax_error(self):
         status, msg = farm_api.run("for x in range(3)\n    pass\n")
@@ -147,7 +148,7 @@ class FarmApiTest(unittest.TestCase):
             self.assertIn("not available", msg)
         status, msg = farm_api.run("open('x')")
         self.assertEqual(status, "error")
-        self.assertIn("NameError", msg)
+        self.assertIn("Bolt doesn't know the word `open`", msg)
 
 
 class PlainWordsTest(unittest.TestCase):
@@ -205,7 +206,7 @@ class PlainWordsTest(unittest.TestCase):
 
     def test_line_numbers_point_at_player_code(self):
         status, msg = farm_api.run("repeat 2 times:\n    wait()\nplant('potato')\n")
-        self.assertTrue(msg.startswith("Line 3: ValueError"), msg)
+        self.assertTrue(msg.startswith("Line 3: `plant()` needs"), msg)
 
     def test_friendly_errors(self):
         cases = {
@@ -266,7 +267,7 @@ class CodeWindowsTest(unittest.TestCase):
     def test_star_import_skips_private_names(self):
         status, msg = farm_api.run("use helper\nprint(_secret)\n", {"helper": self.HELPER})
         self.assertEqual(status, "error")
-        self.assertIn("NameError", msg)
+        self.assertIn("Bolt doesn't know the word `_secret`. Check the spelling", msg)
 
     def test_window_runs_once_and_chains(self):
         files = {
@@ -285,7 +286,7 @@ class CodeWindowsTest(unittest.TestCase):
         helper = "define boom:\n    wait()\n    plant('potato')\n"
         status, msg = farm_api.run("use helper\nboom()\n", {"helper": helper})
         self.assertEqual(status, "error")
-        self.assertTrue(msg.startswith("In helper, line 3: ValueError"), msg)
+        self.assertTrue(msg.startswith("In helper, line 3: `plant()` needs"), msg)
 
         status, msg = farm_api.run("use helper\n", {"helper": "repeat 3 times\n    wait()\n"})
         self.assertTrue(msg.startswith("In helper, line 1: add a colon"), msg)
@@ -437,7 +438,7 @@ class WordsTest(unittest.TestCase):
         self.assertEqual(logs, ["0"])
         self.assertIn("LETTUCE, STRAWBERRY, BLUEBERRY, PUMPKIN, MUSHROOM, CORN, SUNFLOWER or \"hay\"", msg)
         status, msg = farm_api.run("plant('apple')\n")
-        self.assertIn("plant() needs GRASS, WHEAT, CARROT, LETTUCE, STRAWBERRY, BLUEBERRY, PUMPKIN, MUSHROOM, CORN or SUNFLOWER", msg)
+        self.assertIn("`plant()` needs GRASS, WHEAT, CARROT, LETTUCE, STRAWBERRY, BLUEBERRY, PUMPKIN, MUSHROOM, CORN or SUNFLOWER", msg)
 
     def test_crops_have_their_own_names(self):
         # plant(WHEAT) and plant(Crop.WHEAT) are the same, for every crop.
@@ -471,7 +472,7 @@ class WordsTest(unittest.TestCase):
         self.assertEqual(status, "ok", msg)
         self.assertEqual(logs[-1], "True False True 3")
         status, msg = farm_api.run("ripe_at('a', 2)\n")
-        self.assertIn("ripe_at() needs two whole numbers", msg)
+        self.assertIn("`ripe_at()` needs two whole numbers", msg)
         status, msg = farm_api.run("if ripe_at:\n    wait()\n")
         self.assertIn("Write `ripe_at(2, 3)`", msg)
 
@@ -512,6 +513,10 @@ class WordsTest(unittest.TestCase):
                 "Without them Bolt doesn't look, and gets the wrong answer.",
             "define go:\n    move(EAST)\ngo\n": "Line 3: `go` needs brackets to work. Write `go()` so Bolt knows to do it.",
             "move EAST\n": "Line 1: `move` needs brackets around what goes in it. Write `move(EAST)`.",
+            "move east\n": "Line 1: `move` needs brackets around what goes in it. Write `move(EAST)`.",
+            "harvest the grass\n": "Line 1: `harvest` needs brackets, with nothing inside. Write `harvest()`. "
+                "Bolt picks whatever it's standing on.",
+            "plant the wheat\n": "Line 1: `plant` needs brackets around what goes in it. Write `plant(WHEAT)`.",
             "plant WHEAT\n": "Line 1: `plant` needs brackets around what goes in it. Write `plant(WHEAT)`.",
         }
         for code, expected in cases.items():
@@ -525,6 +530,59 @@ class WordsTest(unittest.TestCase):
         status, msg = farm_api.run("use helper\n", {"helper": "\nharvest\n"})
         self.assertTrue(msg.startswith("In helper, line 2: `harvest` needs brackets"), msg)
         self.assertEqual(farm_api.error_line(), ["helper", 2])
+
+    def test_kid_typos_get_bolts_words(self):
+        cases = {
+            "Harvest()\n": "Line 1: Bolt doesn't know `Harvest`. Bolt's commands are all small letters: `harvest()`.",
+            "move(East)\n": "Line 1: Bolt doesn't know `East`. Write it in capital letters: `EAST`.",
+            "move(EAST) harvest()\n": "Line 1: Put each command on its own line. "
+                "Write `move(EAST)` on one line and `harvest()` on the next.",
+            "cut grass\n": "Line 1: Bolt doesn't know how to `cut grass`. "
+                "Bolt's commands have brackets, like `harvest()` or `move(EAST)`.",
+            "harvst()\n": "Line 1: Bolt doesn't know the word `harvst`. Did you mean `harvest()`?",
+            "move(NORTH, 2)\n": "Line 1: `move` takes one step at a time. Write `move(NORTH)` twice.",
+            "move(NORTH, 3)\n": "Line 1: `move` takes one step at a time. Write `move(NORTH)` 3 times, each on its own line.",
+            "harvest(GRASS)\n": "Line 1: `harvest` doesn't need anything in its brackets. Write `harvest()`. "
+                "Bolt picks whatever it's standing on.",
+            "move()\n": "Line 1: `move` needs a direction in its brackets. Write `move(EAST)`.",
+            "if carrot is ripe:\n    harvest()\n": "Line 1: Bolt doesn't know the word `ripe`. "
+                "To check, Bolt asks `is_ripe()`, like `if is_ripe():`.",
+            "set totl to 1\nprint(total)\n": "Line 2: Bolt doesn't know the word `total`. Did you mean `totl`?",
+            "define go(n):\n    move(EAST)\ngo(1, 2)\n": "Line 3: `go` needs one thing in its brackets, but it got 2.",
+            "move(5)\n": "Line 1: `move()` needs NORTH, SOUTH, EAST or WEST (or UP, DOWN, LEFT or RIGHT), not 5.",
+        }
+        for code, expected in cases.items():
+            self.assertEqual(farm_api.run(code), ["error", expected], code)
+        # Wrong-sized brackets are caught before Bolt moves, even in code that hasn't run yet.
+        calls.clear()
+        self.assertEqual(farm_api.run("move(EAST)\nif is_rotten():\n    till(1)\n")[0], "error")
+        self.assertEqual(calls, [])
+
+    def test_small_letter_directions_and_crops_work(self):
+        def run_ok(code):
+            self.assertEqual(farm_api.run(code), ["ok", "Program finished."], code)
+        run_ok("move(east)\nmove(up)\nplant(wheat)\nprint(ground_here() == soil, count(grass))\n")
+        self.assertEqual(calls[:3], [("move", ("east",)), ("move", ("north",)), ("plant", ("wheat",))])
+        run_ok("move('EAST')\nplant('Carrot')\n")
+        # A player's own name still wins.
+        run_ok("set east to 3\nprint(east + 1)\n")
+        self.assertEqual(logs[-1], "4")
+
+    def test_every_suggested_fix_runs(self):
+        bad = [
+            "harvest the grass", "harvest grass", "move east", "move East", "move to the east", "move EAST",
+            "plant wheat", "plant WHEAT", "till grass", "wait 3", "water the soil", "can_move east",
+            "plant the potato", "move(EAST) harvest()", "Harvest()", "Move(east)", "harvst()", "mvoe(EAST)",
+            "move(NORTH, 2)", "move(NORTH, 3)", "harvest(GRASS)", "till(GRASS)", "move()", "plant()",
+            "plant(WHEAT, CARROT)", "ripe_at(1)", "if carrot is ripe:\n    harvest()",
+        ]
+        for code in bad:
+            status, msg = farm_api.run(code + "\n")
+            self.assertEqual(status, "error", code)
+            fixes = re.findall(r"(?:Write|and|mean|like|letters:) `([^`]+)`", msg)
+            self.assertTrue(fixes, msg)
+            fix = "\n".join(f for f in fixes if not f.endswith(":"))
+            self.assertEqual(farm_api.run(fix + "\n"), ["ok", "Program finished."], f"{code!r}: {msg}")
 
     def test_brackets_check_leaves_good_code_alone(self):
         ok = [

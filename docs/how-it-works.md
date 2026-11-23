@@ -13,6 +13,7 @@ AutoFarm is a static site: plain HTML, CSS and ES modules, with no build step an
 - `js/concepts.js`: the Farm Book, as data: one entry per command, idea and crop, with its example program. The lesson cards and the Farm Book are both built from it.
 - `py/words.py`: finds the coding words a program uses, for the locks.
 - `py/plain_words.py`: turns plain-word lines like `repeat 5 times:` into Python.
+- `py/brackets.py` and `py/friendly.py`: turn the mistakes young players make most (a missing bracket, `Harvest()`, `move(NORTH, 2)`, two commands on one line, a misspelled word) into a message in Bolt's words, with code that works if it's copied. Small-letter directions and crops (`move(east)`, `plant(wheat)`) just work.
 - `py/farm_api.py`: the Python commands players use, plus the sandbox. It only lets programs import the player's own code windows, and blocks dunder names and file or eval builtins, and limits runaway loops.
 - `js/worker.js` and `js/bridge.js`: a web worker that loads Pyodide and runs the player's program at full speed against a copy of the farm. It streams one snapshot per tick, plus `print()` output, back to the page.
 - `js/files.js`: window names, the starter windows, and loading saved windows.

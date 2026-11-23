@@ -127,4 +127,4 @@ export class FarmBridge {
 }
 
 // The Python files the worker loads, in order.
-export const PY_FILES = ["plain_words.py", "words.py", "brackets.py", "farm_api.py"];
+export const PY_FILES = ["plain_words.py", "words.py", "brackets.py", "friendly.py", "farm_api.py"];
