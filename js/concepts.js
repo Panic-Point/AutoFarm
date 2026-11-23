@@ -413,7 +413,12 @@ export const CONCEPTS = [
     does: "Does the lines under it again and again, as many times as you say.",
     gives: null,
     forms: ["repeat 5 times:", "for 5 times:", "for i in range(5):", "for _ in range(5):"],
-    watch: ["Put a colon at the end of the line.", "The lines to repeat are indented by 4 spaces. Lines that aren't indented run once, after the loop."],
+    watch: [
+      "Put a colon at the end of the line.",
+      "The lines to repeat are pushed in by 4 spaces. Lines that aren't pushed in run once, after the loop.",
+      "After a loop line, Enter pushes the next line in for you. To come back out of the loop, press **Backspace**, or press Enter again on the empty line.",
+      "Highlight lines and press **Tab** to push them into the loop, or **Shift+Tab** to pull them out.",
+    ],
     example: {
       code: "repeat 3 times:\n    move(NORTH)",
       python: "for i in range(3):\n    move(NORTH)",

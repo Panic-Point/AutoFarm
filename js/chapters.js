@@ -171,7 +171,7 @@ export const CHAPTERS = [
         stars: { two: 10, three: 9 },
         hints: [
           "Do you see something you're doing over and over?",
-          "repeat 4 times: runs the lines under it 4 times. Indent them with 4 spaces. In Python it's for i in range(4):",
+          "repeat 4 times: runs the lines under it 4 times. Push them in with 4 spaces: Enter does it for you after the colon, and Backspace brings you back out. In Python it's for i in range(4):",
           "repeat 4 times: harvest() and move(EAST), then one more harvest().",
         ],
       },

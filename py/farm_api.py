@@ -16,7 +16,7 @@ import _farm
 from brackets import defined_commands, find_missing, spaced_hint
 from brackets import message as brackets_message
 from friendly import name_error, stored_names, syntax_hint, type_error, wrong_count
-from plain_words import HELPERS, PlainWordsError, translate
+from plain_words import HELPERS, PlainWordsError, indent_message, translate
 from words import API_WORDS, find_words
 
 NORTH = "north"
@@ -432,6 +432,10 @@ class _Loader:
             tree = ast.parse(code, _filename(name))
         except SyntaxError as e:
             where = _where(name, self.main, e.lineno)
+            indent = indent_message(e, self.files[name])
+            if indent:
+                line, text = indent
+                raise PlayerError(f"{_where(name, self.main, line)}: {text}", name, line) from None
             lines = self.files[name].split("\n")
             hint = None
             if e.lineno and e.lineno <= len(lines) and not isinstance(e, IndentationError):
