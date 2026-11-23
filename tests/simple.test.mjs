@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CHAPTERS } from "../js/chapters.js";
+import { CHAPTERS, QUESTS } from "../js/chapters.js";
+import { CONCEPTS } from "../js/concepts.js";
 import { newFarmState } from "../js/game.js";
 import { questField } from "../js/quests.js";
 import { findQuest } from "../js/chapters.js";
@@ -61,7 +62,13 @@ test("tap words start with harvest and grow with the quests", () => {
   assert.ok(!later.includes("repeat 5 times:"));
   assert.ok(tapWords("2-1").some((w) => w.text === "repeat 5 times:"));
   assert.ok(tapWords("2-4").some((w) => w.text === "plant(WHEAT)"));
-  assert.ok(tapWords("4-1").some((w) => w.text === "is_ripe()" && w.inline));
+  // is_ripe() gets its button at the quest that teaches it (3-2 since the
+  // chapter reorder), and not the quest before.
+  const ripe = CONCEPTS.find((c) => c.id === "is_ripe").learned;
+  assert.equal(ripe, "3-2");
+  const hasRipe = (id) => tapWords(id).some((w) => w.text === "is_ripe()" && w.inline);
+  assert.ok(hasRipe(ripe));
+  assert.ok(!hasRipe(QUESTS[QUESTS.findIndex((q) => q.id === ripe) - 1].id));
   assert.deepEqual(tapWords("no-such-quest"), []);
 });
 
