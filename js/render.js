@@ -119,8 +119,58 @@ export function drawFarm(ctx, state, opts = {}) {
   const bx = state.x * cell;
   const by = (size - 1 - state.y) * cell;
   if (looks.dog) drawDog(ctx, bx, by, cell, state.x === size - 1);
-  drawBolt(ctx, bx, by, cell, looks.hat);
+  const [jx, jy] = opts.bonk ? bonkOffset(opts.bonk, cell) : [0, 0];
+  drawBolt(ctx, bx + jx, by + jy, cell, looks.hat);
+  if (opts.bonk) drawBonk(ctx, bx, by, cell, opts.bonk);
   if (opts.fog) drawFog(ctx, state, cell);
+}
+
+// Bolt bumped the fence. bonk: { dir: [dx, dy] the way Bolt tried to go,
+// t: 0 to 1 through the bump }. Bolt lunges at the fence, jolts back and
+// wobbles, and a "bonk!" puff pops up where Bolt hit it.
+const screenDir = ([dx, dy]) => [dx, -dy];
+
+function bonkOffset({ dir, t }, cell) {
+  const [sx, sy] = screenDir(dir);
+  // A quick lunge (first fifth), then a shake that dies away.
+  const push = t < 0.2 ? Math.sin((t / 0.2) * Math.PI) * 0.22 : 0;
+  const shake = t < 0.2 ? 0 : Math.sin(t * 40) * 0.05 * (1 - t);
+  return [(sx * push + sy * shake) * cell, (sy * push + sx * shake) * cell];
+}
+
+function drawBonk(ctx, px, py, cell, { dir, t }) {
+  const [sx, sy] = screenDir(dir);
+  // At the fence, but kept inside the field so the whole puff shows.
+  const W = ctx.canvas.width;
+  const keep = (v, rx) => Math.min(W - rx, Math.max(rx, v));
+  const cx = keep(px + cell / 2 + sx * cell * 0.45, cell * 0.34);
+  const cy = keep(py + cell * 0.25 + sy * cell * 0.45, cell * 0.28) - t * cell * 0.15;
+  const pop = Math.min(1, t * 6);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, 1 - Math.max(0, t - 0.5) * 2);
+  // A spiky puff.
+  ctx.fillStyle = "#fff6c8";
+  ctx.strokeStyle = "#c9921a";
+  ctx.lineWidth = Math.max(1.5, cell / 40);
+  ctx.beginPath();
+  const spikes = 9;
+  for (let i = 0; i <= spikes * 2; i++) {
+    const a = (i / (spikes * 2)) * Math.PI * 2;
+    const r = cell * pop * (i % 2 ? 0.17 : 0.26);
+    const x = cx + Math.cos(a) * r * 1.25;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#7a3b10";
+  ctx.font = `bold ${Math.round(cell * 0.17 * pop)}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("bonk!", cx, cy);
+  ctx.restore();
 }
 
 // A striped bee hive in the top right of its tile, with a bee beside it.

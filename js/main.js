@@ -146,6 +146,20 @@ function log(text, cls = "") {
 
 // ---- Drawing ----
 
+// Bolt bumped the fence: { dir: [dx, dy], start } while the bonk plays.
+const BONK_MS = 600;
+let bonk = null;
+
+function bonkNow() {
+  if (!bonk) return null;
+  const t = (performance.now() - bonk.start) / BONK_MS;
+  if (t >= 1) {
+    bonk = null;
+    return null;
+  }
+  return { dir: bonk.dir, t };
+}
+
 const itemName = (item) => item[0].toUpperCase() + item.slice(1);
 const inventoryHtml = (inv) =>
   ITEMS.map((item) => `<span${inv[item] ? "" : ' class="zero"'}>${itemName(item)} <b>${inv[item] ?? 0}</b></span>`).join("");
@@ -172,7 +186,7 @@ function render() {
     goal = { at: quest.goal.at };
     if (quest.goal.pattern) goal.misses = patternMisses(quest.goal.pattern, farm);
   }
-  drawFarm(ctx, farm, { looks: looks(progress), fog: Boolean(quest && questPlots(quest)[plot].fog), goal });
+  drawFarm(ctx, farm, { looks: looks(progress), fog: Boolean(quest && questPlots(quest)[plot].fog), goal, bonk: bonkNow() });
   bumpTick(farm.tick);
   // The watering can, on fields where it matters (corn or a well).
   const usesWater = farm.tiles.some((t) => t.crop === "corn" || t.ground === "well");
@@ -591,11 +605,31 @@ function completeRun(done) {
 
 // Apply one played event to the page (see playback.js).
 function applyEvent(ev) {
-  if (ev.kind === "frame") farm = ev.state;
-  else if (ev.kind === "log") log(ev.text);
+  if (ev.kind === "frame") {
+    farm = ev.state;
+    if (ev.bump) bumped(ev);
+  } else if (ev.kind === "log") log(ev.text);
   else if (ev.kind === "line_limit" && run.stepping) {
     log("That's a lot of lines! From here on, Step goes one action at a time.", "note");
   }
+}
+
+// Bolt walked into the fence: play a bonk, and say so in the console, since
+// the bump still took a tick. Bumps in a row from the same line share one
+// console line that counts them.
+let lastBump = null; // { el, text, n }
+function bumped(ev) {
+  bonk = { dir: ev.bump, start: performance.now() };
+  const at = ev.at;
+  const where = !at ? "" : at.name === run?.name ? `Line ${at.line}: ` : `In ${at.name}, line ${at.line}: `;
+  const text = `${where}Bolt bumped the fence`;
+  if (lastBump && lastBump.text === text && consoleEl.lastChild === lastBump.el) {
+    lastBump.n += 1;
+    lastBump.el.textContent = `${text} ${lastBump.n} times (${lastBump.n} ticks).`;
+    return;
+  }
+  log(`${text} (1 tick).`, "bump");
+  lastBump = { el: consoleEl.lastChild, text, n: 1 };
 }
 
 // Step mode: play up to the next line, once the player asks for it.
@@ -629,7 +663,8 @@ function loop(now) {
       desk.showLine(run.at, "run");
     }
     // While stepping, the run ends on the Step press after its last line.
-    if (run && run.done && run.pos >= run.queue.length && (!run.stepping || run.wantStep)) {
+    // A bonk at the very end plays out before the result shows.
+    if (run && run.done && run.pos >= run.queue.length && (!run.stepping || run.wantStep) && !bonk) {
       completeRun(run.done);
     } else if (run && !run.done && now - run.lastActivity > WATCHDOG_MS) {
       log("Python stopped responding, so it was restarted.", "error");
@@ -638,6 +673,8 @@ function loop(now) {
       startWorker();
     }
   }
+  // Keep drawing while a bonk plays, even after the run has ended.
+  if (bonk) render();
   requestAnimationFrame(loop);
 }
 
